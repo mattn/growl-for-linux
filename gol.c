@@ -22,9 +22,14 @@
  */
 #include <gtk/gtk.h>
 #ifdef _WIN32
-#include <gdk/gdkwin32.h>
+# include <gdk/gdkwin32.h>
+# include <ws2tcpip.h>
+#else
+# include <netinet/tcp.h>
+# include <sys/socket.h>
+# include <netdb.h>
+# include <unistd.h>
 #endif
-#include <ws2tcpip.h>
 #include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
@@ -39,6 +44,7 @@
 #include <openssl/des.h>
 
 #ifdef _WIN32
+typedef int socklen_t;
 # ifndef snprintf
 #  define snprintf _snprintf
 # endif
@@ -418,6 +424,15 @@ main(int argc, char* argv[]) {
   struct sockaddr_in server_addr;
   fd_set fdset;
   struct timeval tv;
+
+  if (argc != 2) {
+    fprintf(stderr, "usage: gol [password]\n");
+    exit(1);
+  }
+
+  // TODO: setttign dialog
+  password = argv[1];
+
   tv.tv_sec = 0;
   tv.tv_usec = 0;
 
@@ -458,7 +473,7 @@ main(int argc, char* argv[]) {
       int sock;
       int client_len = sizeof(client);
       memset(&client, 0, sizeof(client));
-      if ((sock = accept(fd, (struct sockaddr *)&client, &client_len)) < 0) {
+      if ((sock = accept(fd, (struct sockaddr *) &client, (socklen_t *) &client_len)) < 0) {
         perror("accept");
         continue;
       }
