@@ -260,6 +260,7 @@ popup_animation_func(gpointer data) {
   //printf("%d\n", pi->timeout);
   if (pi->timeout-- < 0) {
     gtk_widget_destroy(pi->popup);
+    g_free(pi);
     return FALSE;
   }
 
@@ -348,7 +349,7 @@ popup_show(POPUP_INFO* pi) {
 int
 main(int argc, char* argv[]) {
   gtk_init(&argc, &argv);
-  POPUP_INFO* pi = (POPUP_INFO*) malloc(sizeof(POPUP_INFO));
+  POPUP_INFO* pi = g_new0(POPUP_INFO, 1);
   pi->title = "はろー";
   pi->message = "わーるどーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーー";
   pi->icon = "http://mattn.kaoriya.net/images/logo.png";
