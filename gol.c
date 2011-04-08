@@ -418,11 +418,17 @@ readall(int fd, char** ptr) {
 
 unsigned int
 unhex(unsigned char c) {
-	if('0' <= c && c <= '9') return (c - '0');
-	if('a' <= c && c <= 'f') return (0x0a + c - 'a');
-	if('A' <= c && c <= 'F') return (0x0a + c - 'A');
-	return 0;
+  if('0' <= c && c <= '9') return (c - '0');
+  if('a' <= c && c <= 'f') return (0x0a + c - 'a');
+  if('A' <= c && c <= 'F') return (0x0a + c - 'A');
+  return 0;
 }
+
+static void
+statusicon_popup(GtkStatusIcon *status_icon, guint button, guint32 activate_time, gpointer menu) {
+  gtk_menu_popup(GTK_MENU(menu), NULL, NULL, gtk_status_icon_position_menu, status_icon, button, activate_time);
+}
+
 
 int
 main(int argc, char* argv[]) {
@@ -430,6 +436,9 @@ main(int argc, char* argv[]) {
   struct sockaddr_in server_addr;
   fd_set fdset;
   struct timeval tv;
+  GtkWidget* statusicon;
+  GtkWidget* menu;
+  GtkWidget* menu_exit;
 
   if (argc != 2) {
     fprintf(stderr, "usage: gol [password]\n");
@@ -469,6 +478,15 @@ main(int argc, char* argv[]) {
   }
 
   gtk_init(&argc, &argv);
+  statusicon = gtk_status_icon_new_from_file("./data/icon.png");
+  g_signal_connect(G_OBJECT(statusicon), "popup-menu", G_CALLBACK(statusicon_popup), NULL);
+  gtk_status_icon_set_tooltip(statusicon, "Growl For Linux");
+  gtk_status_icon_set_visible(statusicon, TRUE);
+  menu = gtk_menu_new();
+  menu_exit = gtk_menu_item_new_with_label("Exit");
+  g_signal_connect(G_OBJECT(menu_exit), "activate", G_CALLBACK(gtk_main_quit), NULL);
+  gtk_menu_shell_append(GTK_MENU_SHELL (menu), menu_exit);
+  gtk_widget_show_all(menu);
 
   while (TRUE) {
     FD_ZERO(&fdset);
