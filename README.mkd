@@ -1,6 +1,7 @@
 Growl For Linux
 ===============
 
+> ![Growl For Linux](https://github.com/mattn/growl-for-linux/raw/master/data/growl4linux.jpg "Growl For Linux")
 
 Introduction:
 -------------
@@ -42,5 +43,5 @@ Author:
 
 Screenshot:
 -----------
-
-> ![Growl For Linux](https://github.com/mattn/growl-for-linux/raw/master/data/growl4linux.jpg "Growl For Linux")
+> 
+> ![Working on Linux](https://github.com/mattn/growl-for-linux/raw/master/data/screenshot.png "Working on Linux")
