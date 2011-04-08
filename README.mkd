@@ -11,6 +11,12 @@ Introduction:
 Installation:
 -------------
 
+> Growl For Linux require following libraries.
+> 
+> * openssl
+> * libcurl
+> * gtk+-2.0
+> 
 > Type "make". This should produce a program "gol".
 > You can run it by typing "./gol".
 
