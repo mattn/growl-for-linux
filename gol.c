@@ -70,7 +70,7 @@ typedef struct {
   gint pos;
   gint x, y;
   gchar* title;
-  gchar* message;
+  gchar* text;
   gchar* icon;
   gchar* url;
   gint timeout;
@@ -256,6 +256,7 @@ open_url(const gchar* url) {
   g_spawn_command_line_async(command, NULL);
   g_free(command);
 #else
+printf("%s\n", url);
   gchar* command = g_strdup_printf("xdg-open '%s'", url);
   g_spawn_command_line_async(command, NULL);
   g_free(command);
@@ -277,6 +278,10 @@ popup_animation_func(gpointer data) {
   if (pi->timeout-- < 0) {
     gtk_widget_destroy(pi->popup);
     popup_list = g_list_remove(popup_list, pi);
+    g_free(pi->title);
+    g_free(pi->text);
+    g_free(pi->icon);
+    g_free(pi->url);
     g_free(pi);
     return FALSE;
   }
@@ -296,7 +301,7 @@ popup_animation_func(gpointer data) {
 
 static void
 popup_show(
-    const gchar* title, const gchar* message,
+    const gchar* title, const gchar* text,
     const gchar* icon, const gchar* url) {
   GdkColor color;
   gdk_color_parse ("white", &color);
@@ -339,7 +344,7 @@ popup_show(
   popup_list = g_list_append(popup_list, pi);
   pi->pos = pos;
   pi->title = (gchar*) g_strdup(title);
-  pi->message = (gchar*) g_strdup(message);
+  pi->text = (gchar*) g_strdup(text);
   pi->icon = (gchar*) g_strdup(icon);
   pi->url = (gchar*) g_strdup(url);
   pi->x = x;
@@ -376,13 +381,14 @@ popup_show(
 
   gtk_box_pack_start(GTK_BOX(vbox), hbox, FALSE, FALSE, 0);
 
-  label = gtk_label_new(pi->message);
+  label = gtk_label_new(pi->text);
   gtk_label_set_line_wrap(GTK_LABEL(label), TRUE);
   gtk_label_set_line_wrap_mode(GTK_LABEL(label), PANGO_WRAP_CHAR);
   gtk_box_pack_start(GTK_BOX(vbox), label, TRUE, FALSE, 0);
 
   gtk_widget_set_size_request(pi->popup, 180, 1);
 
+  gtk_widget_set_events(pi->popup, GDK_BUTTON_PRESS_MASK);
   g_signal_connect(G_OBJECT(pi->popup), "button-press-event", G_CALLBACK(popup_clicked), pi);
 
   pi->offset = 0;
