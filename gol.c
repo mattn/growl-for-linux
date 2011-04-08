@@ -21,6 +21,10 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include <gtk/gtk.h>
+#ifdef _WIN32
+#include <gdk/gdkwin32.h>
+#endif
+#include <ws2tcpip.h>
 #include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
@@ -29,6 +33,10 @@
 #ifdef _WIN32
 # include <io.h>
 #endif
+#include <openssl/md5.h>
+#include <openssl/sha.h>
+#include <openssl/aes.h>
+#include <openssl/des.h>
 
 #ifdef _WIN32
 # ifndef snprintf
@@ -43,11 +51,18 @@
 # ifndef random
 #  define random() rand()
 # endif
+#else
+# define closesocket(x) close(x)
 #endif
 
-#define REQUEST_TIMEOUT            (10)
+#define REQUEST_TIMEOUT            (5)
+
+static GList* popup_list = NULL;
+static gchar* password = "123456"; // should be configuable.
 
 typedef struct {
+  gint pos;
+  gint x, y;
   gchar* title;
   gchar* message;
   gchar* icon;
@@ -55,14 +70,9 @@ typedef struct {
   gint timeout;
 
   GtkWidget* popup;
-  GdkRectangle rect;
-  gint width;
-  gint height;
   gint offset;
 
 } POPUP_INFO;
-
-GList* popup_list = NULL;
 
 typedef struct {
   char* data;     // response data from server
@@ -250,6 +260,7 @@ open_url(const gchar* url) {
 static void
 popup_clicked(GtkWidget* widget, GdkEvent* event, gpointer user_data) {
   POPUP_INFO* pi = (POPUP_INFO*) user_data;
+  if (pi->timeout >= 30) pi->timeout = 30;
   if (pi->url) open_url(pi->url);
 }
 
@@ -257,27 +268,30 @@ static gboolean
 popup_animation_func(gpointer data) {
   POPUP_INFO* pi = (POPUP_INFO*) data;
 
-  //printf("%d\n", pi->timeout);
   if (pi->timeout-- < 0) {
     gtk_widget_destroy(pi->popup);
+    popup_list = g_list_remove(popup_list, pi);
     g_free(pi);
     return FALSE;
   }
 
-  if (pi->offset < pi->height) {
+  if (pi->offset < 160) {
     pi->offset += 2;
+    gtk_window_resize(GTK_WINDOW(pi->popup), 180, pi->offset);
+    gtk_window_move(GTK_WINDOW(pi->popup), pi->x, pi->y - pi->offset);
+  }
+  gtk_window_set_keep_above(GTK_WINDOW(pi->popup), TRUE);
 
-    gtk_window_resize(GTK_WINDOW(pi->popup), pi->width, pi->offset);
-    gtk_window_move(GTK_WINDOW(pi->popup),
-        pi->rect.x + pi->rect.width - pi->width,
-        pi->rect.y + pi->rect.height - pi->offset);
+  if (pi->timeout < 30) {
+    gtk_window_set_opacity(GTK_WINDOW(pi->popup), (double) pi->timeout/30.0*0.8);
   }
   return TRUE;
 }
 
 static void
-popup_show(POPUP_INFO* pi) {
-  //GdkWindow *root_window = gdk_get_default_root_window();
+popup_show(
+    const gchar* title, const gchar* message,
+    const gchar* icon, const gchar* url) {
   GdkColor color;
   gdk_color_parse ("white", &color);
   GtkWidget* fixed;
@@ -287,17 +301,50 @@ popup_show(POPUP_INFO* pi) {
   GtkWidget* image;
   GdkPixbuf* pixbuf;
   GdkScreen* screen;
-  int monitor_num;
+  gint n, pos, len;
+  gint x, y;
+  gint monitor_num;
+  GdkRectangle rect;
+
+  len = g_list_length(popup_list);
+  for (pos = 0; pos < len; pos++) {
+    POPUP_INFO* p = g_list_nth_data(popup_list, pos);
+    if (pos != p->pos) break;
+  }
 
   screen = gdk_screen_get_default();
   monitor_num = gdk_screen_get_primary_monitor(screen);
-  gdk_screen_get_monitor_geometry(screen, monitor_num, &pi->rect);
+  gdk_screen_get_monitor_geometry(screen, monitor_num, &rect);
+
+  x = rect.x + rect.width - 180;
+  y = rect.y + rect.height - 180;
+  for (n = 0; n < pos; n++) {
+    y -= 180;
+    if (y < 50) {
+      x -= 200;
+      if (x < 0) {
+        return;
+      }
+      y = rect.y + rect.height - 180;
+    }
+  }
+
+  POPUP_INFO* pi = g_new0(POPUP_INFO, 1);
+  popup_list = g_list_append(popup_list, pi);
+  pi->pos = pos;
+  pi->title = (gchar*) g_strdup(title);
+  pi->message = (gchar*) g_strdup(message);
+  pi->icon = (gchar*) g_strdup(icon);
+  pi->url = (gchar*) g_strdup(url);
+  pi->x = x;
+  pi->y = y + 200;
 
   pi->popup = gtk_window_new(GTK_WINDOW_POPUP);
   gtk_window_set_title(GTK_WINDOW(pi->popup), "growl-for-linux");
   gtk_window_set_resizable(GTK_WINDOW(pi->popup), TRUE);
   gtk_window_set_decorated(GTK_WINDOW(pi->popup), FALSE);
   gtk_window_set_keep_above(GTK_WINDOW(pi->popup), TRUE);
+
   gtk_window_stick(GTK_WINDOW(pi->popup));
   gtk_window_set_opacity(GTK_WINDOW(pi->popup), 0.8);
   gtk_widget_modify_bg(pi->popup, GTK_STATE_NORMAL, &color);
@@ -326,36 +373,259 @@ popup_show(POPUP_INFO* pi) {
   label = gtk_label_new(pi->message);
   gtk_label_set_line_wrap(GTK_LABEL(label), TRUE);
   gtk_label_set_line_wrap_mode(GTK_LABEL(label), PANGO_WRAP_CHAR);
-  gtk_widget_set_size_request(label, 160, 120);
-  gtk_box_pack_start(GTK_BOX(vbox), label, FALSE, FALSE, 0);
+  gtk_box_pack_start(GTK_BOX(vbox), label, TRUE, FALSE, 0);
 
-  gtk_window_resize(GTK_WINDOW(pi->popup), 180, 160);
-  //gtk_widget_set_size_request(pi->popup, 180, 160);
-  gtk_window_get_size(GTK_WINDOW(pi->popup), &pi->width, &pi->height);
+  gtk_widget_set_size_request(pi->popup, 180, 1);
 
   g_signal_connect(G_OBJECT(pi->popup), "button-press-event", G_CALLBACK(popup_clicked), pi);
 
   pi->offset = 0;
   pi->timeout = 200;
 
-  gtk_window_move(GTK_WINDOW(pi->popup),
-      pi->rect.x + pi->rect.width - pi->width,
-      pi->rect.y + pi->rect.height);
+  gtk_window_move(GTK_WINDOW(pi->popup), pi->x, pi->y);
   gtk_widget_show_all(pi->popup);
 
+#ifdef _WIN32
+  SetWindowPos(GDK_WINDOW_HWND(pi->popup->window), HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+#endif
+  
   g_timeout_add(10, popup_animation_func, pi);
+}
+
+static long
+readall(int fd, char** ptr) {
+  int i = 0, r;
+  *ptr = (char*) calloc(BUFSIZ, 1);
+  while ((r = recv(fd, *ptr + i, BUFSIZ, 0)) > 0) {
+    i += r;
+    if (r > 2 && !strncmp(*ptr + i - 4, "\r\n\r\n", 4)) break;
+    *ptr = realloc(*ptr, BUFSIZ + i);
+  }
+  return i;
+}
+
+unsigned int
+unhex(unsigned char c) {
+	if('0' <= c && c <= '9') return (c - '0');
+	if('a' <= c && c <= 'f') return (0x0a + c - 'a');
+	if('A' <= c && c <= 'F') return (0x0a + c - 'A');
+	return 0;
 }
 
 int
 main(int argc, char* argv[]) {
+  int fd;
+  struct sockaddr_in server_addr;
+  fd_set fdset;
+  struct timeval tv;
+  tv.tv_sec = 0;
+  tv.tv_usec = 0;
+
+#ifdef _WIN32
+  WSADATA wsaData;
+  WSAStartup(MAKEWORD(2, 2), &wsaData);
+#endif
+
+  if ((fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+    perror("socket");
+    exit(1);
+  }
+
+  memset((char *) &server_addr, 0, sizeof(server_addr));
+  server_addr.sin_family = AF_INET;
+  server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+  server_addr.sin_port = htons(23053);
+
+  if (bind(fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
+    perror("bind");
+    exit(1);
+  }
+
+  if (listen(fd, 5) < 0) {
+    perror("listen");
+    closesocket(fd);
+    exit(1);
+  }
+
   gtk_init(&argc, &argv);
-  POPUP_INFO* pi = g_new0(POPUP_INFO, 1);
-  pi->title = "はろー";
-  pi->message = "わーるどーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーー";
-  pi->icon = "http://mattn.kaoriya.net/images/logo.png";
-  pi->url = "http://mattn.kaoriya.net/";
-  popup_show(pi);
-  gtk_main();
+
+  while (TRUE) {
+    FD_ZERO(&fdset);
+    FD_SET(fd, &fdset);
+    select(FD_SETSIZE, &fdset, NULL, NULL, &tv);
+    if (FD_ISSET(fd, &fdset)) {
+      struct sockaddr_in client;
+      int sock;
+      int client_len = sizeof(client);
+      memset(&client, 0, sizeof(client));
+      if ((sock = accept(fd, (struct sockaddr *)&client, &client_len)) < 0) {
+        perror("accept");
+        continue;
+      }
+      char on = 1;
+      setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, &on, sizeof(on));
+      char* ptr;
+      int r = readall(sock, &ptr);
+      char* top = ptr;
+      if (!strncmp(ptr, "GNTP/1.0 ", 9)) {
+        ptr += 9;
+        if (!strncmp(ptr, "REGISTER ", 9)) {
+          ptr += 9;
+        } else
+        if (!strncmp(ptr, "NOTIFY ", 7)) {
+          ptr += 7;
+          char* data = NULL;
+          if (!strncmp(ptr, "NONE ", 5)) {
+            ptr = strchr(ptr, '\r');
+            *ptr++ = 0;
+            *ptr++ = 0;
+            data = (char*) calloc(r-(ptr-top)-4+1, 1);
+            memcpy(data, ptr, r-(ptr-top)-4);
+          } else {
+            if (strncmp(ptr, "AES:", 4) &&
+                strncmp(ptr, "DES:", 4) &&
+                strncmp(ptr, "3DES:", 5)) continue;
+
+            char* crypt_algorythm = ptr;
+            ptr = strchr(ptr, ':');
+            *ptr++ = 0;
+            char* iv;
+            iv = ptr;
+            ptr = strchr(ptr, ' ');
+            *ptr++ = 0;
+
+            if (strncmp(ptr, "MD5:", 4) &&
+                strncmp(ptr, "SHA1:", 5) &&
+                strncmp(ptr, "SHA256:", 7)) continue;
+
+            char* hash_algorythm = ptr;
+            ptr = strchr(ptr, ':');
+            *ptr++ = 0;
+            char* key = ptr;
+            ptr = strchr(ptr, '.');
+            *ptr++ = 0;
+            char* salt = ptr;
+
+            ptr = strchr(ptr, '\r');
+            *ptr++ = 0;
+            *ptr++ = 0;
+
+            int n, keylen, saltlen, ivlen;
+
+            char hex[3];
+            hex[2] = 0;
+            saltlen = strlen(salt) / 2;
+            for (n = 0; n < saltlen; n++)
+              salt[n] = unhex(salt[n * 2]) * 16 + unhex(salt[n * 2 + 1]);
+            keylen = strlen(key) / 2;
+            for (n = 0; n < keylen; n++)
+              key[n] = unhex(key[n * 2]) * 16 + unhex(key[n * 2 + 1]);
+            ivlen = strlen(iv) / 2;
+            for (n = 0; n < ivlen; n++)
+              iv[n] = unhex(iv[n * 2]) * 16 + unhex(iv[n * 2 + 1]);
+
+            char digest[32] = {0};
+            memset(digest, 0, sizeof(digest));
+
+            if (!strcmp(hash_algorythm, "MD5")) {
+              MD5_CTX ctx;
+              MD5_Init(&ctx);
+              MD5_Update(&ctx, password, strlen(password));
+              MD5_Update(&ctx, salt, saltlen);
+              MD5_Final((unsigned char*) digest, &ctx);
+            }
+            if (!strcmp(hash_algorythm, "SHA1")) {
+              SHA_CTX ctx;
+              SHA1_Init(&ctx);
+              SHA1_Update(&ctx, password, strlen(password));
+              SHA1_Update(&ctx, salt, saltlen);
+              SHA1_Final((unsigned char*) digest, &ctx);
+            }
+            if (!strcmp(hash_algorythm, "SHA256")) {
+              SHA256_CTX ctx;
+              SHA256_Init(&ctx);
+              SHA256_Update(&ctx, password, strlen(password));
+              SHA256_Update(&ctx, salt, saltlen);
+              SHA256_Final((unsigned char*) digest, &ctx);
+            }
+
+            data = (char*) calloc(r, 1);
+            if (!strcmp(crypt_algorythm, "AES")) {
+              AES_KEY aeskey;
+              AES_set_decrypt_key((unsigned char*) digest, 24 * 8, &aeskey);
+              AES_cbc_encrypt((unsigned char*) ptr, (unsigned char*) data,
+                  r-(ptr-top)-6, &aeskey, (unsigned char*) iv, AES_DECRYPT);
+            }
+            if (!strcmp(crypt_algorythm, "DES")) {
+              des_key_schedule schedule;
+              DES_set_key_unchecked((const_DES_cblock*) &digest, &schedule);
+              DES_ncbc_encrypt((unsigned char*) ptr, (unsigned char*) data,
+                  r-(ptr-top)-6, &schedule, (const_DES_cblock*) &iv, DES_DECRYPT);
+            }
+            if (!strcmp(crypt_algorythm, "3DES")) {
+              char key1[8], key2[8], key3[8];
+              memcpy(key1, digest+ 0, 8);
+              memcpy(key2, digest+ 8, 8);
+              memcpy(key3, digest+16, 8);
+              des_key_schedule schedule1, schedule2, schedule3;
+              DES_set_key_unchecked((const_DES_cblock*) &key1, &schedule1);
+              DES_set_key_unchecked((const_DES_cblock*) &key2, &schedule2);
+              DES_set_key_unchecked((const_DES_cblock*) &key3, &schedule3);
+              des_ede3_cbc_encrypt((unsigned char*) ptr, (unsigned char*) data,
+                  r-(ptr-top)-6, schedule1, schedule2, schedule3,
+                  (const_DES_cblock*) &iv, DES_DECRYPT);
+            }
+          }
+
+          ptr = data;
+          char* title = "";
+          char* text = "";
+          char* icon = "";
+          char* url = "";
+          while (*ptr) {
+            char* line = ptr;
+            ptr = strchr(ptr, '\r');
+            if (!ptr) break;
+            *ptr++ = 0;
+            *ptr++ = 0;
+            if (!strncmp(line, "Notification-Title:", 19)) {
+              line += 20;
+              while(isspace(*line)) line++;
+              title = line;
+            }
+            if (!strncmp(line, "Notification-Text:", 18)) {
+              line += 19;
+              while(isspace(*line)) line++;
+              text = line;
+            }
+            if (!strncmp(line, "Notification-Icon:", 18)) {
+              line += 19;
+              while(isspace(*line)) line++;
+              icon = line;
+            }
+            if (!strncmp(line, "Notification-Callback-Target:", 29)) {
+              line += 30;
+              while(isspace(*line)) line++;
+              url = line;
+            }
+          }
+          if (*title && *text)
+            popup_show(title, text, icon, url);
+          free(data);
+        }
+        ptr = "GNTP/1.0 OK\r\n\r\n";
+        send(sock, ptr, strlen(ptr), 0);
+      } else {
+        ptr = "GNTP/1.0 -ERROR Invalid command\r\n\r\n";
+        send(sock, ptr, strlen(ptr), 0);
+      }
+      free(top);
+      closesocket(sock);
+    } else {
+      gtk_main_iteration_do(FALSE);
+    }
+  }
+
   return 0;
 }
 
