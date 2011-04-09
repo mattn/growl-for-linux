@@ -300,6 +300,11 @@ popup_animation_func(gpointer data) {
   return TRUE;
 }
 
+static gint
+popup_list_compare(gconstpointer a, gconstpointer b) {
+  return ((POPUP_INFO*)b)->pos < ((POPUP_INFO*)a)->pos;
+}
+
 static void
 popup_show(
     const gchar* title, const gchar* text,
@@ -332,7 +337,7 @@ popup_show(
   y = rect.y + rect.height - 180;
   for (n = 0; n < pos; n++) {
     y -= 180;
-    if (y < 50) {
+    if (y < 0) {
       x -= 200;
       if (x < 0) {
         return;
@@ -342,8 +347,8 @@ popup_show(
   }
 
   POPUP_INFO* pi = g_new0(POPUP_INFO, 1);
-  popup_list = g_list_append(popup_list, pi);
   pi->pos = pos;
+  popup_list = g_list_insert_sorted(popup_list, pi, popup_list_compare);
   pi->title = (gchar*) g_strdup(title);
   pi->text = (gchar*) g_strdup(text);
   pi->icon = (gchar*) g_strdup(icon);
@@ -393,7 +398,7 @@ popup_show(
   g_signal_connect(G_OBJECT(pi->popup), "button-press-event", G_CALLBACK(popup_clicked), pi);
 
   pi->offset = 0;
-  pi->timeout = 200;
+  pi->timeout = 500;
 
   gtk_window_move(GTK_WINDOW(pi->popup), pi->x, pi->y);
   gtk_widget_show_all(pi->popup);
