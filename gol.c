@@ -679,7 +679,6 @@ main(int argc, char* argv[]) {
     exit(1);
   }
 
-
   g_thread_init(NULL);
   gdk_threads_init();
 
@@ -699,7 +698,10 @@ main(int argc, char* argv[]) {
     gtk_main_iteration_do(FALSE);
     FD_ZERO(&fdset);
     FD_SET(fd, &fdset);
-    select(FD_SETSIZE, &fdset, NULL, NULL, &tv);
+    if (select(FD_SETSIZE, &fdset, NULL, NULL, &tv) < 0) {
+      perror("select");
+      continue;
+    }
     if (!FD_ISSET(fd, &fdset))
       continue;
     struct sockaddr_in client;
@@ -711,8 +713,10 @@ main(int argc, char* argv[]) {
       continue;
     }
     POPUP_INFO* pi = g_new0(POPUP_INFO, 1);
-    pi->sock = sock;
-    g_thread_create(recv_thread, pi, TRUE, &error);
+    if (pi) {
+      pi->sock = sock;
+      g_thread_create(recv_thread, pi, TRUE, &error);
+    }
   }
 
   return 0;
