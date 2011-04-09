@@ -1,0 +1,13 @@
+* GUI for configuration.
+
+* System tray menu.
+  menu item for show setting dialog.
+
+* Stylish display, customizable.
+  add support of gmodule
+
+* More imitation of Growl For Windows.
+
+* Threading
+  currently, it takes few seconds for receive text or download icon,
+  main loop is stopped.

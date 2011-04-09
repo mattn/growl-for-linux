@@ -28,14 +28,6 @@ Usage:
 > Why "gol" ?, "gol" mean "Growl On Linux". (or ゴルア).
 > Currently, This is required.
 
-Todo:
------
-
-> * GUI for configuration.
-> * System tray menu.
-> * Stylish display, customizable.
-> * more imitation of Growl For Windows.
-
 License:
 --------
 
