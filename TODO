@@ -7,7 +7,3 @@
   add support of gmodule
 
 * More imitation of Growl For Windows.
-
-* Threading
-  currently, it takes few seconds for receive text or download icon,
-  main loop is stopped.

@@ -251,21 +251,19 @@ url2pixbuf(const char* url, GError** error) {
   return pixbuf;
 }
 
-static int
+static gboolean
 open_url(const gchar* url) {
-  int r = 0;
 #if defined(_WIN32)
-  r = (int) ShellExecute(NULL, "open", url, NULL, NULL, SW_SHOW);
+  return ShellExecute(NULL, "open", url, NULL, NULL, SW_SHOW) > 32;
 #elif defined(MACOSX)
   GError* error = NULL;
-  gchar *argv[] = {"open", url, NULL};
- 	g_spawn_async(NULL, argv, NULL, G_SPAWN_SEARCH_PATH, NULL, NULL, NULL, &error);
+  const gchar *argv[] = {"open", (gchar*) url, NULL};
+ 	return g_spawn_async(NULL, argv, NULL, G_SPAWN_SEARCH_PATH, NULL, NULL, NULL, &error);
 #else
   GError* error = NULL;
-  gchar *argv[] = {"xdg-open", url, NULL};
- 	g_spawn_async(NULL, argv, NULL, G_SPAWN_SEARCH_PATH, NULL, NULL, NULL, &error);
+  gchar *argv[] = {"xdg-open", (gchar*) url, NULL};
+ 	return g_spawn_async(NULL, argv, NULL, G_SPAWN_SEARCH_PATH, NULL, NULL, NULL, &error);
 #endif
-  return r;
 }
 
 static void
@@ -458,48 +456,50 @@ recv_thread(gpointer data) {
     ptr += 9;
     if (!strncmp(ptr, "REGISTER ", 9)) {
       ptr += 9;
+      // TODO: register
     } else
     if (!strncmp(ptr, "NOTIFY ", 7)) {
       ptr += 7;
       char* data = NULL;
       if (!strncmp(ptr, "NONE ", 5)) {
         ptr = strchr(ptr, '\r');
+        if (!ptr) goto leave;
         *ptr++ = 0;
         *ptr++ = 0;
         data = (char*) calloc(r-(ptr-top)-4+1, 1);
+        if (!data) goto leave;
         memcpy(data, ptr, r-(ptr-top)-4);
       } else {
         if (strncmp(ptr, "AES:", 4) &&
             strncmp(ptr, "DES:", 4) &&
-            strncmp(ptr, "3DES:", 5)) {
-          g_free(pi);
-          return NULL;
-        }
+            strncmp(ptr, "3DES:", 5)) goto leave;
 
         char* crypt_algorythm = ptr;
         ptr = strchr(ptr, ':');
+        if (!ptr) goto leave;
         *ptr++ = 0;
         char* iv;
         iv = ptr;
         ptr = strchr(ptr, ' ');
+        if (!ptr) goto leave;
         *ptr++ = 0;
 
         if (strncmp(ptr, "MD5:", 4) &&
             strncmp(ptr, "SHA1:", 5) &&
-            strncmp(ptr, "SHA256:", 7)) {
-          g_free(pi);
-          return NULL;
-        }
+            strncmp(ptr, "SHA256:", 7)) goto leave;
 
         char* hash_algorythm = ptr;
         ptr = strchr(ptr, ':');
+        if (!ptr) goto leave;
         *ptr++ = 0;
         char* key = ptr;
         ptr = strchr(ptr, '.');
+        if (!ptr) goto leave;
         *ptr++ = 0;
         char* salt = ptr;
 
         ptr = strchr(ptr, '\r');
+        if (!ptr) goto leave;
         *ptr++ = 0;
         *ptr++ = 0;
 
@@ -543,6 +543,7 @@ recv_thread(gpointer data) {
         }
 
         data = (char*) calloc(r, 1);
+        if (!data) goto leave;
         if (!strcmp(crypt_algorythm, "AES")) {
           AES_KEY aeskey;
           AES_set_decrypt_key((unsigned char*) digest, 24 * 8, &aeskey);
@@ -609,6 +610,12 @@ recv_thread(gpointer data) {
   }
   free(top);
   closesocket(pi->sock);
+  return NULL;
+
+leave:
+  free(top);
+  closesocket(pi->sock);
+  free(pi);
   return NULL;
 }
 
@@ -677,6 +684,7 @@ main(int argc, char* argv[]) {
   gdk_threads_init();
 
   gtk_init(&argc, &argv);
+  // TODO: absolute path
   status_icon = gtk_status_icon_new_from_file("./data/icon.png");
   gtk_status_icon_set_tooltip(status_icon, "Growl For Linux");
   gtk_status_icon_set_visible(status_icon, TRUE);
