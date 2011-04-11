@@ -685,9 +685,7 @@ main(int argc, char* argv[]) {
     exit(1);
   }
 
-  //g_thread_init(NULL);
-  //gdk_threads_init();
-  //gdk_threads_enter();
+  g_thread_init(NULL);
 
   gtk_init(&argc, &argv);
   // TODO: absolute path
