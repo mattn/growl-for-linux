@@ -277,12 +277,9 @@ static gboolean
 notification_animation_func(gpointer data) {
   NOTIFICATION_INFO* ni = (NOTIFICATION_INFO*) data;
 
-  gdk_threads_enter();
-
   if (ni->timeout-- < 0) {
     gtk_widget_destroy(ni->popup);
     notifications = g_list_remove(notifications, ni);
-    gdk_threads_leave();
     g_free(ni->title);
     g_free(ni->text);
     g_free(ni->icon);
@@ -296,12 +293,10 @@ notification_animation_func(gpointer data) {
     gtk_window_resize(GTK_WINDOW(ni->popup), 180, ni->offset);
     gtk_window_move(GTK_WINDOW(ni->popup), ni->x, ni->y - ni->offset);
   }
-  gtk_window_set_keep_above(GTK_WINDOW(ni->popup), TRUE);
 
   if (ni->timeout < 30) {
     gtk_window_set_opacity(GTK_WINDOW(ni->popup), (double) ni->timeout/30.0*0.8);
   }
-  gdk_threads_leave();
   return TRUE;
 }
 
@@ -310,8 +305,10 @@ notifications_compare(gconstpointer a, gconstpointer b) {
   return ((NOTIFICATION_INFO*)b)->pos < ((NOTIFICATION_INFO*)a)->pos;
 }
 
-static void
-notification_show(NOTIFICATION_INFO* ni) {
+static gint
+notification_show(gpointer data) {
+  NOTIFICATION_INFO* ni = (NOTIFICATION_INFO*) data;
+
   GdkColor color;
   gdk_color_parse ("white", &color);
   GtkWidget* fixed;
@@ -326,7 +323,6 @@ notification_show(NOTIFICATION_INFO* ni) {
   gint monitor_num;
   GdkRectangle rect;
 
-  gdk_threads_enter();
   len = g_list_length(notifications);
   for (pos = 0; pos < len; pos++) {
     NOTIFICATION_INFO* p = g_list_nth_data(notifications, pos);
@@ -344,7 +340,7 @@ notification_show(NOTIFICATION_INFO* ni) {
     if (y < 0) {
       x -= 200;
       if (x < 0) {
-        return;
+        return FALSE;
       }
       y = rect.y + rect.height - 180;
     }
@@ -407,7 +403,8 @@ notification_show(NOTIFICATION_INFO* ni) {
 #endif
   
   g_timeout_add(10, notification_animation_func, ni);
-  gdk_threads_leave();
+
+  return FALSE;
 }
 
 static long
@@ -447,11 +444,15 @@ exit_clicked(GtkWidget* widget, GdkEvent* event, gpointer user_data) {
 
 static gpointer
 recv_thread(gpointer data) {
-  NOTIFICATION_INFO* ni = (NOTIFICATION_INFO*) data;
-  sockopt_t sockopt;
+  int sock = (int) data;
+  int need_to_show = 0;
 
-  sockopt = 1;
-  setsockopt(ni->sock, IPPROTO_TCP, TCP_NODELAY, &sockopt, sizeof(sockopt));
+  NOTIFICATION_INFO* ni = g_new0(NOTIFICATION_INFO, 1);
+  if (!ni) {
+    perror("g_new0");
+  }
+  ni->sock = sock;
+
   char* ptr;
   int r = readall(ni->sock, &ptr);
   char* top = ptr;
@@ -602,7 +603,7 @@ recv_thread(gpointer data) {
           ni->url = g_strdup(line);
         }
       }
-      notification_show(ni);
+      need_to_show = 1;
       free(data);
     }
     ptr = "GNTP/1.0 OK\r\n\r\n";
@@ -613,6 +614,8 @@ recv_thread(gpointer data) {
   }
   free(top);
   closesocket(ni->sock);
+  if (need_to_show)
+    g_idle_add(notification_show, ni); // call once
   return NULL;
 
 leave:
@@ -632,7 +635,6 @@ main(int argc, char* argv[]) {
   GtkWidget* menu;
   GtkWidget* menu_settings;
   GtkWidget* menu_exit;
-  GError* error = NULL;
   sockopt_t sockopt;
 
   if (argc != 2) {
@@ -683,9 +685,9 @@ main(int argc, char* argv[]) {
     exit(1);
   }
 
-  g_thread_init(NULL);
-  gdk_threads_init();
-  gdk_threads_enter();
+  //g_thread_init(NULL);
+  //gdk_threads_init();
+  //gdk_threads_enter();
 
   gtk_init(&argc, &argv);
   // TODO: absolute path
@@ -721,12 +723,12 @@ main(int argc, char* argv[]) {
       perror("accept");
       continue;
     }
-    NOTIFICATION_INFO* ni = g_new0(NOTIFICATION_INFO, 1);
-    if (ni) {
-      ni->sock = sock;
-      g_thread_create(recv_thread, ni, TRUE, &error);
-    }
+    sockopt = 1;
+    setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, &sockopt, sizeof(sockopt));
+
+    g_thread_create(recv_thread, (gpointer) sock, FALSE, NULL);
   }
+  gdk_threads_leave();
 
   return 0;
 }
