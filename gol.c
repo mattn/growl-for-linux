@@ -65,7 +65,7 @@ typedef int sockopt_t;
 
 #define REQUEST_TIMEOUT            (5)
 
-static GList* popup_list = NULL;
+static GList* notifications = NULL;
 static gchar* password = "123456"; // should be configuable.
 static gboolean main_loop = TRUE;
 
@@ -83,7 +83,7 @@ typedef struct {
   GtkWidget* popup;
   gint offset;
 
-} POPUP_INFO;
+} NOTIFICATION_INFO;
 
 typedef struct {
   char* data;     // response data from server
@@ -267,51 +267,51 @@ open_url(const gchar* url) {
 }
 
 static void
-popup_clicked(GtkWidget* widget, GdkEvent* event, gpointer user_data) {
-  POPUP_INFO* pi = (POPUP_INFO*) user_data;
-  if (pi->timeout >= 30) pi->timeout = 30;
-  if (pi->url && *pi->url) open_url(pi->url);
+notification_clicked(GtkWidget* widget, GdkEvent* event, gpointer user_data) {
+  NOTIFICATION_INFO* ni = (NOTIFICATION_INFO*) user_data;
+  if (ni->timeout >= 30) ni->timeout = 30;
+  if (ni->url && *ni->url) open_url(ni->url);
 }
 
 static gboolean
-popup_animation_func(gpointer data) {
-  POPUP_INFO* pi = (POPUP_INFO*) data;
+notification_animation_func(gpointer data) {
+  NOTIFICATION_INFO* ni = (NOTIFICATION_INFO*) data;
 
   gdk_threads_enter();
 
-  if (pi->timeout-- < 0) {
-    gtk_widget_destroy(pi->popup);
-    popup_list = g_list_remove(popup_list, pi);
+  if (ni->timeout-- < 0) {
+    gtk_widget_destroy(ni->popup);
+    notifications = g_list_remove(notifications, ni);
     gdk_threads_leave();
-    g_free(pi->title);
-    g_free(pi->text);
-    g_free(pi->icon);
-    g_free(pi->url);
-    g_free(pi);
+    g_free(ni->title);
+    g_free(ni->text);
+    g_free(ni->icon);
+    g_free(ni->url);
+    g_free(ni);
     return FALSE;
   }
 
-  if (pi->offset < 160) {
-    pi->offset += 2;
-    gtk_window_resize(GTK_WINDOW(pi->popup), 180, pi->offset);
-    gtk_window_move(GTK_WINDOW(pi->popup), pi->x, pi->y - pi->offset);
+  if (ni->offset < 160) {
+    ni->offset += 2;
+    gtk_window_resize(GTK_WINDOW(ni->popup), 180, ni->offset);
+    gtk_window_move(GTK_WINDOW(ni->popup), ni->x, ni->y - ni->offset);
   }
-  gtk_window_set_keep_above(GTK_WINDOW(pi->popup), TRUE);
+  gtk_window_set_keep_above(GTK_WINDOW(ni->popup), TRUE);
 
-  if (pi->timeout < 30) {
-    gtk_window_set_opacity(GTK_WINDOW(pi->popup), (double) pi->timeout/30.0*0.8);
+  if (ni->timeout < 30) {
+    gtk_window_set_opacity(GTK_WINDOW(ni->popup), (double) ni->timeout/30.0*0.8);
   }
   gdk_threads_leave();
   return TRUE;
 }
 
 static gint
-popup_list_compare(gconstpointer a, gconstpointer b) {
-  return ((POPUP_INFO*)b)->pos < ((POPUP_INFO*)a)->pos;
+notifications_compare(gconstpointer a, gconstpointer b) {
+  return ((NOTIFICATION_INFO*)b)->pos < ((NOTIFICATION_INFO*)a)->pos;
 }
 
 static void
-popup_show(POPUP_INFO* pi) {
+notification_show(NOTIFICATION_INFO* ni) {
   GdkColor color;
   gdk_color_parse ("white", &color);
   GtkWidget* fixed;
@@ -327,9 +327,9 @@ popup_show(POPUP_INFO* pi) {
   GdkRectangle rect;
 
   gdk_threads_enter();
-  len = g_list_length(popup_list);
+  len = g_list_length(notifications);
   for (pos = 0; pos < len; pos++) {
-    POPUP_INFO* p = g_list_nth_data(popup_list, pos);
+    NOTIFICATION_INFO* p = g_list_nth_data(notifications, pos);
     if (pos != p->pos) break;
   }
 
@@ -350,30 +350,30 @@ popup_show(POPUP_INFO* pi) {
     }
   }
 
-  pi->pos = pos;
-  popup_list = g_list_insert_sorted(popup_list, pi, popup_list_compare);
-  pi->x = x;
-  pi->y = y + 200;
+  ni->pos = pos;
+  notifications = g_list_insert_sorted(notifications, ni, notifications_compare);
+  ni->x = x;
+  ni->y = y + 200;
 
-  pi->popup = gtk_window_new(GTK_WINDOW_POPUP);
-  gtk_window_set_title(GTK_WINDOW(pi->popup), "growl-for-linux");
-  gtk_window_set_resizable(GTK_WINDOW(pi->popup), TRUE);
-  gtk_window_set_decorated(GTK_WINDOW(pi->popup), FALSE);
-  gtk_window_set_keep_above(GTK_WINDOW(pi->popup), TRUE);
+  ni->popup = gtk_window_new(GTK_WINDOW_POPUP);
+  gtk_window_set_title(GTK_WINDOW(ni->popup), "growl-for-linux");
+  gtk_window_set_resizable(GTK_WINDOW(ni->popup), TRUE);
+  gtk_window_set_decorated(GTK_WINDOW(ni->popup), FALSE);
+  gtk_window_set_keep_above(GTK_WINDOW(ni->popup), TRUE);
 
-  gtk_window_stick(GTK_WINDOW(pi->popup));
-  gtk_window_set_opacity(GTK_WINDOW(pi->popup), 0.8);
-  gtk_widget_modify_bg(pi->popup, GTK_STATE_NORMAL, &color);
+  gtk_window_stick(GTK_WINDOW(ni->popup));
+  gtk_window_set_opacity(GTK_WINDOW(ni->popup), 0.8);
+  gtk_widget_modify_bg(ni->popup, GTK_STATE_NORMAL, &color);
 
   fixed = gtk_fixed_new();
   gtk_container_set_border_width(GTK_CONTAINER(fixed), 10);
-  gtk_container_add(GTK_CONTAINER(pi->popup), fixed);
+  gtk_container_add(GTK_CONTAINER(ni->popup), fixed);
 
   vbox = gtk_vbox_new(FALSE, 5);
   gtk_container_add(GTK_CONTAINER(fixed), vbox);
 
   hbox = gtk_hbox_new(FALSE, 5);
-  pixbuf = url2pixbuf(pi->icon, NULL);
+  pixbuf = url2pixbuf(ni->icon, NULL);
   if (pixbuf) {
     GdkPixbuf* tmp = gdk_pixbuf_scale_simple(pixbuf, 32, 32, GDK_INTERP_TILES);
     if (tmp) pixbuf = tmp;
@@ -381,32 +381,32 @@ popup_show(POPUP_INFO* pi) {
   image = gtk_image_new_from_pixbuf(pixbuf);
   gtk_box_pack_start(GTK_BOX(hbox), image, FALSE, FALSE, 0);
 
-  label = gtk_label_new(pi->title);
+  label = gtk_label_new(ni->title);
   gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, FALSE, 0);
 
   gtk_box_pack_start(GTK_BOX(vbox), hbox, FALSE, FALSE, 0);
 
-  label = gtk_label_new(pi->text);
+  label = gtk_label_new(ni->text);
   gtk_label_set_line_wrap(GTK_LABEL(label), TRUE);
   gtk_label_set_line_wrap_mode(GTK_LABEL(label), PANGO_WRAP_CHAR);
   gtk_box_pack_start(GTK_BOX(vbox), label, TRUE, FALSE, 0);
 
-  gtk_widget_set_size_request(pi->popup, 180, 1);
+  gtk_widget_set_size_request(ni->popup, 180, 1);
 
-  gtk_widget_set_events(pi->popup, GDK_BUTTON_PRESS_MASK);
-  g_signal_connect(G_OBJECT(pi->popup), "button-press-event", G_CALLBACK(popup_clicked), pi);
+  gtk_widget_set_events(ni->popup, GDK_BUTTON_PRESS_MASK);
+  g_signal_connect(G_OBJECT(ni->popup), "button-press-event", G_CALLBACK(notification_clicked), ni);
 
-  pi->offset = 0;
-  pi->timeout = 500;
+  ni->offset = 0;
+  ni->timeout = 500;
 
-  gtk_window_move(GTK_WINDOW(pi->popup), pi->x, pi->y);
-  gtk_widget_show_all(pi->popup);
+  gtk_window_move(GTK_WINDOW(ni->popup), ni->x, ni->y);
+  gtk_widget_show_all(ni->popup);
 
 #ifdef _WIN32
-  SetWindowPos(GDK_WINDOW_HWND(pi->popup->window), HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+  SetWindowPos(GDK_WINDOW_HWND(ni->popup->window), HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
 #endif
   
-  g_timeout_add(10, popup_animation_func, pi);
+  g_timeout_add(10, notification_animation_func, ni);
   gdk_threads_leave();
 }
 
@@ -436,19 +436,24 @@ status_icon_popup(GtkStatusIcon* status_icon, guint button, guint32 activate_tim
 }
 
 static void
+settings_clicked(GtkWidget* widget, GdkEvent* event, gpointer user_data) {
+  main_loop = FALSE;
+}
+
+static void
 exit_clicked(GtkWidget* widget, GdkEvent* event, gpointer user_data) {
   main_loop = FALSE;
 }
 
 static gpointer
 recv_thread(gpointer data) {
-  POPUP_INFO* pi = (POPUP_INFO*) data;
+  NOTIFICATION_INFO* ni = (NOTIFICATION_INFO*) data;
   sockopt_t sockopt;
 
   sockopt = 1;
-  setsockopt(pi->sock, IPPROTO_TCP, TCP_NODELAY, &sockopt, sizeof(sockopt));
+  setsockopt(ni->sock, IPPROTO_TCP, TCP_NODELAY, &sockopt, sizeof(sockopt));
   char* ptr;
-  int r = readall(pi->sock, &ptr);
+  int r = readall(ni->sock, &ptr);
   char* top = ptr;
   if (!strncmp(ptr, "GNTP/1.0 ", 9)) {
     ptr += 9;
@@ -579,41 +584,41 @@ recv_thread(gpointer data) {
         if (!strncmp(line, "Notification-Title:", 19)) {
           line += 20;
           while(isspace(*line)) line++;
-          pi->title = g_strdup(line);
+          ni->title = g_strdup(line);
         }
         if (!strncmp(line, "Notification-Text:", 18)) {
           line += 19;
           while(isspace(*line)) line++;
-          pi->text = g_strdup(line);
+          ni->text = g_strdup(line);
         }
         if (!strncmp(line, "Notification-Icon:", 18)) {
           line += 19;
           while(isspace(*line)) line++;
-          pi->icon = g_strdup(line);
+          ni->icon = g_strdup(line);
         }
         if (!strncmp(line, "Notification-Callback-Target:", 29)) {
           line += 30;
           while(isspace(*line)) line++;
-          pi->url = g_strdup(line);
+          ni->url = g_strdup(line);
         }
       }
-      popup_show(pi);
+      notification_show(ni);
       free(data);
     }
     ptr = "GNTP/1.0 OK\r\n\r\n";
-    send(pi->sock, ptr, strlen(ptr), 0);
+    send(ni->sock, ptr, strlen(ptr), 0);
   } else {
     ptr = "GNTP/1.0 -ERROR Invalid command\r\n\r\n";
-    send(pi->sock, ptr, strlen(ptr), 0);
+    send(ni->sock, ptr, strlen(ptr), 0);
   }
   free(top);
-  closesocket(pi->sock);
+  closesocket(ni->sock);
   return NULL;
 
 leave:
   free(top);
-  closesocket(pi->sock);
-  free(pi);
+  closesocket(ni->sock);
+  free(ni);
   return NULL;
 }
 
@@ -625,6 +630,7 @@ main(int argc, char* argv[]) {
   struct timeval tv;
   GtkStatusIcon* status_icon;
   GtkWidget* menu;
+  GtkWidget* menu_settings;
   GtkWidget* menu_exit;
   GError* error = NULL;
   sockopt_t sockopt;
@@ -689,6 +695,9 @@ main(int argc, char* argv[]) {
   menu = gtk_menu_new();
   g_signal_connect(GTK_STATUS_ICON(status_icon), "popup-menu", G_CALLBACK(status_icon_popup), menu);
 
+  menu_settings = gtk_menu_item_new_with_label("Settings");
+  g_signal_connect(G_OBJECT(menu_settings), "activate", G_CALLBACK(settings_clicked), NULL);
+  gtk_menu_shell_append(GTK_MENU_SHELL(menu), menu_settings);
   menu_exit = gtk_menu_item_new_with_label("Exit");
   g_signal_connect(G_OBJECT(menu_exit), "activate", G_CALLBACK(exit_clicked), NULL);
   gtk_menu_shell_append(GTK_MENU_SHELL(menu), menu_exit);
@@ -712,10 +721,10 @@ main(int argc, char* argv[]) {
       perror("accept");
       continue;
     }
-    POPUP_INFO* pi = g_new0(POPUP_INFO, 1);
-    if (pi) {
-      pi->sock = sock;
-      g_thread_create(recv_thread, pi, TRUE, &error);
+    NOTIFICATION_INFO* ni = g_new0(NOTIFICATION_INFO, 1);
+    if (ni) {
+      ni->sock = sock;
+      g_thread_create(recv_thread, ni, TRUE, &error);
     }
   }
 
