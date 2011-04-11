@@ -434,7 +434,77 @@ status_icon_popup(GtkStatusIcon* status_icon, guint button, guint32 activate_tim
 
 static void
 settings_clicked(GtkWidget* widget, GdkEvent* event, gpointer user_data) {
-  main_loop = FALSE;
+  GtkWidget* dialog;
+  GtkWidget* toolbar;
+  GtkToolItem* toolitem;
+  GtkWidget* vbox;
+
+  dialog = gtk_dialog_new_with_buttons(
+      "Settings", NULL, GTK_DIALOG_MODAL,
+      GTK_STOCK_OK, GTK_RESPONSE_OK,
+      GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL, NULL);
+  gtk_window_set_icon_from_file(GTK_WINDOW(dialog), "./data/icon.png", NULL);
+  gtk_window_set_position(GTK_WINDOW(dialog), GTK_WIN_POS_CENTER_ON_PARENT);
+
+  toolbar = gtk_toolbar_new();
+  gtk_toolbar_set_style(GTK_TOOLBAR(toolbar), GTK_TOOLBAR_ICONS);
+  toolitem = gtk_tool_button_new_from_stock(GTK_STOCK_PREFERENCES);
+  gtk_toolbar_insert(GTK_TOOLBAR(toolbar), toolitem, -1);
+  toolitem = gtk_tool_button_new_from_stock(GTK_STOCK_EXECUTE);
+  gtk_toolbar_insert(GTK_TOOLBAR(toolbar), toolitem, -1);
+  toolitem = gtk_tool_button_new_from_stock(GTK_STOCK_SELECT_COLOR);
+  gtk_toolbar_insert(GTK_TOOLBAR(toolbar), toolitem, -1);
+  toolitem = gtk_tool_button_new_from_stock(GTK_STOCK_NETWORK);
+  gtk_toolbar_insert(GTK_TOOLBAR(toolbar), toolitem, -1);
+  toolitem = gtk_tool_button_new_from_stock(GTK_STOCK_DIALOG_AUTHENTICATION);
+  gtk_toolbar_insert(GTK_TOOLBAR(toolbar), toolitem, -1);
+  toolitem = gtk_tool_button_new_from_stock(GTK_STOCK_INDEX);
+  gtk_toolbar_insert(GTK_TOOLBAR(toolbar), toolitem, -1);
+  gint w = 48, h = 48;
+  gtk_icon_size_lookup(
+      gtk_toolbar_get_icon_size(GTK_TOOLBAR(toolbar)), &w, &h);
+  toolitem = gtk_tool_button_new(gtk_image_new_from_pixbuf(
+    gdk_pixbuf_scale_simple(
+      gdk_pixbuf_new_from_file("./data/icon.png", NULL), w, h, GDK_INTERP_TILES)), "About");
+  gtk_toolbar_insert(GTK_TOOLBAR(toolbar), toolitem, -1);
+  gtk_box_pack_start(GTK_BOX(GTK_DIALOG(dialog)->vbox), toolbar, FALSE, FALSE, 0);
+
+  vbox = gtk_vbox_new(TRUE, 5);
+  gtk_box_pack_start(GTK_BOX(GTK_DIALOG(dialog)->vbox), vbox, TRUE, TRUE, 0);
+
+  gtk_widget_set_size_request(dialog, 300, 200);
+
+  gtk_widget_show_all(dialog);
+  /*
+  if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_OK) {
+  }
+  */
+}
+
+static void
+about_click(GtkWidget* widget, gpointer user_data) {
+	const gchar* authors[2] = {"mattn", NULL};
+	gchar* contents = NULL;
+	gchar* utf8 = NULL;
+	GdkPixbuf* logo = NULL;
+	GtkWidget* dialog;
+	dialog = gtk_about_dialog_new();
+	gtk_about_dialog_set_name(GTK_ABOUT_DIALOG(dialog), "Growl For Linux");
+	gtk_about_dialog_set_authors(GTK_ABOUT_DIALOG(dialog), authors);
+	if (g_file_get_contents("COPYING", &contents, NULL, NULL)) {
+		utf8 = g_locale_to_utf8(contents, -1, NULL, NULL, NULL);
+		g_free(contents);
+		contents = NULL;
+		gtk_about_dialog_set_license(GTK_ABOUT_DIALOG(dialog), utf8);
+		g_free(utf8);
+		utf8 = NULL;
+	}
+	gtk_about_dialog_set_website(GTK_ABOUT_DIALOG(dialog), "http://mattn.kaoriya.net/");
+	logo = gdk_pixbuf_new_from_file("./data/growl4linux.jpg", NULL);
+	gtk_about_dialog_set_logo (GTK_ABOUT_DIALOG(dialog), logo);
+	gtk_window_set_position(GTK_WINDOW(dialog), GTK_WIN_POS_CENTER_ON_PARENT);
+	gtk_dialog_run(GTK_DIALOG(dialog));
+	gtk_widget_destroy(dialog);
 }
 
 static void
@@ -633,8 +703,7 @@ main(int argc, char* argv[]) {
   struct timeval tv;
   GtkStatusIcon* status_icon;
   GtkWidget* menu;
-  GtkWidget* menu_settings;
-  GtkWidget* menu_exit;
+  GtkWidget* menu_item;
   sockopt_t sockopt;
 
   if (argc != 2) {
@@ -695,12 +764,18 @@ main(int argc, char* argv[]) {
   menu = gtk_menu_new();
   g_signal_connect(GTK_STATUS_ICON(status_icon), "popup-menu", G_CALLBACK(status_icon_popup), menu);
 
-  menu_settings = gtk_menu_item_new_with_label("Settings");
-  g_signal_connect(G_OBJECT(menu_settings), "activate", G_CALLBACK(settings_clicked), NULL);
-  gtk_menu_shell_append(GTK_MENU_SHELL(menu), menu_settings);
-  menu_exit = gtk_menu_item_new_with_label("Exit");
-  g_signal_connect(G_OBJECT(menu_exit), "activate", G_CALLBACK(exit_clicked), NULL);
-  gtk_menu_shell_append(GTK_MENU_SHELL(menu), menu_exit);
+  menu_item = gtk_menu_item_new_with_label("Settings");
+  g_signal_connect(G_OBJECT(menu_item), "activate", G_CALLBACK(settings_clicked), NULL);
+  gtk_menu_shell_append(GTK_MENU_SHELL(menu), menu_item);
+  menu_item = gtk_menu_item_new_with_label("About");
+  g_signal_connect(G_OBJECT(menu_item), "activate", G_CALLBACK(about_click), NULL);
+  gtk_menu_shell_append(GTK_MENU_SHELL(menu), menu_item);
+
+  gtk_menu_shell_append(GTK_MENU_SHELL(menu), gtk_separator_menu_item_new());
+
+  menu_item = gtk_menu_item_new_with_label("Exit");
+  g_signal_connect(G_OBJECT(menu_item), "activate", G_CALLBACK(exit_clicked), NULL);
+  gtk_menu_shell_append(GTK_MENU_SHELL(menu), menu_item);
   gtk_widget_show_all(menu);
 
   while (main_loop) {
