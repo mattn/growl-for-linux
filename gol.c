@@ -259,11 +259,11 @@ open_url(const gchar* url) {
 #elif defined(MACOSX)
   GError* error = NULL;
   const gchar *argv[] = {"open", (gchar*) url, NULL};
- 	return g_spawn_async(NULL, argv, NULL, G_SPAWN_SEARCH_PATH, NULL, NULL, NULL, &error);
+  return g_spawn_async(NULL, argv, NULL, G_SPAWN_SEARCH_PATH, NULL, NULL, NULL, &error);
 #else
   GError* error = NULL;
   gchar *argv[] = {"xdg-open", (gchar*) url, NULL};
- 	return g_spawn_async(NULL, argv, NULL, G_SPAWN_SEARCH_PATH, NULL, NULL, NULL, &error);
+  return g_spawn_async(NULL, argv, NULL, G_SPAWN_SEARCH_PATH, NULL, NULL, NULL, &error);
 #endif
 }
 
@@ -311,7 +311,6 @@ notification_show(gpointer data) {
   NOTIFICATION_INFO* ni = (NOTIFICATION_INFO*) data;
 
   GdkColor color;
-  gdk_color_parse ("white", &color);
   GtkWidget* fixed;
   GtkWidget* vbox;
   GtkWidget* hbox;
@@ -360,7 +359,10 @@ notification_show(gpointer data) {
 
   gtk_window_stick(GTK_WINDOW(ni->popup));
   gtk_window_set_opacity(GTK_WINDOW(ni->popup), 0.8);
+  gdk_color_parse ("white", &color);
   gtk_widget_modify_bg(ni->popup, GTK_STATE_NORMAL, &color);
+  gdk_color_parse ("black", &color);
+  gtk_widget_modify_fg(ni->popup, GTK_STATE_NORMAL, &color);
 
   fixed = gtk_fixed_new();
   gtk_container_set_border_width(GTK_CONTAINER(fixed), 10);
@@ -381,15 +383,22 @@ notification_show(gpointer data) {
     }
   }
 
+//  PangoFontDescription* font_desc = pango_font_description_new();
+//  pango_font_description_set_family(font_desc, "cinecaption 20");
+
   label = gtk_label_new(ni->title);
+//  gtk_widget_modify_font(label, font_desc);
   gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, FALSE, 0);
 
   gtk_box_pack_start(GTK_BOX(vbox), hbox, FALSE, FALSE, 0);
 
   label = gtk_label_new(ni->text);
+//  gtk_widget_modify_font(label, font_desc);
   gtk_label_set_line_wrap(GTK_LABEL(label), TRUE);
   gtk_label_set_line_wrap_mode(GTK_LABEL(label), PANGO_WRAP_CHAR);
   gtk_box_pack_start(GTK_BOX(vbox), label, TRUE, FALSE, 0);
+
+//  pango_font_description_free(font_desc);
 
   gtk_widget_set_size_request(ni->popup, 180, 1);
 
@@ -483,28 +492,28 @@ settings_clicked(GtkWidget* widget, GdkEvent* event, gpointer user_data) {
 
 static void
 about_click(GtkWidget* widget, gpointer user_data) {
-	const gchar* authors[2] = {"mattn", NULL};
-	gchar* contents = NULL;
-	gchar* utf8 = NULL;
-	GdkPixbuf* logo = NULL;
-	GtkWidget* dialog;
-	dialog = gtk_about_dialog_new();
-	gtk_about_dialog_set_name(GTK_ABOUT_DIALOG(dialog), "Growl For Linux");
-	gtk_about_dialog_set_authors(GTK_ABOUT_DIALOG(dialog), authors);
-	if (g_file_get_contents("COPYING", &contents, NULL, NULL)) {
-		utf8 = g_locale_to_utf8(contents, -1, NULL, NULL, NULL);
-		g_free(contents);
-		contents = NULL;
-		gtk_about_dialog_set_license(GTK_ABOUT_DIALOG(dialog), utf8);
-		g_free(utf8);
-		utf8 = NULL;
-	}
-	gtk_about_dialog_set_website(GTK_ABOUT_DIALOG(dialog), "http://mattn.kaoriya.net/");
-	logo = gdk_pixbuf_new_from_file("./data/growl4linux.jpg", NULL);
-	gtk_about_dialog_set_logo (GTK_ABOUT_DIALOG(dialog), logo);
-	gtk_window_set_position(GTK_WINDOW(dialog), GTK_WIN_POS_CENTER_ON_PARENT);
-	gtk_dialog_run(GTK_DIALOG(dialog));
-	gtk_widget_destroy(dialog);
+  const gchar* authors[2] = {"mattn", NULL};
+  gchar* contents = NULL;
+  gchar* utf8 = NULL;
+  GdkPixbuf* logo = NULL;
+  GtkWidget* dialog;
+  dialog = gtk_about_dialog_new();
+  gtk_about_dialog_set_name(GTK_ABOUT_DIALOG(dialog), "Growl For Linux");
+  gtk_about_dialog_set_authors(GTK_ABOUT_DIALOG(dialog), authors);
+  if (g_file_get_contents("COPYING", &contents, NULL, NULL)) {
+    utf8 = g_locale_to_utf8(contents, -1, NULL, NULL, NULL);
+    g_free(contents);
+    contents = NULL;
+    gtk_about_dialog_set_license(GTK_ABOUT_DIALOG(dialog), utf8);
+    g_free(utf8);
+    utf8 = NULL;
+  }
+  gtk_about_dialog_set_website(GTK_ABOUT_DIALOG(dialog), "http://mattn.kaoriya.net/");
+  logo = gdk_pixbuf_new_from_file("./data/growl4linux.jpg", NULL);
+  gtk_about_dialog_set_logo (GTK_ABOUT_DIALOG(dialog), logo);
+  gtk_window_set_position(GTK_WINDOW(dialog), GTK_WIN_POS_CENTER_ON_PARENT);
+  gtk_dialog_run(GTK_DIALOG(dialog));
+  gtk_widget_destroy(dialog);
 }
 
 static void
@@ -714,6 +723,33 @@ signal_handler(int num) {
   main_loop = FALSE;
 }
 
+static GdkPixbuf*
+disabled_pixbuf(GdkPixbuf *pixbuf) {
+  GdkPixbuf* gray = gdk_pixbuf_copy(pixbuf);
+  int rowstride = gdk_pixbuf_get_rowstride(gray);
+  int pixstride = gdk_pixbuf_get_has_alpha(gray) ? 4 : 3;
+  guchar* pixels = gdk_pixbuf_get_pixels(gray);
+  int n_rows = gdk_pixbuf_get_height(gray);
+  int width = gdk_pixbuf_get_width(gray);
+  int row = 0;
+
+  while (row < n_rows) {
+    guchar *p = pixels + row * rowstride;
+    guchar *end = p + (pixstride * width);
+    while (p != end) {
+#define INTENSITY(r, g, b) ((r) * 0.30 + (g) * 0.59 + (b) * 0.11)
+      double v = INTENSITY(p[0], p[1], p[2]);
+#undef INTENSITY
+      p[0] = (guchar) v;
+      p[1] = (guchar) v;
+      p[2] = (guchar) v;
+      p += pixstride;
+    }
+    row++;
+  }
+  return gray;
+}
+
 int
 main(int argc, char* argv[]) {
   int fd;
@@ -797,19 +833,23 @@ main(int argc, char* argv[]) {
   gchar* confdb = g_build_filename(confdir, "config.db", NULL);
   int rc;
   if (!g_file_test(confdb, G_FILE_TEST_EXISTS)) {
+    char* sqls[] = {
+      "create table config(key text not null primary key, value text not null)",
+      "create table notification(name text not null primary key, enable bool not null, display text not null, sticky bool not null)",
+      NULL
+    };
+    char** sql = sqls;
     rc = sqlite3_open(confdb, &db);
-    rc = sqlite3_exec(db,
-        "create table config(key text not null primary key, value text not null)",
-        0, 0, &error);
-    rc = sqlite3_exec(db,
-        "create table notification(name text not null primary key, enable bool not null, display text not null, sticky bool not null)",
-        0, 0, &error);
+    while (*sql) {
+      rc = sqlite3_exec(db, *sql, 0, 0, &error);
+      sql++;
+    }
     sqlite3_close(db);
   }
   rc = sqlite3_open(confdb, &db);
 
   const char* sql = "select value from config where key = 'password'";
-  sqlite3_stmt *stmt=NULL;
+  sqlite3_stmt *stmt = NULL;
   sqlite3_prepare(db, sql, strlen(sql), &stmt, NULL);
   if (sqlite3_step(stmt) == SQLITE_ROW) {
     password = g_strdup((char*) sqlite3_column_text(stmt, 0));
