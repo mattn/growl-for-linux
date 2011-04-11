@@ -254,7 +254,7 @@ url2pixbuf(const char* url, GError** error) {
 static gboolean
 open_url(const gchar* url) {
 #if defined(_WIN32)
-  return ShellExecute(NULL, "open", url, NULL, NULL, SW_SHOW) > 32;
+  return (int) ShellExecute(NULL, "open", url, NULL, NULL, SW_SHOW) > 32;
 #elif defined(MACOSX)
   GError* error = NULL;
   const gchar *argv[] = {"open", (gchar*) url, NULL};
@@ -431,7 +431,8 @@ unhex(unsigned char c) {
 }
 
 static void
-statusicon_popup(GtkStatusIcon* status_icon, guint button, guint32 activate_time, gpointer menu) {
+status_icon_popup(GtkStatusIcon* status_icon, guint button, guint32 activate_time, gpointer menu) {
+    printf("popup\n");
   gdk_threads_enter();
   gtk_menu_popup(GTK_MENU(menu), NULL, NULL, gtk_status_icon_position_menu, status_icon, button, activate_time);
   gdk_threads_leave();
@@ -685,13 +686,15 @@ main(int argc, char* argv[]) {
   gtk_init(&argc, &argv);
   // TODO: absolute path
   status_icon = gtk_status_icon_new_from_file("./data/icon.png");
-  gtk_status_icon_set_tooltip(status_icon, "Growl For Linux");
+  gtk_status_icon_set_tooltip(status_icon, "Growl");
   gtk_status_icon_set_visible(status_icon, TRUE);
   menu = gtk_menu_new();
+  g_signal_connect(GTK_STATUS_ICON(status_icon), "popup-menu", G_CALLBACK(status_icon_popup), menu);
+  g_signal_connect_swapped(G_OBJECT(status_icon), "button-press-event", G_CALLBACK(status_icon_popup), menu);
+
   menu_exit = gtk_menu_item_new_with_label("Exit");
-  g_signal_connect(G_OBJECT(status_icon), "popup-menu", G_CALLBACK(statusicon_popup), menu);
   g_signal_connect(G_OBJECT(menu_exit), "activate", G_CALLBACK(exit_clicked), NULL);
-  gtk_menu_shell_append(GTK_MENU_SHELL (menu), menu_exit);
+  gtk_menu_shell_append(GTK_MENU_SHELL(menu), menu_exit);
   gtk_widget_show_all(menu);
 
   while (main_loop) {
