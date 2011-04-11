@@ -35,6 +35,7 @@
 #include <string.h>
 #include <memory.h>
 #include <curl/curl.h>
+#include <sqlite3.h>
 #ifdef _WIN32
 # include <io.h>
 #endif
@@ -66,7 +67,7 @@ typedef int sockopt_t;
 #define REQUEST_TIMEOUT            (5)
 
 static GList* notifications = NULL;
-static gchar* password = "123456"; // should be configuable.
+static gchar* password = NULL;
 static gboolean main_loop = TRUE;
 
 typedef struct {
@@ -475,10 +476,6 @@ settings_clicked(GtkWidget* widget, GdkEvent* event, gpointer user_data) {
   gtk_widget_set_size_request(dialog, 300, 200);
 
   gtk_widget_show_all(dialog);
-  /*
-  if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_OK) {
-  }
-  */
 }
 
 static void
@@ -706,14 +703,6 @@ main(int argc, char* argv[]) {
   GtkWidget* menu_item;
   sockopt_t sockopt;
 
-  if (argc != 2) {
-    fprintf(stderr, "usage: gol [password]\n");
-    exit(1);
-  }
-
-  // TODO: setttign dialog
-  password = argv[1];
-
   tv.tv_sec = 0;
   tv.tv_usec = 0;
 
@@ -778,6 +767,31 @@ main(int argc, char* argv[]) {
   gtk_menu_shell_append(GTK_MENU_SHELL(menu), menu_item);
   gtk_widget_show_all(menu);
 
+  sqlite3 *db;
+  char* error;
+  gchar* confdir = (gchar*) g_get_user_config_dir();
+  confdir = g_build_path(G_DIR_SEPARATOR_S, confdir, "gol", NULL);
+  g_mkdir_with_parents(confdir, 0700);
+  gchar* confdb = g_build_filename(confdir, "config.db", NULL);
+  int rc;
+  if (!g_file_test(confdb, G_FILE_TEST_EXISTS)) {
+    rc = sqlite3_open(confdb, &db);
+    rc = sqlite3_exec(db,
+        "create table config(key text not null primary key, value text not null)",
+        0, 0, &error);
+    sqlite3_close(db);
+  }
+  rc = sqlite3_open(confdb, &db);
+
+  const char* sql = "select value from config where key = 'password'";
+  sqlite3_stmt *stmt=NULL;
+  sqlite3_prepare(db, sql, strlen(sql), &stmt, NULL);
+  if (sqlite3_step(stmt) == SQLITE_ROW) {
+    password = g_strdup((char*) sqlite3_column_text(stmt, 0));
+  } else {
+    password = g_strdup("");
+  }
+
   while (main_loop) {
     gtk_main_iteration_do(FALSE);
     FD_ZERO(&fdset);
@@ -801,6 +815,9 @@ main(int argc, char* argv[]) {
 
     g_thread_create(recv_thread, (gpointer) sock, FALSE, NULL);
   }
+
+  sqlite3_close(db);
+
   gdk_threads_leave();
 
   return 0;

@@ -21,7 +21,8 @@ gol.exe : gol.o
 		-Lc:/openssl-win32/lib/mingw \
 		-leay32 \
 		-lcurldll \
-		-lshell32
+		-lshell32 \
+		-lsqlite3
 
 gol.o : gol.c
 	gcc -g -Wall -c $(CFLAGS) -o gol.o \
