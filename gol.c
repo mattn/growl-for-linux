@@ -432,10 +432,7 @@ unhex(unsigned char c) {
 
 static void
 status_icon_popup(GtkStatusIcon* status_icon, guint button, guint32 activate_time, gpointer menu) {
-    printf("popup\n");
-  gdk_threads_enter();
   gtk_menu_popup(GTK_MENU(menu), NULL, NULL, gtk_status_icon_position_menu, status_icon, button, activate_time);
-  gdk_threads_leave();
 }
 
 static void
@@ -682,6 +679,7 @@ main(int argc, char* argv[]) {
 
   g_thread_init(NULL);
   gdk_threads_init();
+  gdk_threads_enter();
 
   gtk_init(&argc, &argv);
   // TODO: absolute path
@@ -690,7 +688,6 @@ main(int argc, char* argv[]) {
   gtk_status_icon_set_visible(status_icon, TRUE);
   menu = gtk_menu_new();
   g_signal_connect(GTK_STATUS_ICON(status_icon), "popup-menu", G_CALLBACK(status_icon_popup), menu);
-  g_signal_connect_swapped(G_OBJECT(status_icon), "button-press-event", G_CALLBACK(status_icon_popup), menu);
 
   menu_exit = gtk_menu_item_new_with_label("Exit");
   g_signal_connect(G_OBJECT(menu_exit), "activate", G_CALLBACK(exit_clicked), NULL);
