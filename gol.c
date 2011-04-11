@@ -370,13 +370,16 @@ notification_show(gpointer data) {
   gtk_container_add(GTK_CONTAINER(fixed), vbox);
 
   hbox = gtk_hbox_new(FALSE, 5);
-  pixbuf = url2pixbuf(ni->icon, NULL);
-  if (pixbuf) {
-    GdkPixbuf* tmp = gdk_pixbuf_scale_simple(pixbuf, 32, 32, GDK_INTERP_TILES);
-    if (tmp) pixbuf = tmp;
+
+  if (ni->icon && *ni->icon) {
+    pixbuf = url2pixbuf(ni->icon, NULL);
+    if (pixbuf) {
+      GdkPixbuf* tmp = gdk_pixbuf_scale_simple(pixbuf, 32, 32, GDK_INTERP_TILES);
+      if (tmp) pixbuf = tmp;
+      image = gtk_image_new_from_pixbuf(pixbuf);
+      gtk_box_pack_start(GTK_BOX(hbox), image, FALSE, FALSE, 0);
+    }
   }
-  image = gtk_image_new_from_pixbuf(pixbuf);
-  gtk_box_pack_start(GTK_BOX(hbox), image, FALSE, FALSE, 0);
 
   label = gtk_label_new(ni->title);
   gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, FALSE, 0);
@@ -670,7 +673,14 @@ recv_thread(gpointer data) {
           ni->url = g_strdup(line);
         }
       }
-      need_to_show = 1;
+
+      if (ni->title && ni->text)
+        need_to_show = 1;
+      else {
+        ptr = "GNTP/1.0 -ERROR Invalid data\r\n"
+            "Error-Description: Invalid data\r\n\r\n";
+        send(ni->sock, ptr, strlen(ptr), 0);
+      }
       free(data);
     }
     ptr = "GNTP/1.0 OK\r\n\r\n";
@@ -683,6 +693,13 @@ recv_thread(gpointer data) {
   closesocket(ni->sock);
   if (need_to_show)
     g_idle_add(notification_show, ni); // call once
+  else {
+    g_free(ni->title);
+    g_free(ni->text);
+    g_free(ni->icon);
+    g_free(ni->url);
+    g_free(ni);
+  }
   return NULL;
 
 leave:
@@ -690,6 +707,11 @@ leave:
   closesocket(ni->sock);
   free(ni);
   return NULL;
+}
+
+static void
+signal_handler(int num) {
+  main_loop = FALSE;
 }
 
 int
@@ -779,6 +801,9 @@ main(int argc, char* argv[]) {
     rc = sqlite3_exec(db,
         "create table config(key text not null primary key, value text not null)",
         0, 0, &error);
+    rc = sqlite3_exec(db,
+        "create table notification(name text not null primary key, enable bool not null, display text not null, sticky bool not null)",
+        0, 0, &error);
     sqlite3_close(db);
   }
   rc = sqlite3_open(confdb, &db);
@@ -791,6 +816,9 @@ main(int argc, char* argv[]) {
   } else {
     password = g_strdup("");
   }
+
+  signal(SIGTERM, signal_handler);
+  signal(SIGINT, signal_handler);
 
   while (main_loop) {
     gtk_main_iteration_do(FALSE);
@@ -818,7 +846,13 @@ main(int argc, char* argv[]) {
 
   sqlite3_close(db);
 
+  gtk_status_icon_set_visible(GTK_STATUS_ICON(status_icon), FALSE);
+
   gdk_threads_leave();
+
+#ifdef _WIN32
+  WSACleanup();
+#endif
 
   return 0;
 }
