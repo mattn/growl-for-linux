@@ -535,7 +535,7 @@ recv_thread(gpointer data) {
     if (!strncmp(ptr, "NOTIFY ", 7)) {
       ptr += 7;
       char* data = NULL;
-      if (!strncmp(ptr, "NONE ", 5)) {
+      if (!strncmp(ptr, "NONE", 4) && strchr("\n ", *(ptr+5))) {
         ptr = strchr(ptr, '\r');
         if (!ptr) goto leave;
         *ptr++ = 0;
