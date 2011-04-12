@@ -381,7 +381,7 @@ notification_show(NOTIFICATION_INFO* ni) {
   gtk_label_set_line_wrap_mode(GTK_LABEL(label), PANGO_WRAP_CHAR);
   gtk_box_pack_start(GTK_BOX(vbox), label, TRUE, FALSE, 0);
 
-//  pango_font_description_free(font_desc);
+  pango_font_description_free(font_desc);
 
   gtk_widget_set_events(di->popup, GDK_BUTTON_PRESS_MASK);
   g_signal_connect(G_OBJECT(di->popup), "button-press-event", G_CALLBACK(notification_clicked), di);
