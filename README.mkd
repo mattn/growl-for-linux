@@ -16,6 +16,7 @@ Installation:
 > * openssl
 > * libcurl
 > * gtk+-2.0
+> * sqlite3
 > 
 > Type "make". This should produce a program "gol".
 > You can run it by typing "./gol".
