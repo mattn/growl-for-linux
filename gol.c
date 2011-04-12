@@ -67,15 +67,24 @@ typedef int sockopt_t;
 typedef gboolean (*notification_init_fn)();
 typedef gboolean (*notification_show_fn)(NOTIFICATION_INFO* ni);
 typedef gboolean (*notification_term_fn)();
+typedef gchar* (*notification_name_fn)();
+typedef gchar* (*notification_description_fn)();
 
 static gchar* password = NULL;
 static gboolean main_loop = TRUE;
 static notification_init_fn notification_init = NULL;
 static notification_show_fn notification_show = NULL;
 static notification_term_fn notification_term = NULL;
+static notification_name_fn notification_name = NULL;
+static notification_description_fn notification_description = NULL;
 static sqlite3 *db = NULL;
 static GtkStatusIcon* status_icon = NULL;
 static GList* plugin_list = NULL;
+static gchar* exepath = NULL;
+
+#ifndef DATADIR
+# define DATADIR exepath
+#endif
 
 static long
 readall(int fd, char** ptr) {
@@ -105,46 +114,39 @@ status_icon_popup(GtkStatusIcon* status_icon, guint button, guint32 activate_tim
 static void
 settings_clicked(GtkWidget* widget, GdkEvent* event, gpointer user_data) {
   GtkWidget* dialog;
-  GtkWidget* toolbar;
-  GtkToolItem* toolitem;
-  GtkWidget* vbox;
+  GtkWidget* notebook;
 
   dialog = gtk_dialog_new_with_buttons(
       "Settings", NULL, GTK_DIALOG_MODAL,
-      GTK_STOCK_OK, GTK_RESPONSE_OK,
-      GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL, NULL);
-  gtk_window_set_icon_from_file(GTK_WINDOW(dialog), "./data/icon.png", NULL);
+      GTK_STOCK_CLOSE, GTK_RESPONSE_CLOSE, NULL);
+  gchar* path = g_build_filename(DATADIR, "data", "icon.png", NULL);
+  gtk_window_set_icon_from_file(GTK_WINDOW(dialog), path, NULL);
+  g_free(path);
   gtk_window_set_position(GTK_WINDOW(dialog), GTK_WIN_POS_CENTER_ON_PARENT);
 
-  toolbar = gtk_toolbar_new();
-  gtk_toolbar_set_style(GTK_TOOLBAR(toolbar), GTK_TOOLBAR_ICONS);
-  toolitem = gtk_tool_button_new_from_stock(GTK_STOCK_PREFERENCES);
-  gtk_toolbar_insert(GTK_TOOLBAR(toolbar), toolitem, -1);
-  toolitem = gtk_tool_button_new_from_stock(GTK_STOCK_EXECUTE);
-  gtk_toolbar_insert(GTK_TOOLBAR(toolbar), toolitem, -1);
-  toolitem = gtk_tool_button_new_from_stock(GTK_STOCK_SELECT_COLOR);
-  gtk_toolbar_insert(GTK_TOOLBAR(toolbar), toolitem, -1);
-  toolitem = gtk_tool_button_new_from_stock(GTK_STOCK_NETWORK);
-  gtk_toolbar_insert(GTK_TOOLBAR(toolbar), toolitem, -1);
-  toolitem = gtk_tool_button_new_from_stock(GTK_STOCK_DIALOG_AUTHENTICATION);
-  gtk_toolbar_insert(GTK_TOOLBAR(toolbar), toolitem, -1);
-  toolitem = gtk_tool_button_new_from_stock(GTK_STOCK_INDEX);
-  gtk_toolbar_insert(GTK_TOOLBAR(toolbar), toolitem, -1);
-  gint w = 48, h = 48;
-  gtk_icon_size_lookup(
-      gtk_toolbar_get_icon_size(GTK_TOOLBAR(toolbar)), &w, &h);
-  toolitem = gtk_tool_button_new(gtk_image_new_from_pixbuf(
-    gdk_pixbuf_scale_simple(
-      gdk_pixbuf_new_from_file("./data/icon.png", NULL), w, h, GDK_INTERP_TILES)), "About");
-  gtk_toolbar_insert(GTK_TOOLBAR(toolbar), toolitem, -1);
-  gtk_box_pack_start(GTK_BOX(GTK_DIALOG(dialog)->vbox), toolbar, FALSE, FALSE, 0);
-
-  vbox = gtk_vbox_new(TRUE, 5);
-  gtk_box_pack_start(GTK_BOX(GTK_DIALOG(dialog)->vbox), vbox, TRUE, TRUE, 0);
-
+  notebook = gtk_notebook_new();
+  gtk_container_add(GTK_CONTAINER(GTK_DIALOG(dialog)->vbox), notebook);
+  
+  {
+    GtkWidget* hbox = gtk_hbox_new(FALSE, 5);
+    gtk_notebook_append_page(GTK_NOTEBOOK(notebook), hbox, gtk_label_new("Display"));
+    GtkListStore* model = (GtkListStore *)gtk_list_store_new(1, G_TYPE_STRING, GDK_TYPE_DISPLAY);
+    GtkWidget* tree_view = gtk_tree_view_new_with_model(GTK_TREE_MODEL(model));
+    gtk_box_pack_start(GTK_BOX(hbox), tree_view, FALSE, FALSE, 0);
+    GtkTreeViewColumn* column = gtk_tree_view_column_new_with_attributes(
+        "Name", gtk_cell_renderer_text_new(), "text", 0, NULL);
+    gtk_tree_view_append_column (GTK_TREE_VIEW (tree_view), column);
+    GtkTreeIter iter;
+    int i, len = g_list_length(plugin_list);
+    for (i = 0; i < len; i++) {
+      gtk_list_store_append(GTK_LIST_STORE(model), &iter);
+      gtk_list_store_set(GTK_LIST_STORE(model), &iter, 0, g_list_nth_data(plugin_list, i), -1);
+    }
+  }
   gtk_widget_set_size_request(dialog, 300, 200);
-
   gtk_widget_show_all(dialog);
+  gtk_dialog_run(GTK_DIALOG(dialog));
+  gtk_widget_destroy(dialog);
 }
 
 static void
@@ -506,6 +508,8 @@ load_display_plugin_list(const gchar* path) {
     }
     g_module_symbol(handle, "notification_init", (void**) &notification_init);
     g_module_symbol(handle, "notification_term", (void**) &notification_term);
+    g_module_symbol(handle, "notification_name", (void**) &notification_name);
+    g_module_symbol(handle, "notification_description", (void**) &notification_description);
     g_module_close(handle);
     plugin_list = g_list_append(plugin_list, g_strdup(fullpath));
   }
@@ -527,6 +531,8 @@ load_display_plugin_list(const gchar* path) {
   g_module_symbol(handle, "notification_show", (void**) &notification_show);
   g_module_symbol(handle, "notification_init", (void**) &notification_init);
   g_module_symbol(handle, "notification_term", (void**) &notification_term);
+  g_module_symbol(handle, "notification_name", (void**) &notification_name);
+  g_module_symbol(handle, "notification_description", (void**) &notification_description);
   if (notification_init)
     notification_init();
 }
@@ -544,6 +550,10 @@ main(int argc, char* argv[]) {
   WSAStartup(MAKEWORD(2, 2), &wsaData);
 #endif
 
+  gchar* program = g_find_program_in_path(argv[0]);
+  exepath = g_path_get_dirname(program);
+  g_free(program);
+
 #ifdef G_THREADS_ENABLED
   g_thread_init(NULL);
 #endif
@@ -554,16 +564,7 @@ main(int argc, char* argv[]) {
 
   open_config();
 
-  gchar* path;
-#ifdef DATADIR
-  path = g_build_path(DATADIR, "display", NULL);
-#else
-  gchar* exepath = g_find_program_in_path(argv[0]);
-  gchar* dirname = g_path_get_dirname(exepath);
-  g_free(exepath);
-  path = g_build_filename(dirname, "display", NULL);
-  g_free(dirname);
-#endif
+  gchar* path = g_build_filename(DATADIR, "display", NULL);
   load_display_plugin_list(path);
   g_free(path);
 

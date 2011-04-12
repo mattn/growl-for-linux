@@ -37,6 +37,7 @@
 #endif
 
 static GList* notifications = NULL;
+static gchar* datadir = NULL;
 
 typedef struct {
   NOTIFICATION_INFO* ni;
@@ -268,7 +269,7 @@ notifications_compare(gconstpointer a, gconstpointer b) {
   return ((DISPLAY_INFO*)b)->pos < ((DISPLAY_INFO*)a)->pos;
 }
 
-gboolean
+G_MODULE_EXPORT gboolean
 notification_show(gpointer data) {
   NOTIFICATION_INFO* ni = (NOTIFICATION_INFO*) data;
 
@@ -350,17 +351,20 @@ notification_show(gpointer data) {
   }
 
   PangoFontDescription* font_desc = pango_font_description_new();
-  pango_font_description_set_family(font_desc, "Arial");
+  //pango_font_description_set_family(font_desc, "Arial");
   pango_font_description_set_size(font_desc, 20);
 
   label = gtk_label_new(di->ni->title);
+  gdk_color_parse("black", &color);
+  gtk_widget_modify_fg(label, GTK_STATE_NORMAL, &color);
   gtk_widget_modify_font(label, font_desc);
   gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, FALSE, 0);
 
   gtk_box_pack_start(GTK_BOX(vbox), hbox, FALSE, FALSE, 0);
 
   label = gtk_label_new(di->ni->text);
-  gtk_widget_modify_font(label, font_desc);
+  gdk_color_parse("black", &color);
+  gtk_widget_modify_fg(label, GTK_STATE_NORMAL, &color);
   gtk_label_set_line_wrap(GTK_LABEL(label), TRUE);
   gtk_label_set_line_wrap_mode(GTK_LABEL(label), PANGO_WRAP_CHAR);
   gtk_box_pack_start(GTK_BOX(vbox), label, TRUE, FALSE, 0);
@@ -385,6 +389,27 @@ notification_show(gpointer data) {
   g_timeout_add(10, notification_animation_func, di);
 
   return FALSE;
+}
+
+G_MODULE_EXPORT gboolean
+notification_init(gchar* _datadir) {
+  datadir = g_strdup(_datadir);
+  return TRUE;
+}
+
+G_MODULE_EXPORT void
+notification_term() {
+}
+
+G_MODULE_EXPORT gchar*
+notification_name() {
+  return "Default";
+}
+
+G_MODULE_EXPORT gchar*
+notification_description() {
+  return "<h1>Default</h1><p>This is default notification display.</p>"
+    "<p>Slide-up white box. And fadeout after a while.</p>";
 }
 
 // vim:set et sw=2 ts=2 ai:

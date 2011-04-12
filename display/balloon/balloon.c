@@ -362,7 +362,7 @@ notification_show(NOTIFICATION_INFO* ni) {
   }
 
   PangoFontDescription* font_desc = pango_font_description_new();
-  pango_font_description_set_family(font_desc, "Arial");
+  //pango_font_description_set_family(font_desc, "Arial");
   pango_font_description_set_size(font_desc, 20);
 
   label = gtk_label_new(di->ni->title);
@@ -376,7 +376,6 @@ notification_show(NOTIFICATION_INFO* ni) {
   label = gtk_label_new(di->ni->text);
   gdk_color_parse("white", &color);
   gtk_widget_modify_fg(label, GTK_STATE_NORMAL, &color);
-//  gtk_widget_modify_font(label, font_desc);
   gtk_label_set_line_wrap(GTK_LABEL(label), TRUE);
   gtk_label_set_line_wrap_mode(GTK_LABEL(label), PANGO_WRAP_CHAR);
   gtk_box_pack_start(GTK_BOX(vbox), label, TRUE, FALSE, 0);
@@ -416,6 +415,17 @@ notification_init(gchar* _datadir) {
 
 G_MODULE_EXPORT void
 notification_term() {
+}
+
+G_MODULE_EXPORT gchar*
+notification_name() {
+  return "Balloon";
+}
+
+G_MODULE_EXPORT gchar*
+notification_description() {
+  return "<h1>Balloon</h1><p>This is balloon notification display.</p>"
+    "<p>Fade-in black box. And fadeout after a while.</p>";
 }
 
 // vim:set et sw=2 ts=2 ai:
