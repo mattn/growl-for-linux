@@ -12,7 +12,7 @@ console : gol.o
 		-leay32 \
 		-lshell32
 
-gol.exe : gol.o
+gol.exe : gol.o gol.res
 	gcc -g -o gol.exe \
 		-Lc:/gtk/lib \
 		gol.o \
@@ -20,13 +20,17 @@ gol.exe : gol.o
 		-Lc:/openssl-win32/lib/mingw \
 		-leay32 \
 		-lshell32 \
-		-lsqlite3
+		-lsqlite3 \
+		gol.res
 
 gol.o : gol.c
 	gcc -g -Wall -c $(CFLAGS) -o gol.o \
         -mms-bitfields -Ic:/gtk/include/gtk-2.0 -Ic:/gtk/lib/gtk-2.0/include -Ic:/gtk/include/atk-1.0 -Ic:/gtk/include/cairo -Ic:/gtk/include/pango-1.0 -Ic:/gtk/include/glib-2.0 -Ic:/gtk/lib/glib-2.0/include -Ic:/gtk/include/freetype2 -Ic:/gtk/include -Ic:/gtk/include/libpng14 -Ic:/gtk/include/libxml2 \
 		-Ic:/openssl-win32/include \
 		gol.c
+
+gol.res : gol.rc
+	windres -O coff gol.rc gol.res
 
 clean:
 	-rm *.o *.res *.exe
