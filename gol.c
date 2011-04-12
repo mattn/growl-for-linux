@@ -64,14 +64,17 @@ typedef int socklen_t;
 typedef int sockopt_t;
 #endif
 
+typedef gboolean (*notification_init_fn)(gchar* datadir);
+typedef gboolean (*notification_show_fn)(NOTIFICATION_INFO* ni);
+typedef gboolean (*notification_term_fn)();
+
 static gchar* password = NULL;
 static gboolean main_loop = TRUE;
-typedef gboolean (*notification_init_fn)(gchar* datadir);
 static notification_init_fn notification_init = NULL;
-typedef gboolean (*notification_show_fn)(NOTIFICATION_INFO* ni);
 static notification_show_fn notification_show = NULL;
-typedef gboolean (*notification_term_fn)();
 static notification_term_fn notification_term = NULL;
+static sqlite3 *db = NULL;
+static GtkStatusIcon* status_icon;
 
 static long
 readall(int fd, char** ptr) {
@@ -408,30 +411,12 @@ disabled_pixbuf(GdkPixbuf *pixbuf) {
 }
 */
 
-int
-main(int argc, char* argv[]) {
-  int fd;
-  struct sockaddr_in server_addr;
-  fd_set fdset;
-  struct timeval tv;
-  GtkStatusIcon* status_icon;
+
+static void
+create_ui() {
   GtkWidget* menu;
   GtkWidget* menu_item;
-  sockopt_t sockopt;
 
-  tv.tv_sec = 0;
-  tv.tv_usec = 0;
-
-#ifdef _WIN32
-  WSADATA wsaData;
-  WSAStartup(MAKEWORD(2, 2), &wsaData);
-#endif
-
-#ifdef G_THREADS_ENABLED
-  g_thread_init(NULL);
-#endif
-
-  gtk_init(&argc, &argv);
   // TODO: absolute path
   status_icon = gtk_status_icon_new_from_file("./data/icon.png");
   gtk_status_icon_set_tooltip(status_icon, "Growl");
@@ -452,8 +437,15 @@ main(int argc, char* argv[]) {
   g_signal_connect(G_OBJECT(menu_item), "activate", G_CALLBACK(exit_clicked), NULL);
   gtk_menu_shell_append(GTK_MENU_SHELL(menu), menu_item);
   gtk_widget_show_all(menu);
+}
 
-  sqlite3 *db;
+static void
+destroy_ui() {
+  gtk_status_icon_set_visible(GTK_STATUS_ICON(status_icon), FALSE);
+}
+
+static void
+open_config() {
   char* error;
   gchar* confdir = (gchar*) g_get_user_config_dir();
   confdir = g_build_path(G_DIR_SEPARATOR_S, confdir, "gol", NULL);
@@ -484,6 +476,33 @@ main(int argc, char* argv[]) {
   } else {
     password = g_strdup("");
   }
+}
+
+static void
+close_config() {
+  sqlite3_close(db);
+}
+
+int
+main(int argc, char* argv[]) {
+  int fd;
+  struct sockaddr_in server_addr;
+  fd_set fdset;
+  struct timeval tv;
+  sockopt_t sockopt;
+
+#ifdef _WIN32
+  WSADATA wsaData;
+  WSAStartup(MAKEWORD(2, 2), &wsaData);
+#endif
+
+#ifdef G_THREADS_ENABLED
+  g_thread_init(NULL);
+#endif
+
+  gtk_init(&argc, &argv);
+
+  create_ui();
 
   //gchar* path = g_module_build_path("./display/default", "default");
   gchar* path = g_module_build_path("./display/balloon", "balloon");
@@ -501,6 +520,8 @@ main(int argc, char* argv[]) {
   if (notification_init) {
     notification_init("./display/balloon");
   }
+
+  open_config();
 
   signal(SIGTERM, signal_handler);
   signal(SIGINT, signal_handler);
@@ -537,6 +558,8 @@ main(int argc, char* argv[]) {
     exit(1);
   }
 
+  tv.tv_sec = 0;
+  tv.tv_usec = 0;
   while (main_loop) {
     gtk_main_iteration_do(FALSE);
     FD_ZERO(&fdset);
@@ -565,9 +588,9 @@ main(int argc, char* argv[]) {
 #endif
   }
 
-  sqlite3_close(db);
+  close_config();
 
-  gtk_status_icon_set_visible(GTK_STATUS_ICON(status_icon), FALSE);
+  destroy_ui();
 
 #ifdef _WIN32
   WSACleanup();
