@@ -25,6 +25,8 @@
 # include <gdk/gdkwin32.h>
 #endif
 #include <ctype.h>
+#include <stdlib.h>
+#include <memory.h>
 #include <curl/curl.h>
 #include "../../gol.h"
 
@@ -351,8 +353,8 @@ notification_show(gpointer data) {
   }
 
   PangoFontDescription* font_desc = pango_font_description_new();
-  //pango_font_description_set_family(font_desc, "Arial");
-  pango_font_description_set_size(font_desc, 20);
+  pango_font_description_set_family(font_desc, "Sans Regular");
+  pango_font_description_set_size(font_desc, 16 * PANGO_SCALE);
 
   label = gtk_label_new(di->ni->title);
   gdk_color_parse("black", &color);
