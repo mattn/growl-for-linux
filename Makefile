@@ -1,4 +1,4 @@
-PKGCONFIG=gtk+-2.0 openssl libcurl sqlite3
+PKGCONFIG=gtk+-2.0 openssl sqlite3
 CFLAGS=
 
 all : gol
