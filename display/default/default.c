@@ -365,7 +365,7 @@ notification_show(gpointer data) {
   gtk_label_set_line_wrap_mode(GTK_LABEL(label), PANGO_WRAP_CHAR);
   gtk_box_pack_start(GTK_BOX(vbox), label, TRUE, FALSE, 0);
 
-//  pango_font_description_free(font_desc);
+  pango_font_description_free(font_desc);
 
   gtk_widget_set_size_request(di->popup, 180, 1);
 
