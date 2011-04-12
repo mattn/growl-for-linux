@@ -25,6 +25,8 @@
 # include <gdk/gdkwin32.h>
 #endif
 #include <ctype.h>
+#include <stdlib.h>
+#include <memory.h>
 #include <curl/curl.h>
 #include "../../gol.h"
 #include "mask.xpm"
@@ -362,8 +364,8 @@ notification_show(NOTIFICATION_INFO* ni) {
   }
 
   PangoFontDescription* font_desc = pango_font_description_new();
-  //pango_font_description_set_family(font_desc, "Arial");
-  pango_font_description_set_size(font_desc, 20);
+  pango_font_description_set_family(font_desc, "Sans Regular");
+  pango_font_description_set_size(font_desc, 16 * PANGO_SCALE);
 
   label = gtk_label_new(di->ni->title);
   gdk_color_parse("white", &color);
@@ -391,7 +393,7 @@ notification_show(NOTIFICATION_INFO* ni) {
   gtk_window_move(GTK_WINDOW(di->popup), di->x, di->y);
   gtk_window_set_opacity(GTK_WINDOW(di->popup), 0);
   gtk_widget_set_app_paintable(di->popup, TRUE);
-  gtk_widget_set_double_buffered(di->popup, FALSE);
+  //gtk_widget_set_double_buffered(di->popup, FALSE);
   gtk_widget_show_all(di->popup);
 
   if (pixmap == NULL) {
