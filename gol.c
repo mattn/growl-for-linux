@@ -64,7 +64,7 @@ typedef int socklen_t;
 typedef int sockopt_t;
 #endif
 
-typedef gboolean (*notification_init_fn)(gchar* datadir);
+typedef gboolean (*notification_init_fn)();
 typedef gboolean (*notification_show_fn)(NOTIFICATION_INFO* ni);
 typedef gboolean (*notification_term_fn)();
 
@@ -74,7 +74,8 @@ static notification_init_fn notification_init = NULL;
 static notification_show_fn notification_show = NULL;
 static notification_term_fn notification_term = NULL;
 static sqlite3 *db = NULL;
-static GtkStatusIcon* status_icon;
+static GtkStatusIcon* status_icon = NULL;
+static GList* plugin_list = NULL;
 
 static long
 readall(int fd, char** ptr) {
@@ -483,6 +484,53 @@ close_config() {
   sqlite3_close(db);
 }
 
+static void
+load_display_plugin_list(const gchar* path) {
+  GDir *dir;
+  const gchar *filename;
+  dir = g_dir_open(path, 0, NULL);
+  while ((filename = g_dir_read_name(dir))) {
+    if (!g_str_has_suffix(filename, G_MODULE_SUFFIX))
+      continue;
+
+    gchar* fullpath = g_build_filename(path, filename, NULL);
+    GModule* handle = g_module_open(fullpath, G_MODULE_BIND_LAZY);
+    if (!handle) {
+      g_free(fullpath);
+      continue;
+    }
+    if (!g_module_symbol(handle, "notification_show", (void**) &notification_show)) {
+      g_module_close(handle);
+      g_free(fullpath);
+      continue;
+    }
+    g_module_symbol(handle, "notification_init", (void**) &notification_init);
+    g_module_symbol(handle, "notification_term", (void**) &notification_term);
+    g_module_close(handle);
+    plugin_list = g_list_append(plugin_list, g_strdup(fullpath));
+  }
+  g_dir_close(dir);
+
+  if (g_list_length(plugin_list) == 0) {
+    perror("no default display plugin");
+    exit(1);
+  }
+  int i, len = g_list_length(plugin_list);
+  for (i = 0; i < len; i++) {
+    gchar* name = g_path_get_basename(g_list_nth_data(plugin_list, i));
+    gchar* chkname = g_strconcat("libdefault.", G_MODULE_SUFFIX, NULL);
+    if (!g_strcasecmp(name, chkname))
+      break;
+  }
+  if (i == len) i = 0;
+  GModule* handle = g_module_open(g_list_nth_data(plugin_list, i), G_MODULE_BIND_LAZY);
+  g_module_symbol(handle, "notification_show", (void**) &notification_show);
+  g_module_symbol(handle, "notification_init", (void**) &notification_init);
+  g_module_symbol(handle, "notification_term", (void**) &notification_term);
+  if (notification_init)
+    notification_init();
+}
+
 int
 main(int argc, char* argv[]) {
   int fd;
@@ -504,24 +552,20 @@ main(int argc, char* argv[]) {
 
   create_ui();
 
-  //gchar* path = g_module_build_path("./display/default", "default");
-  gchar* path = g_module_build_path("./display/balloon", "balloon");
-  GModule* handle = g_module_open(path, G_MODULE_BIND_LAZY);
-  g_free(path);
-  if (!g_module_symbol(handle, "notification_show", (void**) &notification_show)) {
-    g_module_close(handle);
-    perror("g_module_open");
-    exit(1);
-  }
-  g_module_symbol(handle, "notification_init", (void**) &notification_init);
-  g_module_symbol(handle, "notification_term", (void**) &notification_term);
-  g_module_make_resident(handle);
-
-  if (notification_init) {
-    notification_init("./display/balloon");
-  }
-
   open_config();
+
+  gchar* path;
+#ifdef DATADIR
+  path = g_build_path(DATADIR, "display", NULL);
+#else
+  gchar* exepath = g_find_program_in_path(argv[0]);
+  gchar* dirname = g_path_get_dirname(exepath);
+  g_free(exepath);
+  path = g_build_filename(dirname, "display", NULL);
+  g_free(dirname);
+#endif
+  load_display_plugin_list(path);
+  g_free(path);
 
   signal(SIGTERM, signal_handler);
   signal(SIGINT, signal_handler);
