@@ -368,7 +368,7 @@ notification_show(NOTIFICATION_INFO* ni) {
 
   PangoFontDescription* font_desc = pango_font_description_new();
   pango_font_description_set_family(font_desc, "Sans");
-  pango_font_description_set_size(font_desc, 16 * PANGO_SCALE);
+  pango_font_description_set_size(font_desc, 12 * PANGO_SCALE);
 
   label = gtk_label_new(di->ni->title);
   gdk_color_parse("white", &color);
