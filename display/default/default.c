@@ -330,7 +330,7 @@ notification_show(gpointer data) {
 
   gtk_window_stick(GTK_WINDOW(di->popup));
   gtk_window_set_opacity(GTK_WINDOW(di->popup), 0.8);
-  gdk_color_parse("white", &color);
+  gdk_color_parse("lightgray", &color);
   gtk_widget_modify_bg(di->popup, GTK_STATE_NORMAL, &color);
 
   fixed = gtk_fixed_new();

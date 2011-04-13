@@ -329,7 +329,8 @@ notification_show(NOTIFICATION_INFO* ni) {
   pango_layout_set_font_description(layout, font_desc);
   pango_layout_get_pixel_size(layout, &di->width, &di->height);
   di->width += 32 + 5;
-  gtk_fixed_move(GTK_FIXED(fixed), image, 0, di->height / 2 - 16);
+  if (image)
+    gtk_fixed_move(GTK_FIXED(fixed), image, 0, di->height / 2 - 16);
   di->bitmap = gdk_pixmap_new(di->popup->window, di->width, di->height, 1);
   GdkGC *gc = gdk_gc_new(GDK_DRAWABLE(di->bitmap));
   gdk_color_parse("white", &color);
@@ -337,8 +338,7 @@ notification_show(NOTIFICATION_INFO* ni) {
   gdk_gc_set_colormap(gc, colormap);
   gdk_colormap_alloc_color(colormap, &color, TRUE, TRUE);
   gdk_gc_set_foreground (gc, &color);
-  if (image)
-    gdk_draw_rectangle(di->bitmap, gc, TRUE, 0, di->height / 2 - 16, 32, 32);
+  gdk_draw_rectangle(di->bitmap, gc, TRUE, 0, di->height / 2 - 16, 32, 32);
   gdk_draw_layout(di->bitmap, gc, 32 + 5, 0, layout);
   g_object_unref(gc);
   g_object_unref(layout);

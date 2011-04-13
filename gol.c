@@ -116,6 +116,43 @@ tree_selection_changed(GtkTreeSelection *selection, gpointer data) {
   GtkTreeIter iter;
   GtkTreeModel* model;
   if (gtk_tree_selection_get_selected(selection, &model, &iter)) {
+    PLUGIN_INFO* cp = current_plugin;
+    gchar* name;
+    gtk_tree_model_get(model, &iter, 0, &name, -1);
+    int i, len = g_list_length(display_plugins);
+    for (i = 0; i < len; i++) {
+      PLUGIN_INFO* pi = (PLUGIN_INFO*) g_list_nth_data(display_plugins, i);
+      if (!g_strcasecmp(pi->name(), name)) {
+        cp = pi;
+        break;
+      }
+    }
+
+    GtkWidget* label = (GtkWidget*) g_object_get_data(G_OBJECT(data), "description");
+    gtk_label_set_markup(GTK_LABEL(label), "");
+    if (cp->description) {
+      gtk_label_set_markup(GTK_LABEL(label), cp->description());
+    }
+
+    GtkWidget* image = (GtkWidget*) g_object_get_data(G_OBJECT(data), "thumbnail");
+    gtk_image_clear(GTK_IMAGE(image));
+    if (cp->thumbnail) {
+      GdkBitmap* bitmap;
+      GdkPixmap* pixmap = gdk_pixmap_colormap_create_from_xpm_d(NULL, gdk_colormap_get_system(), &bitmap, NULL, cp->thumbnail());
+      gtk_image_set_from_pixmap(GTK_IMAGE(image), pixmap, bitmap);
+      gdk_pixmap_unref(pixmap);
+      gdk_bitmap_unref(bitmap);
+    }
+    g_free(name);
+  }
+}
+
+static void
+set_as_default_clicked(GtkWidget* widget, gpointer data) {
+  GtkTreeSelection* selection = (GtkTreeSelection*) data;
+  GtkTreeIter iter;
+  GtkTreeModel* model;
+  if (gtk_tree_selection_get_selected(selection, &model, &iter)) {
     gchar* name;
     gtk_tree_model_get(model, &iter, 0, &name, -1);
     int i, len = g_list_length(display_plugins);
@@ -125,22 +162,6 @@ tree_selection_changed(GtkTreeSelection *selection, gpointer data) {
         current_plugin = pi;
         break;
       }
-    }
-
-    GtkWidget* label = (GtkWidget*) g_object_get_data(G_OBJECT(data), "description");
-    gtk_label_set_markup(GTK_LABEL(label), "");
-    if (current_plugin->description) {
-      gtk_label_set_markup(GTK_LABEL(label), current_plugin->description());
-    }
-
-    GtkWidget* image = (GtkWidget*) g_object_get_data(G_OBJECT(data), "thumbnail");
-    gtk_image_clear(GTK_IMAGE(image));
-    if (current_plugin->thumbnail) {
-      GdkBitmap* bitmap;
-      GdkPixmap* pixmap = gdk_pixmap_colormap_create_from_xpm_d(NULL, gdk_colormap_get_system(), &bitmap, NULL, current_plugin->thumbnail());
-      gtk_image_set_from_pixmap(GTK_IMAGE(image), pixmap, bitmap);
-      gdk_pixmap_unref(pixmap);
-      gdk_bitmap_unref(bitmap);
     }
     g_free(name);
   }
@@ -174,7 +195,8 @@ settings_clicked(GtkWidget* widget, GdkEvent* event, gpointer user_data) {
     gtk_box_pack_start(GTK_BOX(hbox), tree_view, FALSE, FALSE, 0);
     GtkTreeViewColumn* column = gtk_tree_view_column_new_with_attributes(
         "Name", gtk_cell_renderer_text_new(), "text", 0, NULL);
-    gtk_tree_view_append_column (GTK_TREE_VIEW (tree_view), column);
+    gtk_tree_view_column_set_min_width(GTK_TREE_VIEW_COLUMN(column), 80);
+    gtk_tree_view_append_column(GTK_TREE_VIEW(tree_view), column);
 
     GtkTreeIter iter;
     int i, len = g_list_length(display_plugins);
@@ -183,7 +205,7 @@ settings_clicked(GtkWidget* widget, GdkEvent* event, gpointer user_data) {
       PLUGIN_INFO* pi = (PLUGIN_INFO*) g_list_nth_data(display_plugins, i);
       gtk_list_store_set(GTK_LIST_STORE(model), &iter, 0, pi->name(), -1);
     }
-    GtkWidget* vbox = gtk_vbox_new(FALSE, 5);
+    GtkWidget* vbox = gtk_vbox_new(FALSE, 20);
     gtk_box_pack_start(GTK_BOX(hbox), vbox, TRUE, FALSE, 0);
     GtkWidget* label = gtk_label_new("");
     gtk_label_set_line_wrap(GTK_LABEL(label), TRUE);
@@ -195,6 +217,10 @@ settings_clicked(GtkWidget* widget, GdkEvent* event, gpointer user_data) {
     GtkWidget* image = gtk_image_new();
     g_object_set_data(G_OBJECT(dialog), "thumbnail", image);
     gtk_box_pack_start(GTK_BOX(vbox), image, TRUE, FALSE, 0);
+
+    GtkWidget* button = gtk_button_new_with_label("Set Default");
+    gtk_box_pack_end(GTK_BOX(vbox), button, FALSE, FALSE, 0);
+    g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(set_as_default_clicked), select);
   }
 
   {
@@ -208,7 +234,7 @@ settings_clicked(GtkWidget* widget, GdkEvent* event, gpointer user_data) {
     gtk_box_pack_start(GTK_BOX(vbox), checkbutton, FALSE, FALSE, 0);
   }
   
-  gtk_widget_set_size_request(dialog, 450, 500);
+  gtk_widget_set_size_request(dialog, 500, 500);
   gtk_widget_show_all(dialog);
   gtk_dialog_run(GTK_DIALOG(dialog));
   gtk_widget_destroy(dialog);
