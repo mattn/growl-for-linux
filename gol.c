@@ -208,6 +208,30 @@ set_as_default_clicked(GtkWidget* widget, gpointer data) {
   }
 }
 
+static void
+preview_clicked(GtkWidget* widget, gpointer data) {
+  GtkTreeSelection* selection = (GtkTreeSelection*) data;
+  GtkTreeIter iter;
+  GtkTreeModel* model;
+  if (gtk_tree_selection_get_selected(selection, &model, &iter)) {
+    gchar* name;
+    gtk_tree_model_get(model, &iter, 0, &name, -1);
+    int i, len = g_list_length(display_plugins);
+    for (i = 0; i < len; i++) {
+      PLUGIN_INFO* pi = (PLUGIN_INFO*) g_list_nth_data(display_plugins, i);
+      if (!g_strcasecmp(pi->name(), name)) {
+        NOTIFICATION_INFO* ni = g_new0(NOTIFICATION_INFO, 1);
+        ni->title = g_strdup("Preview Display");
+        ni->text = g_strdup_printf("This is a preview of the '%s' display.", pi->name());
+        ni->icon = g_build_filename(DATADIR, "data", "icon.png", NULL);
+        g_idle_add((GSourceFunc) pi->show, ni);
+        break;
+      }
+    }
+    g_free(name);
+  }
+}
+
 static gboolean
 password_focus_out(GtkWidget* widget, GdkEvent* event, gpointer data) {
   set_config_string("password", gtk_entry_get_text(GTK_ENTRY(widget)));
@@ -265,9 +289,15 @@ settings_clicked(GtkWidget* widget, GdkEvent* event, gpointer user_data) {
     g_object_set_data(G_OBJECT(dialog), "thumbnail", image);
     gtk_box_pack_start(GTK_BOX(vbox), image, TRUE, FALSE, 0);
 
-    GtkWidget* button = gtk_button_new_with_label("Set Default");
-    gtk_box_pack_end(GTK_BOX(vbox), button, FALSE, FALSE, 0);
+    hbox = gtk_hbox_new(FALSE, 5);
+    gtk_box_pack_start(GTK_BOX(vbox), hbox, TRUE, FALSE, 0);
+
+    GtkWidget* button = gtk_button_new_with_label("Set as Default");
     g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(set_as_default_clicked), select);
+    gtk_box_pack_end(GTK_BOX(hbox), button, FALSE, FALSE, 0);
+    button = gtk_button_new_with_label("Preview");
+    g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(preview_clicked), select);
+    gtk_box_pack_end(GTK_BOX(hbox), button, FALSE, FALSE, 0);
 
     int i, len = g_list_length(display_plugins);
     for (i = 0; i < len; i++) {
