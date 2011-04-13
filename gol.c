@@ -66,6 +66,7 @@ typedef int sockopt_t;
 
 
 typedef struct {
+  void* handle;
   gboolean (*init)();
   gboolean (*show)(NOTIFICATION_INFO* ni);
   gboolean (*term)();
@@ -76,7 +77,7 @@ typedef struct {
 static gchar* password = NULL;
 static sqlite3 *db = NULL;
 static GtkStatusIcon* status_icon = NULL;
-static GList* plugin_list = NULL;
+static GList* display_plugins = NULL;
 static PLUGIN_INFO* current_plugin = NULL;
 static gchar* exepath = NULL;
 
@@ -116,9 +117,9 @@ tree_selection_changed(GtkTreeSelection *selection, gpointer data) {
   if (gtk_tree_selection_get_selected(selection, &model, &iter)) {
     gchar* name;
     gtk_tree_model_get(model, &iter, 0, &name, -1);
-    int i, len = g_list_length(plugin_list);
+    int i, len = g_list_length(display_plugins);
     for (i = 0; i < len; i++) {
-      PLUGIN_INFO* pi = (PLUGIN_INFO*) g_list_nth_data(plugin_list, i);
+      PLUGIN_INFO* pi = (PLUGIN_INFO*) g_list_nth_data(display_plugins, i);
       if (!g_strcasecmp(pi->name(), name)) {
         current_plugin = pi;
         break;
@@ -162,10 +163,10 @@ settings_clicked(GtkWidget* widget, GdkEvent* event, gpointer user_data) {
     gtk_tree_view_append_column (GTK_TREE_VIEW (tree_view), column);
 
     GtkTreeIter iter;
-    int i, len = g_list_length(plugin_list);
+    int i, len = g_list_length(display_plugins);
     for (i = 0; i < len; i++) {
       gtk_list_store_append(GTK_LIST_STORE(model), &iter);
-      PLUGIN_INFO* pi = (PLUGIN_INFO*) g_list_nth_data(plugin_list, i);
+      PLUGIN_INFO* pi = (PLUGIN_INFO*) g_list_nth_data(display_plugins, i);
       gtk_list_store_set(GTK_LIST_STORE(model), &iter, 0, pi->name(), -1);
     }
     GtkWidget* vbox = gtk_vbox_new(FALSE, 5);
@@ -415,9 +416,9 @@ recv_thread(gpointer data) {
   closesocket(sock);
   if (need_to_show) {
     PLUGIN_INFO* cp = current_plugin;
-    int i, len = g_list_length(plugin_list);
+    int i, len = g_list_length(display_plugins);
     for (i = 0; i < len; i++) {
-      PLUGIN_INFO* pi = (PLUGIN_INFO*) g_list_nth_data(plugin_list, i);
+      PLUGIN_INFO* pi = (PLUGIN_INFO*) g_list_nth_data(display_plugins, i);
       if (!g_strcasecmp(pi->name(), display)) {
         cp = pi;
         break;
@@ -477,7 +478,7 @@ disabled_pixbuf(GdkPixbuf *pixbuf) {
 
 
 static void
-create_ui() {
+create_menu() {
   GtkWidget* menu;
   GtkWidget* menu_item;
 
@@ -504,12 +505,12 @@ create_ui() {
 }
 
 static void
-destroy_ui() {
+destroy_menu() {
   gtk_status_icon_set_visible(GTK_STATUS_ICON(status_icon), FALSE);
 }
 
 static void
-open_config() {
+create_config() {
   char* error;
   gchar* confdir = (gchar*) g_get_user_config_dir();
   confdir = g_build_path(G_DIR_SEPARATOR_S, confdir, "gol", NULL);
@@ -543,14 +544,15 @@ open_config() {
 }
 
 static void
-close_config() {
+destroy_config() {
   sqlite3_close(db);
 }
 
 static void
-load_display_plugin_list(const gchar* path) {
+load_display_plugins() {
   GDir *dir;
   const gchar *filename;
+  gchar* path = g_build_filename(DATADIR, "display", NULL);
   dir = g_dir_open(path, 0, NULL);
 
   current_plugin = NULL;
@@ -566,19 +568,32 @@ load_display_plugin_list(const gchar* path) {
       continue;
     }
     PLUGIN_INFO* pi = g_new0(PLUGIN_INFO, 1);
+    pi->handle = handle;
     g_module_symbol(handle, "notification_show", (void**) &pi->show);
     g_module_symbol(handle, "notification_init", (void**) &pi->init);
     g_module_symbol(handle, "notification_term", (void**) &pi->term);
     g_module_symbol(handle, "notification_name", (void**) &pi->name);
     g_module_symbol(handle, "notification_description", (void**) &pi->description);
-    plugin_list = g_list_append(plugin_list, pi);
+    display_plugins = g_list_append(display_plugins, pi);
     if (pi && pi->name && !g_strcasecmp(pi->name(), name)) current_plugin = pi;
   }
   g_free(name);
   g_dir_close(dir);
 
-  if (!current_plugin) current_plugin = g_list_nth_data(plugin_list, 0);
+  g_free(path);
+
+  if (!current_plugin) current_plugin = g_list_nth_data(display_plugins, 0);
   current_plugin->init();
+}
+
+static void
+unload_display_plugins() {
+  int i, len = g_list_length(display_plugins);
+  for (i = 0; i < len; i++) {
+    PLUGIN_INFO* pi = (PLUGIN_INFO*) g_list_nth_data(display_plugins, i);
+    g_module_close(pi->handle);
+    g_free(pi);
+  }
 }
 
 static gboolean
@@ -600,33 +615,12 @@ socket_accepted(GIOChannel* source, GIOCondition condition, gpointer data) {
   return TRUE;
 }
 
-int
-main(int argc, char* argv[]) {
+static int
+create_server() {
 #ifdef _WIN32
   WSADATA wsaData;
   WSAStartup(MAKEWORD(2, 2), &wsaData);
 #endif
-
-  gchar* program = g_find_program_in_path(argv[0]);
-  exepath = g_path_get_dirname(program);
-  g_free(program);
-
-#ifdef G_THREADS_ENABLED
-  g_thread_init(NULL);
-#endif
-
-  gtk_init(&argc, &argv);
-
-  create_ui();
-
-  open_config();
-
-  gchar* path = g_build_filename(DATADIR, "display", NULL);
-  load_display_plugin_list(path);
-  g_free(path);
-
-  signal(SIGTERM, signal_handler);
-  signal(SIGINT, signal_handler);
 
   int fd;
   if ((fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
@@ -669,15 +663,46 @@ main(int argc, char* argv[]) {
   g_io_add_watch(channel, G_IO_IN | G_IO_ERR, socket_accepted, NULL);
   g_io_channel_unref(channel);
 
-  gtk_main();
+  return fd;
+}
 
-  close_config();
-
-  destroy_ui();
+static void
+destroy_server(int fd) {
+  closesocket(fd);
 
 #ifdef _WIN32
   WSACleanup();
 #endif
+}
+
+int
+main(int argc, char* argv[]) {
+  int fd;
+
+  gchar* program = g_find_program_in_path(argv[0]);
+  exepath = g_path_get_dirname(program);
+  g_free(program);
+
+#ifdef G_THREADS_ENABLED
+  g_thread_init(NULL);
+#endif
+
+  gtk_init(&argc, &argv);
+
+  signal(SIGTERM, signal_handler);
+  signal(SIGINT, signal_handler);
+
+  create_config();
+  create_menu();
+  fd = create_server();
+  load_display_plugins();
+
+  gtk_main();
+
+  unload_display_plugins();
+  destroy_server(fd);
+  destroy_menu();
+  destroy_config();
 
   return 0;
 }
