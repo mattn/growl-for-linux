@@ -46,11 +46,17 @@ Screenshot:
 > ![Working on Linux](https://github.com/mattn/growl-for-linux/raw/master/data/screenshot.png "Working on Linux")
 
 Display Style:
------------
+--------------
+
+> * Default
 
 > ![Default Style](https://github.com/mattn/growl-for-linux/raw/master/data/display_default.png "Default Style")
 
+> * Balloon
+
 > ![Balloon Style](https://github.com/mattn/growl-for-linux/raw/master/data/display_balloon.png "Balloon Style")
+
+> * Nico2
 
 > ![Nico2 Style](https://github.com/mattn/growl-for-linux/raw/master/data/display_nico2.png "Nico2 Style")
 
