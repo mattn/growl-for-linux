@@ -1,6 +1,11 @@
 CFLAGS=
 
-all : gol.exe
+all : gol.exe displays
+
+displays:
+	cd display/default && ${MAKE} -f Makefile.w32 && cp libdefault.dll ..
+	cd display/balloon && ${MAKE} -f Makefile.w32 && cp libballoon.dll ..
+	cd display/nico2 && ${MAKE} -f Makefile.w32 && cp libnico2.dll ..
 
 console : gol.o
 	gcc -o gol.exe \
