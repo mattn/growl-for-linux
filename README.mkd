@@ -48,15 +48,18 @@ Screenshot:
 Display Style:
 --------------
 
-> * Default
+* Default
 
 > ![Default Style](https://github.com/mattn/growl-for-linux/raw/master/data/display_default.png "Default Style")
 
-> * Balloon
+
+* Balloon
 
 > ![Balloon Style](https://github.com/mattn/growl-for-linux/raw/master/data/display_balloon.png "Balloon Style")
 
-> * Nico2
+
+* Nico2
 
 > ![Nico2 Style](https://github.com/mattn/growl-for-linux/raw/master/data/display_nico2.png "Nico2 Style")
+
 
