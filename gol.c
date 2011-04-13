@@ -74,7 +74,6 @@ typedef struct {
 } PLUGIN_INFO;
 
 static gchar* password = NULL;
-static gboolean main_loop = TRUE;
 static sqlite3 *db = NULL;
 static GtkStatusIcon* status_icon = NULL;
 static GList* plugin_list = NULL;
@@ -111,6 +110,28 @@ status_icon_popup(GtkStatusIcon* status_icon, guint button, guint32 activate_tim
 }
 
 static void
+tree_selection_changed(GtkTreeSelection *selection, gpointer data) {
+  GtkTreeIter iter;
+  GtkTreeModel* model;
+  if (gtk_tree_selection_get_selected(selection, &model, &iter)) {
+    gchar* name;
+    gtk_tree_model_get(model, &iter, 0, &name, -1);
+    int i, len = g_list_length(plugin_list);
+    for (i = 0; i < len; i++) {
+      PLUGIN_INFO* pi = (PLUGIN_INFO*) g_list_nth_data(plugin_list, i);
+      if (!g_strcasecmp(pi->name(), name)) {
+        current_plugin = pi;
+        break;
+      }
+    }
+    GtkWidget* label = (GtkWidget*) g_object_get_data(G_OBJECT(data), "description");
+    gtk_label_set_markup(GTK_LABEL(label), "");
+    gtk_label_set_markup(GTK_LABEL(label), current_plugin->description());
+    g_free(name);
+  }
+}
+
+static void
 settings_clicked(GtkWidget* widget, GdkEvent* event, gpointer user_data) {
   GtkWidget* dialog;
   GtkWidget* notebook;
@@ -128,13 +149,18 @@ settings_clicked(GtkWidget* widget, GdkEvent* event, gpointer user_data) {
   
   {
     GtkWidget* hbox = gtk_hbox_new(FALSE, 5);
+    gtk_container_set_border_width(GTK_CONTAINER(hbox), 10);
     gtk_notebook_append_page(GTK_NOTEBOOK(notebook), hbox, gtk_label_new("Display"));
     GtkListStore* model = (GtkListStore *)gtk_list_store_new(1, G_TYPE_STRING, GDK_TYPE_DISPLAY);
     GtkWidget* tree_view = gtk_tree_view_new_with_model(GTK_TREE_MODEL(model));
+    GtkTreeSelection* select = gtk_tree_view_get_selection(GTK_TREE_VIEW(tree_view));
+    gtk_tree_selection_set_mode(select, GTK_SELECTION_SINGLE);
+    g_signal_connect(G_OBJECT(select), "changed", G_CALLBACK(tree_selection_changed), dialog);
     gtk_box_pack_start(GTK_BOX(hbox), tree_view, FALSE, FALSE, 0);
     GtkTreeViewColumn* column = gtk_tree_view_column_new_with_attributes(
         "Name", gtk_cell_renderer_text_new(), "text", 0, NULL);
     gtk_tree_view_append_column (GTK_TREE_VIEW (tree_view), column);
+
     GtkTreeIter iter;
     int i, len = g_list_length(plugin_list);
     for (i = 0; i < len; i++) {
@@ -142,8 +168,27 @@ settings_clicked(GtkWidget* widget, GdkEvent* event, gpointer user_data) {
       PLUGIN_INFO* pi = (PLUGIN_INFO*) g_list_nth_data(plugin_list, i);
       gtk_list_store_set(GTK_LIST_STORE(model), &iter, 0, pi->name(), -1);
     }
+    GtkWidget* vbox = gtk_vbox_new(FALSE, 5);
+    gtk_box_pack_start(GTK_BOX(hbox), vbox, FALSE, FALSE, 0);
+    GtkWidget* label = gtk_label_new("");
+    gtk_label_set_line_wrap(GTK_LABEL(label), TRUE);
+    gtk_label_set_line_wrap_mode(GTK_LABEL(label), PANGO_WRAP_CHAR);
+    g_object_set_data(G_OBJECT(dialog), "description", label);
+    gtk_box_pack_start(GTK_BOX(vbox), label, FALSE, FALSE, 0);
   }
-  gtk_widget_set_size_request(dialog, 300, 200);
+
+  {
+    GtkWidget* vbox = gtk_vbox_new(FALSE, 5);
+    gtk_container_set_border_width(GTK_CONTAINER(vbox), 10);
+    gtk_notebook_append_page(GTK_NOTEBOOK(notebook), vbox, gtk_label_new("Security"));
+    GtkWidget* checkbutton;
+    checkbutton = gtk_check_button_new_with_label("Require password for local apps");
+    gtk_box_pack_start(GTK_BOX(vbox), checkbutton, FALSE, FALSE, 0);
+    checkbutton = gtk_check_button_new_with_label("Require password for LAN apps");
+    gtk_box_pack_start(GTK_BOX(vbox), checkbutton, FALSE, FALSE, 0);
+  }
+  
+  gtk_widget_set_size_request(dialog, 450, 300);
   gtk_widget_show_all(dialog);
   gtk_dialog_run(GTK_DIALOG(dialog));
   gtk_widget_destroy(dialog);
@@ -177,7 +222,7 @@ about_click(GtkWidget* widget, gpointer user_data) {
 
 static void
 exit_clicked(GtkWidget* widget, GdkEvent* event, gpointer user_data) {
-  main_loop = FALSE;
+  gtk_main_quit();
 }
 
 static gpointer
@@ -398,7 +443,7 @@ leave:
 
 static void
 signal_handler(int num) {
-  main_loop = FALSE;
+  gtk_main_quit();
 }
 
 /*
@@ -536,14 +581,27 @@ load_display_plugin_list(const gchar* path) {
   current_plugin->init();
 }
 
+static gboolean
+socket_accepted(GIOChannel* source, GIOCondition condition, gpointer data) {
+  int fd = g_io_channel_unix_get_fd(source);
+  int sock;
+  struct sockaddr_in client;
+  int client_len = sizeof(client);
+  memset(&client, 0, sizeof(client));
+  if ((sock = accept(fd, (struct sockaddr *) &client, (socklen_t *) &client_len)) < 0) {
+    perror("accept");
+    return TRUE;
+  }
+#ifdef G_THREADS_ENABLED
+  g_thread_create(recv_thread, (gpointer) sock, FALSE, NULL);
+#else
+  recv_thread((gpointer) sock);
+#endif
+  return TRUE;
+}
+
 int
 main(int argc, char* argv[]) {
-  int fd;
-  struct sockaddr_in server_addr;
-  fd_set fdset;
-  struct timeval tv;
-  sockopt_t sockopt;
-
 #ifdef _WIN32
   WSADATA wsaData;
   WSAStartup(MAKEWORD(2, 2), &wsaData);
@@ -570,11 +628,13 @@ main(int argc, char* argv[]) {
   signal(SIGTERM, signal_handler);
   signal(SIGINT, signal_handler);
 
+  int fd;
   if ((fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
     perror("socket");
     exit(1);
   }
 
+  sockopt_t sockopt;
   sockopt = 1;
   if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &sockopt, sizeof(sockopt)) == -1) {
     perror("setsockopt");
@@ -586,6 +646,7 @@ main(int argc, char* argv[]) {
     exit(1);
   }
 
+  struct sockaddr_in server_addr;
   memset((char *) &server_addr, 0, sizeof(server_addr));
   server_addr.sin_family = AF_INET;
   server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
@@ -596,41 +657,19 @@ main(int argc, char* argv[]) {
     exit(1);
   }
 
-  if (listen(fd, 5) < 0) {
+  if (listen(fd, SOMAXCONN) < 0) {
     perror("listen");
     closesocket(fd);
     exit(1);
   }
 
-  tv.tv_sec = 0;
-  tv.tv_usec = 0;
-  while (main_loop) {
-    gtk_main_iteration_do(FALSE);
-    FD_ZERO(&fdset);
-    FD_SET(fd, &fdset);
-    if (select(FD_SETSIZE, &fdset, NULL, NULL, &tv) < 0) {
-      perror("select");
-      continue;
-    }
-    if (!FD_ISSET(fd, &fdset))
-      continue;
-    struct sockaddr_in client;
-    int sock;
-    int client_len = sizeof(client);
-    memset(&client, 0, sizeof(client));
-    if ((sock = accept(fd, (struct sockaddr *) &client, (socklen_t *) &client_len)) < 0) {
-      perror("accept");
-      continue;
-    }
-    sockopt = 1;
-    setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, &sockopt, sizeof(sockopt));
+  fd_set fdset;
+  FD_SET(fd, &fdset);
+  GIOChannel* channel = g_io_channel_unix_new(fd);
+  g_io_add_watch(channel, G_IO_IN | G_IO_ERR, socket_accepted, NULL);
+  g_io_channel_unref(channel);
 
-#ifdef G_THREADS_ENABLED
-    g_thread_create(recv_thread, (gpointer) sock, FALSE, NULL);
-#else
-    recv_thread((gpointer) sock);
-#endif
-  }
+  gtk_main();
 
   close_config();
 
