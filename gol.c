@@ -64,22 +64,21 @@ typedef int socklen_t;
 typedef int sockopt_t;
 #endif
 
-typedef gboolean (*notification_init_fn)();
-typedef gboolean (*notification_show_fn)(NOTIFICATION_INFO* ni);
-typedef gboolean (*notification_term_fn)();
-typedef gchar* (*notification_name_fn)();
-typedef gchar* (*notification_description_fn)();
+
+typedef struct {
+  gboolean (*init)();
+  gboolean (*show)(NOTIFICATION_INFO* ni);
+  gboolean (*term)();
+  gchar* (*name)();
+  gchar* (*description)();
+} PLUGIN_INFO;
 
 static gchar* password = NULL;
 static gboolean main_loop = TRUE;
-static notification_init_fn notification_init = NULL;
-static notification_show_fn notification_show = NULL;
-static notification_term_fn notification_term = NULL;
-static notification_name_fn notification_name = NULL;
-static notification_description_fn notification_description = NULL;
 static sqlite3 *db = NULL;
 static GtkStatusIcon* status_icon = NULL;
 static GList* plugin_list = NULL;
+static PLUGIN_INFO* current_plugin = NULL;
 static gchar* exepath = NULL;
 
 #ifndef DATADIR
@@ -140,7 +139,8 @@ settings_clicked(GtkWidget* widget, GdkEvent* event, gpointer user_data) {
     int i, len = g_list_length(plugin_list);
     for (i = 0; i < len; i++) {
       gtk_list_store_append(GTK_LIST_STORE(model), &iter);
-      gtk_list_store_set(GTK_LIST_STORE(model), &iter, 0, g_list_nth_data(plugin_list, i), -1);
+      PLUGIN_INFO* pi = (PLUGIN_INFO*) g_list_nth_data(plugin_list, i);
+      gtk_list_store_set(GTK_LIST_STORE(model), &iter, 0, pi->name(), -1);
     }
   }
   gtk_widget_set_size_request(dialog, 300, 200);
@@ -190,6 +190,7 @@ recv_thread(gpointer data) {
     perror("g_new0");
   }
 
+  char* display = NULL;
   char* ptr;
   int r = readall(sock, &ptr);
   char* top = ptr;
@@ -343,6 +344,11 @@ recv_thread(gpointer data) {
           while(isspace(*line)) line++;
           ni->url = g_strdup(line);
         }
+        if (!strncmp(line, "Notification-Display-Name:", 26)) {
+          line += 27;
+          while(isspace(*line)) line++;
+          display = g_strdup(line);
+        }
       }
 
       if (ni->title && ni->text)
@@ -362,15 +368,25 @@ recv_thread(gpointer data) {
   }
   free(top);
   closesocket(sock);
-  if (need_to_show)
-    g_idle_add((GSourceFunc) notification_show, ni); // call once
-  else {
+  if (need_to_show) {
+    PLUGIN_INFO* cp = current_plugin;
+    int i, len = g_list_length(plugin_list);
+    for (i = 0; i < len; i++) {
+      PLUGIN_INFO* pi = (PLUGIN_INFO*) g_list_nth_data(plugin_list, i);
+      if (!g_strcasecmp(pi->name(), display)) {
+        cp = pi;
+        break;
+      }
+    }
+    g_idle_add((GSourceFunc) cp->show, ni); // call once
+  } else {
     g_free(ni->title);
     g_free(ni->text);
     g_free(ni->icon);
     g_free(ni->url);
     g_free(ni);
   }
+  g_free(display);
   return NULL;
 
 leave:
@@ -491,6 +507,9 @@ load_display_plugin_list(const gchar* path) {
   GDir *dir;
   const gchar *filename;
   dir = g_dir_open(path, 0, NULL);
+
+  current_plugin = NULL;
+  gchar* name = g_strconcat("libdefault.", G_MODULE_SUFFIX, NULL);
   while ((filename = g_dir_read_name(dir))) {
     if (!g_str_has_suffix(filename, G_MODULE_SUFFIX))
       continue;
@@ -501,40 +520,20 @@ load_display_plugin_list(const gchar* path) {
       g_free(fullpath);
       continue;
     }
-    if (!g_module_symbol(handle, "notification_show", (void**) &notification_show)) {
-      g_module_close(handle);
-      g_free(fullpath);
-      continue;
-    }
-    g_module_symbol(handle, "notification_init", (void**) &notification_init);
-    g_module_symbol(handle, "notification_term", (void**) &notification_term);
-    g_module_symbol(handle, "notification_name", (void**) &notification_name);
-    g_module_symbol(handle, "notification_description", (void**) &notification_description);
-    g_module_close(handle);
-    plugin_list = g_list_append(plugin_list, g_strdup(fullpath));
+    PLUGIN_INFO* pi = g_new0(PLUGIN_INFO, 1);
+    g_module_symbol(handle, "notification_show", (void**) &pi->show);
+    g_module_symbol(handle, "notification_init", (void**) &pi->init);
+    g_module_symbol(handle, "notification_term", (void**) &pi->term);
+    g_module_symbol(handle, "notification_name", (void**) &pi->name);
+    g_module_symbol(handle, "notification_description", (void**) &pi->description);
+    plugin_list = g_list_append(plugin_list, pi);
+    if (pi && pi->name && !g_strcasecmp(pi->name(), name)) current_plugin = pi;
   }
+  g_free(name);
   g_dir_close(dir);
 
-  if (g_list_length(plugin_list) == 0) {
-    perror("no default display plugin");
-    exit(1);
-  }
-  int i, len = g_list_length(plugin_list);
-  for (i = 0; i < len; i++) {
-    gchar* name = g_path_get_basename(g_list_nth_data(plugin_list, i));
-    gchar* chkname = g_strconcat("libdefault.", G_MODULE_SUFFIX, NULL);
-    if (!g_strcasecmp(name, chkname))
-      break;
-  }
-  if (i == len) i = 0;
-  GModule* handle = g_module_open(g_list_nth_data(plugin_list, i), G_MODULE_BIND_LAZY);
-  g_module_symbol(handle, "notification_show", (void**) &notification_show);
-  g_module_symbol(handle, "notification_init", (void**) &notification_init);
-  g_module_symbol(handle, "notification_term", (void**) &notification_term);
-  g_module_symbol(handle, "notification_name", (void**) &notification_name);
-  g_module_symbol(handle, "notification_description", (void**) &notification_description);
-  if (notification_init)
-    notification_init();
+  if (!current_plugin) current_plugin = g_list_nth_data(plugin_list, 0);
+  current_plugin->init();
 }
 
 int
