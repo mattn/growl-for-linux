@@ -178,7 +178,7 @@ settings_clicked(GtkWidget* widget, GdkEvent* event, gpointer user_data) {
   gchar* path = g_build_filename(DATADIR, "data", "icon.png", NULL);
   gtk_window_set_icon_from_file(GTK_WINDOW(dialog), path, NULL);
   g_free(path);
-  gtk_window_set_position(GTK_WINDOW(dialog), GTK_WIN_POS_CENTER_ON_PARENT);
+  gtk_window_set_position(GTK_WINDOW(dialog), GTK_WIN_POS_CENTER);
 
   notebook = gtk_notebook_new();
   gtk_container_add(GTK_CONTAINER(GTK_DIALOG(dialog)->vbox), notebook);
@@ -199,12 +199,6 @@ settings_clicked(GtkWidget* widget, GdkEvent* event, gpointer user_data) {
     gtk_tree_view_append_column(GTK_TREE_VIEW(tree_view), column);
 
     GtkTreeIter iter;
-    int i, len = g_list_length(display_plugins);
-    for (i = 0; i < len; i++) {
-      gtk_list_store_append(GTK_LIST_STORE(model), &iter);
-      PLUGIN_INFO* pi = (PLUGIN_INFO*) g_list_nth_data(display_plugins, i);
-      gtk_list_store_set(GTK_LIST_STORE(model), &iter, 0, pi->name(), -1);
-    }
     GtkWidget* vbox = gtk_vbox_new(FALSE, 20);
     gtk_box_pack_start(GTK_BOX(hbox), vbox, TRUE, FALSE, 0);
     GtkWidget* label = gtk_label_new("");
@@ -221,6 +215,15 @@ settings_clicked(GtkWidget* widget, GdkEvent* event, gpointer user_data) {
     GtkWidget* button = gtk_button_new_with_label("Set Default");
     gtk_box_pack_end(GTK_BOX(vbox), button, FALSE, FALSE, 0);
     g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(set_as_default_clicked), select);
+
+    int i, len = g_list_length(display_plugins);
+    for (i = 0; i < len; i++) {
+      gtk_list_store_append(GTK_LIST_STORE(model), &iter);
+      PLUGIN_INFO* pi = (PLUGIN_INFO*) g_list_nth_data(display_plugins, i);
+      gtk_list_store_set(GTK_LIST_STORE(model), &iter, 0, pi->name(), -1);
+      if (pi == current_plugin)
+        gtk_tree_selection_select_iter(select, &iter);
+    }
   }
 
   {
@@ -261,7 +264,7 @@ about_click(GtkWidget* widget, gpointer user_data) {
   gtk_about_dialog_set_website(GTK_ABOUT_DIALOG(dialog), "http://mattn.kaoriya.net/");
   logo = gdk_pixbuf_new_from_file("./data/growl4linux.jpg", NULL);
   gtk_about_dialog_set_logo (GTK_ABOUT_DIALOG(dialog), logo);
-  gtk_window_set_position(GTK_WINDOW(dialog), GTK_WIN_POS_CENTER_ON_PARENT);
+  gtk_window_set_position(GTK_WINDOW(dialog), GTK_WIN_POS_CENTER);
   gtk_dialog_run(GTK_DIALOG(dialog));
   gtk_widget_destroy(dialog);
 }
@@ -489,6 +492,7 @@ leave:
 
 static void
 signal_handler(int num) {
+  signal(num, signal_handler);
   gtk_main_quit();
 }
 
