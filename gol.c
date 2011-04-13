@@ -476,7 +476,6 @@ disabled_pixbuf(GdkPixbuf *pixbuf) {
 }
 */
 
-
 static void
 create_menu() {
   GtkWidget* menu;
@@ -556,7 +555,6 @@ load_display_plugins() {
   dir = g_dir_open(path, 0, NULL);
 
   current_plugin = NULL;
-  gchar* name = g_strconcat("libdefault.", G_MODULE_SUFFIX, NULL);
   while ((filename = g_dir_read_name(dir))) {
     if (!g_str_has_suffix(filename, G_MODULE_SUFFIX))
       continue;
@@ -575,9 +573,8 @@ load_display_plugins() {
     g_module_symbol(handle, "notification_name", (void**) &pi->name);
     g_module_symbol(handle, "notification_description", (void**) &pi->description);
     display_plugins = g_list_append(display_plugins, pi);
-    if (pi && pi->name && !g_strcasecmp(pi->name(), name)) current_plugin = pi;
+    if (pi && pi->name && !g_strcasecmp(pi->name(), "default")) current_plugin = pi;
   }
-  g_free(name);
   g_dir_close(dir);
 
   g_free(path);
