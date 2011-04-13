@@ -106,6 +106,46 @@ unhex(unsigned char c) {
   return 0;
 }
 
+static gboolean
+get_config_bool(const char* key) {
+  const char* sql = sqlite3_mprintf("select value from config where key = '%q'", key);
+  sqlite3_stmt *stmt = NULL;
+  sqlite3_prepare(db, sql, strlen(sql), &stmt, NULL);
+  gboolean ret = FALSE;
+  if (sqlite3_step(stmt) == SQLITE_ROW) {
+    ret = (gboolean) sqlite3_column_int(stmt, 0);
+  }
+  sqlite3_finalize(stmt);
+  return ret;
+}
+
+static gchar*
+get_config_string(const char* key) {
+  const char* sql = sqlite3_mprintf("select value from config where key = '%q'", key);
+  sqlite3_stmt *stmt = NULL;
+  sqlite3_prepare(db, sql, strlen(sql), &stmt, NULL);
+  gchar* value = NULL;
+  if (sqlite3_step(stmt) == SQLITE_ROW) {
+    value = g_strdup((char*) sqlite3_column_text(stmt, 0));
+  } else {
+    value = g_strdup("");
+  }
+  sqlite3_finalize(stmt);
+  return value;
+}
+
+static void
+set_config_bool(const char* key, gboolean value) {
+  sqlite3_exec(db, sqlite3_mprintf("delete from config where key = '%q'", key), NULL, NULL, NULL);
+  sqlite3_exec(db, sqlite3_mprintf("insert into config(key, value) values('%q', '%q')", key, value ? "1" : "0"), NULL, NULL, NULL);
+}
+
+static void
+set_config_string(const char* key, const char* value) {
+  sqlite3_exec(db, sqlite3_mprintf("delete from config where key = '%q'", key), NULL, NULL, NULL);
+  sqlite3_exec(db, sqlite3_mprintf("insert into config(key, value) values('%q', '%q')", key, value), NULL, NULL, NULL);
+}
+
 static void
 status_icon_popup(GtkStatusIcon* status_icon, guint button, guint32 activate_time, gpointer menu) {
   gtk_menu_popup(GTK_MENU(menu), NULL, NULL, gtk_status_icon_position_menu, status_icon, button, activate_time);
@@ -160,11 +200,24 @@ set_as_default_clicked(GtkWidget* widget, gpointer data) {
       PLUGIN_INFO* pi = (PLUGIN_INFO*) g_list_nth_data(display_plugins, i);
       if (!g_strcasecmp(pi->name(), name)) {
         current_plugin = pi;
+        set_config_string("default_display", name);
         break;
       }
     }
     g_free(name);
   }
+}
+
+static gboolean
+password_focus_out(GtkWidget* widget, GdkEvent* event, gpointer data) {
+  set_config_string("password", gtk_entry_get_text(GTK_ENTRY(widget)));
+  return FALSE;
+}
+
+static void
+required_password_toggled(GtkToggleButton *togglebutton, gpointer data) {
+  gchar* key = (gchar*) data;
+  set_config_bool(key, gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(togglebutton)));
 }
 
 static void
@@ -232,9 +285,22 @@ settings_clicked(GtkWidget* widget, GdkEvent* event, gpointer user_data) {
     gtk_notebook_append_page(GTK_NOTEBOOK(notebook), vbox, gtk_label_new("Security"));
     GtkWidget* checkbutton;
     checkbutton = gtk_check_button_new_with_label("Require password for local apps");
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(checkbutton), get_config_bool("require_password_for_local_apps"));
+    g_signal_connect(G_OBJECT(checkbutton), "toggled", G_CALLBACK(required_password_toggled), "require_password_for_local_apps");
     gtk_box_pack_start(GTK_BOX(vbox), checkbutton, FALSE, FALSE, 0);
     checkbutton = gtk_check_button_new_with_label("Require password for LAN apps");
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(checkbutton), get_config_bool("require_password_for_lan_apps"));
+    g_signal_connect(G_OBJECT(checkbutton), "toggled", G_CALLBACK(required_password_toggled), "require_password_for_lan_apps");
     gtk_box_pack_start(GTK_BOX(vbox), checkbutton, FALSE, FALSE, 0);
+    GtkWidget* hbox = gtk_hbox_new(FALSE, 5);
+    gtk_box_pack_start(GTK_BOX(vbox), hbox, FALSE, FALSE, 0);
+    GtkWidget* label = gtk_label_new("Password:");
+    gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, FALSE, 0);
+    GtkWidget* entry = gtk_entry_new();
+    gtk_entry_set_text(GTK_ENTRY(entry), password);
+    gtk_entry_set_visibility(GTK_ENTRY(entry), FALSE);
+    g_signal_connect(G_OBJECT(entry), "focus-out-event", G_CALLBACK(password_focus_out), NULL);
+    gtk_box_pack_start(GTK_BOX(hbox), entry, FALSE, FALSE, 0);
   }
   
   gtk_widget_set_size_request(dialog, 500, 500);
@@ -278,10 +344,21 @@ static gpointer
 recv_thread(gpointer data) {
   int sock = (int) data;
   int need_to_show = 0;
+  int is_local_app = FALSE;
 
   NOTIFICATION_INFO* ni = g_new0(NOTIFICATION_INFO, 1);
   if (!ni) {
     perror("g_new0");
+  }
+
+  struct sockaddr_in client;
+  int client_len = sizeof(client);
+  memset(&client, 0, sizeof(client));
+  if (!getsockname(sock, (struct sockaddr *) &client, (socklen_t *) &client_len)) {
+    char* addr = inet_ntoa(((struct sockaddr_in *)(void*)&client)->sin_addr);
+    if (addr && !strcmp(addr, "127.0.0.1")) {
+      is_local_app = TRUE;
+    }
   }
 
   char* display = NULL;
@@ -299,6 +376,8 @@ recv_thread(gpointer data) {
       ptr += 7;
       char* data = NULL;
       if (!strncmp(ptr, "NONE", 4) && strchr("\n ", *(ptr+5))) {
+        if (is_local_app && get_config_bool("require_password_for_local_apps")) goto leave;
+        if (!is_local_app && get_config_bool("require_password_for_lan_apps")) goto leave;
         ptr = strchr(ptr, '\r');
         if (!ptr || ptr > end) goto leave;
         *ptr++ = 0;
@@ -457,7 +536,8 @@ recv_thread(gpointer data) {
     ptr = "GNTP/1.0 OK\r\n\r\n";
     send(sock, ptr, strlen(ptr), 0);
   } else {
-    ptr = "GNTP/1.0 -ERROR Invalid command\r\n\r\n";
+    ptr = "GNTP/1.0 -ERROR Invalid command\r\n"
+        "Error-Description: Invalid command\r\n\r\n";
     send(sock, ptr, strlen(ptr), 0);
   }
   free(top);
@@ -484,6 +564,9 @@ recv_thread(gpointer data) {
   return NULL;
 
 leave:
+  ptr = "GNTP/1.0 -ERROR Invalid request\r\n"
+      "Error-Description: Invalid request\r\n\r\n";
+  send(sock, ptr, strlen(ptr), 0);
   free(top);
   closesocket(sock);
   free(ni);
@@ -581,18 +664,12 @@ create_config() {
   }
   rc = sqlite3_open(confdb, &db);
 
-  const char* sql = "select value from config where key = 'password'";
-  sqlite3_stmt *stmt = NULL;
-  sqlite3_prepare(db, sql, strlen(sql), &stmt, NULL);
-  if (sqlite3_step(stmt) == SQLITE_ROW) {
-    password = g_strdup((char*) sqlite3_column_text(stmt, 0));
-  } else {
-    password = g_strdup("");
-  }
+  password = get_config_string("password");
 }
 
 static void
 destroy_config() {
+  g_free(password);
   sqlite3_close(db);
 }
 
@@ -602,6 +679,8 @@ load_display_plugins() {
   const gchar *filename;
   gchar* path = g_build_filename(DATADIR, "display", NULL);
   dir = g_dir_open(path, 0, NULL);
+
+  gchar* default_display = get_config_string("default_display");
 
   current_plugin = NULL;
   while ((filename = g_dir_read_name(dir))) {
@@ -623,10 +702,11 @@ load_display_plugins() {
     g_module_symbol(handle, "notification_description", (void**) &pi->description);
     g_module_symbol(handle, "notification_thumbnail", (void**) &pi->thumbnail);
     display_plugins = g_list_append(display_plugins, pi);
-    if (pi && pi->name && !g_strcasecmp(pi->name(), "default")) current_plugin = pi;
+    if (pi && pi->name && !g_strcasecmp(pi->name(), default_display)) current_plugin = pi;
   }
   g_dir_close(dir);
 
+  g_free(default_display);
   g_free(path);
 
   if (!current_plugin) current_plugin = g_list_nth_data(display_plugins, 0);
@@ -655,6 +735,7 @@ socket_accepted(GIOChannel* source, GIOCondition condition, gpointer data) {
     perror("accept");
     return TRUE;
   }
+
 #ifdef G_THREADS_ENABLED
   g_thread_create(recv_thread, (gpointer) sock, FALSE, NULL);
 #else
@@ -751,6 +832,7 @@ main(int argc, char* argv[]) {
   destroy_server(fd);
   destroy_menu();
   destroy_config();
+  g_free(exepath);
 
   return 0;
 }
