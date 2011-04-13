@@ -413,8 +413,9 @@ notification_name() {
 
 G_MODULE_EXPORT gchar*
 notification_description() {
-  return "<h1>Default</h1><p>This is default notification display.</p>"
-    "<p>Slide-up white box. And fadeout after a while.</p>";
+  return "<span size=\"large\"><b>Default</b></span>\n"
+    "<span>This is default notification display.</span>\n"
+    "<span>Slide-up white box. And fadeout after a while.</span>\n";
 }
 
 // vim:set et sw=2 ts=2 ai:

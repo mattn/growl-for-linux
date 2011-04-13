@@ -429,8 +429,9 @@ notification_name() {
 
 G_MODULE_EXPORT gchar*
 notification_description() {
-  return "<h1>Balloon</h1><p>This is balloon notification display.</p>"
-    "<p>Fade-in black box. And fadeout after a while.</p>";
+  return "<span size=\"large\"><b>Balloon</b></span>\n"
+    "<span>This is balloon notification display.</span>\n"
+    "<span>Fade-in black box. And fadeout after a while.</span>\n";
 }
 
 // vim:set et sw=2 ts=2 ai:
