@@ -17,4 +17,4 @@ default.o : default.c
 		default.c
 
 clean:
-	-rm *.o *.res *.exe
+	-rm *.o *.res *.exe *.dll

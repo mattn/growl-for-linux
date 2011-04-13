@@ -295,7 +295,6 @@ notification_show(NOTIFICATION_INFO* ni) {
   GtkWidget* hbox;
   GtkWidget* label;
   GtkWidget* image;
-  GdkPixbuf* pixbuf;
   GdkScreen* screen;
   gint n, pos, len;
   gint x, y;
@@ -354,13 +353,17 @@ notification_show(NOTIFICATION_INFO* ni) {
   hbox = gtk_hbox_new(FALSE, 5);
 
   if (di->ni->icon && *di->ni->icon) {
-    pixbuf = url2pixbuf(di->ni->icon, NULL);
+    GdkPixbuf* pixbuf = url2pixbuf(di->ni->icon, NULL);
     if (pixbuf) {
       GdkPixbuf* tmp = gdk_pixbuf_scale_simple(pixbuf, 32, 32, GDK_INTERP_TILES);
-      if (tmp) pixbuf = tmp;
+      if (tmp) {
+        g_object_unref(pixbuf);
+        pixbuf = tmp;
+      }
       image = gtk_image_new_from_pixbuf(pixbuf);
       gtk_box_pack_start(GTK_BOX(hbox), image, FALSE, FALSE, 0);
     }
+    g_object_unref(pixbuf);
   }
 
   PangoFontDescription* font_desc = pango_font_description_new();

@@ -10,4 +10,4 @@ default.o : default.c
 	gcc `pkg-config --cflags ${PKGCONFIG}` -Wall -c -o default.o default.c
 
 clean:
-	-rm *.o libdefault.so
+	-rm *.o *.so
