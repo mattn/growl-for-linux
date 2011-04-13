@@ -29,6 +29,7 @@
 #include <memory.h>
 #include <curl/curl.h>
 #include "../../gol.h"
+#include "display_nico2.xpm"
 
 #define REQUEST_TIMEOUT            (5)
 
@@ -378,6 +379,11 @@ notification_description() {
   return "<span size=\"large\"><b>Nico2</b></span>\n"
     "<span>This is nico2 notification display.</span>\n"
     "<span>Slide notification from right to left similar to nico nico douga.</span>\n";
+}
+
+G_MODULE_EXPORT char**
+notification_thumbnail() {
+  return display_nico2;
 }
 
 // vim:set et sw=2 ts=2 ai:

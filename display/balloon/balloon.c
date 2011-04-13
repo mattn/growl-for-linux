@@ -29,7 +29,8 @@
 #include <memory.h>
 #include <curl/curl.h>
 #include "../../gol.h"
-#include "mask.xpm"
+#include "balloon.xpm"
+#include "display_balloon.xpm"
 
 #define REQUEST_TIMEOUT            (5)
 
@@ -400,7 +401,7 @@ notification_show(NOTIFICATION_INFO* ni) {
   gtk_widget_show_all(di->popup);
 
   if (pixmap == NULL) {
-     pixmap = gdk_pixmap_create_from_xpm_d(di->popup->window, &bitmap, NULL, mask_xpm);
+     pixmap = gdk_pixmap_create_from_xpm_d(di->popup->window, &bitmap, NULL, balloon);
   }
   gdk_drawable_get_size(pixmap, &pixmap_width, &pixmap_height);
   gtk_widget_set_size_request(fixed, pixmap_width, pixmap_height);
@@ -432,6 +433,11 @@ notification_description() {
   return "<span size=\"large\"><b>Balloon</b></span>\n"
     "<span>This is balloon notification display.</span>\n"
     "<span>Fade-in black box. And fadeout after a while.</span>\n";
+}
+
+G_MODULE_EXPORT char**
+notification_thumbnail() {
+  return display_balloon;
 }
 
 // vim:set et sw=2 ts=2 ai:

@@ -29,6 +29,7 @@
 #include <memory.h>
 #include <curl/curl.h>
 #include "../../gol.h"
+#include "display_default.xpm"
 
 #define REQUEST_TIMEOUT            (5)
 
@@ -416,6 +417,11 @@ notification_description() {
   return "<span size=\"large\"><b>Default</b></span>\n"
     "<span>This is default notification display.</span>\n"
     "<span>Slide-up white box. And fadeout after a while.</span>\n";
+}
+
+G_MODULE_EXPORT char**
+notification_thumbnail() {
+  return display_default;
 }
 
 // vim:set et sw=2 ts=2 ai:

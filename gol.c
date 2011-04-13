@@ -72,6 +72,7 @@ typedef struct {
   gboolean (*term)();
   gchar* (*name)();
   gchar* (*description)();
+  gchar** (*thumbnail)();
 } PLUGIN_INFO;
 
 static gchar* password = NULL;
@@ -125,9 +126,22 @@ tree_selection_changed(GtkTreeSelection *selection, gpointer data) {
         break;
       }
     }
+
     GtkWidget* label = (GtkWidget*) g_object_get_data(G_OBJECT(data), "description");
     gtk_label_set_markup(GTK_LABEL(label), "");
-    gtk_label_set_markup(GTK_LABEL(label), current_plugin->description());
+    if (current_plugin->description) {
+      gtk_label_set_markup(GTK_LABEL(label), current_plugin->description());
+    }
+
+    GtkWidget* image = (GtkWidget*) g_object_get_data(G_OBJECT(data), "thumbnail");
+    gtk_image_clear(GTK_IMAGE(image));
+    if (current_plugin->thumbnail) {
+      GdkBitmap* bitmap;
+      GdkPixmap* pixmap = gdk_pixmap_colormap_create_from_xpm_d(NULL, gdk_colormap_get_system(), &bitmap, NULL, current_plugin->thumbnail());
+      gtk_image_set_from_pixmap(GTK_IMAGE(image), pixmap, bitmap);
+      gdk_pixmap_unref(pixmap);
+      gdk_bitmap_unref(bitmap);
+    }
     g_free(name);
   }
 }
@@ -170,12 +184,17 @@ settings_clicked(GtkWidget* widget, GdkEvent* event, gpointer user_data) {
       gtk_list_store_set(GTK_LIST_STORE(model), &iter, 0, pi->name(), -1);
     }
     GtkWidget* vbox = gtk_vbox_new(FALSE, 5);
-    gtk_box_pack_start(GTK_BOX(hbox), vbox, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(hbox), vbox, TRUE, FALSE, 0);
     GtkWidget* label = gtk_label_new("");
     gtk_label_set_line_wrap(GTK_LABEL(label), TRUE);
     gtk_label_set_line_wrap_mode(GTK_LABEL(label), PANGO_WRAP_CHAR);
     g_object_set_data(G_OBJECT(dialog), "description", label);
-    gtk_box_pack_start(GTK_BOX(vbox), label, FALSE, FALSE, 0);
+    GtkWidget* align = gtk_alignment_new(0, 0, 0, 0);
+    gtk_container_add(GTK_CONTAINER(align), label);
+    gtk_box_pack_start(GTK_BOX(vbox), align, FALSE, FALSE, 0);
+    GtkWidget* image = gtk_image_new();
+    g_object_set_data(G_OBJECT(dialog), "thumbnail", image);
+    gtk_box_pack_start(GTK_BOX(vbox), image, TRUE, FALSE, 0);
   }
 
   {
@@ -189,7 +208,7 @@ settings_clicked(GtkWidget* widget, GdkEvent* event, gpointer user_data) {
     gtk_box_pack_start(GTK_BOX(vbox), checkbutton, FALSE, FALSE, 0);
   }
   
-  gtk_widget_set_size_request(dialog, 450, 300);
+  gtk_widget_set_size_request(dialog, 450, 500);
   gtk_widget_show_all(dialog);
   gtk_dialog_run(GTK_DIALOG(dialog));
   gtk_widget_destroy(dialog);
@@ -572,6 +591,7 @@ load_display_plugins() {
     g_module_symbol(handle, "notification_term", (void**) &pi->term);
     g_module_symbol(handle, "notification_name", (void**) &pi->name);
     g_module_symbol(handle, "notification_description", (void**) &pi->description);
+    g_module_symbol(handle, "notification_thumbnail", (void**) &pi->thumbnail);
     display_plugins = g_list_append(display_plugins, pi);
     if (pi && pi->name && !g_strcasecmp(pi->name(), "default")) current_plugin = pi;
   }
@@ -580,7 +600,7 @@ load_display_plugins() {
   g_free(path);
 
   if (!current_plugin) current_plugin = g_list_nth_data(display_plugins, 0);
-  current_plugin->init();
+  if (current_plugin->init) current_plugin->init();
 }
 
 static void
@@ -588,6 +608,7 @@ unload_display_plugins() {
   int i, len = g_list_length(display_plugins);
   for (i = 0; i < len; i++) {
     PLUGIN_INFO* pi = (PLUGIN_INFO*) g_list_nth_data(display_plugins, i);
+    if (pi->term) pi->term();
     g_module_close(pi->handle);
     g_free(pi);
   }
