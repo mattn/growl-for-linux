@@ -11,7 +11,7 @@ displays:
 gol : gol.o
 	gcc -g `pkg-config --libs ${PKGCONFIG}` -o gol gol.o
 
-gol.o : gol.c
+gol.o : gol.c gol.h
 	gcc -g `pkg-config --cflags ${PKGCONFIG}` -Wall -c -o gol.o gol.c
 
 clean:

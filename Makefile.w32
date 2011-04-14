@@ -28,7 +28,7 @@ gol.exe : gol.o gol.res
 		-lsqlite3 \
 		gol.res
 
-gol.o : gol.c
+gol.o : gol.c gol.h
 	gcc -g -Wall -c $(CFLAGS) -o gol.o \
         -mms-bitfields -Ic:/gtk/include/gtk-2.0 -Ic:/gtk/lib/gtk-2.0/include -Ic:/gtk/include/atk-1.0 -Ic:/gtk/include/cairo -Ic:/gtk/include/pango-1.0 -Ic:/gtk/include/glib-2.0 -Ic:/gtk/lib/glib-2.0/include -Ic:/gtk/include/freetype2 -Ic:/gtk/include -Ic:/gtk/include/libpng14 -Ic:/gtk/include/libxml2 \
 		-Ic:/openssl-win32/include \
