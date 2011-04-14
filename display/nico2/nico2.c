@@ -47,7 +47,6 @@ typedef struct {
   gint x, y;
   gint timeout;
   GtkWidget* popup;
-  GdkBitmap* bitmap;
   gint width;
   gint height;
 } DISPLAY_INFO;
@@ -246,21 +245,19 @@ notification_animation_func(gpointer data) {
 
   if (di->x + di->width < 0) {
     gtk_widget_destroy(di->popup);
+    di->popup = NULL;
     notifications = g_list_remove(notifications, di);
     g_free(di->ni->title);
     g_free(di->ni->text);
     g_free(di->ni->icon);
     g_free(di->ni->url);
     g_free(di->ni);
-    g_object_unref(di->bitmap);
     g_free(di);
     return FALSE;
   }
 
   di->x -= 5;
-  //gdk_window_hide(di->popup->window);
   gdk_window_move(di->popup->window, di->x, di->y);
-  //gdk_window_show(di->popup->window);
   return TRUE;
 }
 
@@ -331,17 +328,21 @@ notification_show(NOTIFICATION_INFO* ni) {
   di->width += 32 + 5;
   if (image)
     gtk_fixed_move(GTK_FIXED(fixed), image, 0, di->height / 2 - 16);
-  di->bitmap = gdk_pixmap_new(di->popup->window, di->width, di->height, 1);
-  GdkGC *gc = gdk_gc_new(GDK_DRAWABLE(di->bitmap));
-  gdk_color_parse("white", &color);
+  GdkBitmap* bitmap = gdk_pixmap_new(di->popup->window, di->width, di->height, 1);
+  GdkGC *gc = gdk_gc_new(GDK_DRAWABLE(bitmap));
   GdkColormap* colormap = gdk_colormap_get_system();
   gdk_gc_set_colormap(gc, colormap);
+
+  gdk_color_parse("black", &color);
   gdk_colormap_alloc_color(colormap, &color, TRUE, TRUE);
   gdk_gc_set_foreground (gc, &color);
-  gdk_draw_rectangle(di->bitmap, gc, TRUE, 0, di->height / 2 - 16, 32, 32);
-  gdk_draw_layout(di->bitmap, gc, 32 + 5, 0, layout);
-  g_object_unref(gc);
-  g_object_unref(layout);
+  gdk_draw_rectangle(bitmap, gc, TRUE, 0, 0, di->width, di->height);
+
+  gdk_color_parse("white", &color);
+  gdk_colormap_alloc_color(colormap, &color, TRUE, TRUE);
+  gdk_gc_set_foreground (gc, &color);
+  gdk_draw_rectangle(bitmap, gc, TRUE, 0, di->height / 2 - 16, 32, 32);
+  gdk_draw_layout(bitmap, gc, 32 + 5, 0, layout);
 
   pango_font_description_free(font_desc);
 
@@ -352,9 +353,15 @@ notification_show(NOTIFICATION_INFO* ni) {
   gtk_widget_show_all(di->popup);
 
   gtk_widget_set_size_request(fixed, di->width, di->height);
-  gdk_window_shape_combine_mask(di->popup->window, di->bitmap, 0, 0);
+  gdk_window_shape_combine_mask(di->popup->window, bitmap, 0, 0);
 
-  g_timeout_add(10, notification_animation_func, di);
+  g_object_unref(gc);
+  g_object_unref(layout);
+  g_object_unref(context);
+  g_object_unref(bitmap);
+
+  g_object_ref(di->popup);
+  g_timeout_add(20, notification_animation_func, di);
 
   return FALSE;
 }

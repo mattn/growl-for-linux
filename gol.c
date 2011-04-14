@@ -25,8 +25,10 @@
 # include <gdk/gdkwin32.h>
 # include <ws2tcpip.h>
 #else
-# include <netinet/tcp.h>
 # include <sys/socket.h>
+# include <netinet/tcp.h>
+# include <netinet/in.h>
+# include <arpa/inet.h>
 # include <netdb.h>
 # include <unistd.h>
 #endif
