@@ -127,89 +127,84 @@ url2pixbuf(const char* url, GError** error) {
   GdkPixbufLoader* loader = NULL;
   GError* _error = NULL;
 
-  if (!strncmp(url, "file:///", 8) || g_file_test(url, G_FILE_TEST_EXISTS)) {
-    gchar* newurl = g_filename_from_uri(url, NULL, NULL);
-    pixbuf = gdk_pixbuf_new_from_file(newurl ? newurl : url, &_error);
-  } else {
-    CURL* curl = NULL;
-    MEMFILE* mbody;
-    MEMFILE* mhead;
-    char* head;
-    char* body;
-    unsigned long size;
-    CURLcode res = CURLE_FAILED_INIT;
+  CURL* curl = NULL;
+  MEMFILE* mbody;
+  MEMFILE* mhead;
+  char* head;
+  char* body;
+  unsigned long size;
+  CURLcode res = CURLE_FAILED_INIT;
 
-    curl = curl_easy_init();
-    if (!curl) return NULL;
+  curl = curl_easy_init();
+  if (!curl) return NULL;
 
-    mbody = memfopen();
-    mhead = memfopen();
+  mbody = memfopen();
+  mhead = memfopen();
 
-    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0);
-    curl_easy_setopt(curl, CURLOPT_URL, url);
-    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, REQUEST_TIMEOUT);
-    curl_easy_setopt(curl, CURLOPT_TIMEOUT, REQUEST_TIMEOUT);
-    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, memfwrite);
-    curl_easy_setopt(curl, CURLOPT_WRITEDATA, mbody);
-    curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, memfwrite);
-    curl_easy_setopt(curl, CURLOPT_HEADERDATA, mhead);
-    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1);
-    res = curl_easy_perform(curl);
-    curl_easy_cleanup(curl);
+  curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0);
+  curl_easy_setopt(curl, CURLOPT_URL, url);
+  curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, REQUEST_TIMEOUT);
+  curl_easy_setopt(curl, CURLOPT_TIMEOUT, REQUEST_TIMEOUT);
+  curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, memfwrite);
+  curl_easy_setopt(curl, CURLOPT_WRITEDATA, mbody);
+  curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, memfwrite);
+  curl_easy_setopt(curl, CURLOPT_HEADERDATA, mhead);
+  curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1);
+  res = curl_easy_perform(curl);
+  curl_easy_cleanup(curl);
 
-    head = memfstrdup(mhead);
-    memfclose(mhead);
-    body = memfstrdup(mbody);
-    size = mbody->size;
-    memfclose(mbody);
+  head = memfstrdup(mhead);
+  memfclose(mhead);
+  body = memfstrdup(mbody);
+  size = mbody->size;
+  memfclose(mbody);
 
-    if (res == CURLE_OK) {
-      char* ctype;
-      char* csize;
-      ctype = get_http_header_alloc(head, "Content-Type");
-      csize = get_http_header_alloc(head, "Content-Length");
+  if (res == CURLE_OK) {
+    char* ctype;
+    char* csize;
+    ctype = get_http_header_alloc(head, "Content-Type");
+    csize = get_http_header_alloc(head, "Content-Length");
 
 #ifdef _WIN32
-      if (ctype &&
-          (!strcmp(ctype, "image/jpeg") || !strcmp(ctype, "image/gif"))) {
-        char temp_path[MAX_PATH];
-        char temp_filename[MAX_PATH];
-        FILE* fp;
-        GetTempPath(sizeof(temp_path), temp_path);
-        GetTempFileName(temp_path, "growl-for-linux-", 0, temp_filename);
-        fp = fopen(temp_filename, "wb");
-        if (fp) {
-          fwrite(body, size, 1, fp);
-          fclose(fp);
-        }
-        pixbuf = gdk_pixbuf_new_from_file(temp_filename, NULL);
-        DeleteFile(temp_filename);
-      } else
-#endif
-      {
-        if (ctype)
-          loader =
-            (GdkPixbufLoader*) gdk_pixbuf_loader_new_with_mime_type(ctype,
-                error);
-        if (csize)
-          size = atol(csize);
-        if (!loader) loader = gdk_pixbuf_loader_new();
-        if (body && gdk_pixbuf_loader_write(loader, (const guchar*) body,
-              size, &_error)) {
-          pixbuf = gdk_pixbuf_loader_get_pixbuf(loader);
-        }
+    if (ctype &&
+        (!strcmp(ctype, "image/jpeg") || !strcmp(ctype, "image/gif"))) {
+      char temp_path[MAX_PATH];
+      char temp_filename[MAX_PATH];
+      FILE* fp;
+      GetTempPath(sizeof(temp_path), temp_path);
+      GetTempFileName(temp_path, "growl-for-linux-", 0, temp_filename);
+      fp = fopen(temp_filename, "wb");
+      if (fp) {
+        fwrite(body, size, 1, fp);
+        fclose(fp);
       }
-      if (ctype) free(ctype);
-      if (csize) free(csize);
-      if (loader) gdk_pixbuf_loader_close(loader, NULL);
-    } else {
-      _error = g_error_new_literal(G_FILE_ERROR, res,
-      curl_easy_strerror(res));
+      pixbuf = gdk_pixbuf_new_from_file(temp_filename, NULL);
+      DeleteFile(temp_filename);
+    } else
+#endif
+    {
+      if (ctype)
+        loader =
+          (GdkPixbufLoader*) gdk_pixbuf_loader_new_with_mime_type(ctype,
+              error);
+      if (csize)
+        size = atol(csize);
+      if (!loader) loader = gdk_pixbuf_loader_new();
+      if (body && gdk_pixbuf_loader_write(loader, (const guchar*) body,
+            size, &_error)) {
+        pixbuf = gdk_pixbuf_loader_get_pixbuf(loader);
+      }
     }
-
-    free(head);
-    free(body);
+    if (ctype) free(ctype);
+    if (csize) free(csize);
+    if (loader) gdk_pixbuf_loader_close(loader, NULL);
+  } else {
+    _error = g_error_new_literal(G_FILE_ERROR, res,
+    curl_easy_strerror(res));
   }
+
+  free(head);
+  free(body);
 
   /* cleanup callback data */
   if (error && _error) *error = _error;
