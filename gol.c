@@ -616,11 +616,19 @@ leave:
   return NULL;
 }
 
+#ifdef _WIN32
+static BOOL WINAPI
+ctrl_handler(DWORD type) {
+  gtk_main_quit();
+  return TRUE;
+}
+#else
 static void
 signal_handler(int num) {
   signal(num, signal_handler);
   gtk_main_quit();
 }
+#endif
 
 /*
 static GdkPixbuf*
@@ -861,8 +869,12 @@ main(int argc, char* argv[]) {
 
   gtk_init(&argc, &argv);
 
+#ifdef _WIN32
+  SetConsoleCtrlHandler(ctrl_handler, TRUE);
+#else
   signal(SIGTERM, signal_handler);
   signal(SIGINT, signal_handler);
+#endif
 
   create_config();
   create_menu();
