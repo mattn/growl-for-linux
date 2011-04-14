@@ -596,6 +596,7 @@ recv_thread(gpointer data) {
     send(sock, ptr, strlen(ptr), 0);
   }
   free(top);
+  shutdown(sock, SD_BOTH);
   closesocket(sock);
   if (need_to_show) {
     DISPLAY_PLUGIN* cp = current_display;
@@ -625,6 +626,7 @@ leave:
       "Error-Description: Invalid request\r\n\r\n";
   send(sock, ptr, strlen(ptr), 0);
   free(top);
+  shutdown(sock, SD_BOTH);
   closesocket(sock);
   free(ni);
   return NULL;
@@ -794,7 +796,6 @@ unload_display_plugins() {
 
 static void
 subscribe_show(NOTIFICATION_INFO* ni) {
-printf("%s\n", ni->text);
   g_idle_add((GSourceFunc) current_display->show, ni);
 }
 
