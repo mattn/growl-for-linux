@@ -66,6 +66,16 @@ typedef int socklen_t;
 typedef int sockopt_t;
 #endif
 
+typedef struct {
+  void* handle;
+  gboolean (*init)();
+  gboolean (*start)();
+  gboolean (*stop)();
+  gboolean (*term)();
+  gchar* (*name)();
+  gchar* (*description)();
+  gchar** (*thumbnail)();
+} SUBSCRIBE_PLUGIN;
 
 typedef struct {
   void* handle;
@@ -75,14 +85,16 @@ typedef struct {
   gchar* (*name)();
   gchar* (*description)();
   gchar** (*thumbnail)();
-} PLUGIN_INFO;
+} DISPLAY_PLUGIN;
 
 static gchar* password = NULL;
 static sqlite3 *db = NULL;
 static GtkStatusIcon* status_icon = NULL;
 static GList* display_plugins = NULL;
-static PLUGIN_INFO* current_plugin = NULL;
+static GList* subscribe_plugins = NULL;
+static DISPLAY_PLUGIN* current_display = NULL;
 static gchar* exepath = NULL;
+static SUBSCRIPTOR_CONTEXT sc;
 
 #ifndef DATADIR
 # define DATADIR exepath
@@ -169,14 +181,14 @@ tree_selection_changed(GtkTreeSelection *selection, gpointer data) {
   GtkTreeIter iter;
   GtkTreeModel* model;
   if (gtk_tree_selection_get_selected(selection, &model, &iter)) {
-    PLUGIN_INFO* cp = current_plugin;
+    DISPLAY_PLUGIN* cp = current_display;
     gchar* name;
     gtk_tree_model_get(model, &iter, 0, &name, -1);
     int i, len = g_list_length(display_plugins);
     for (i = 0; i < len; i++) {
-      PLUGIN_INFO* pi = (PLUGIN_INFO*) g_list_nth_data(display_plugins, i);
-      if (!g_strcasecmp(pi->name(), name)) {
-        cp = pi;
+      DISPLAY_PLUGIN* dp = (DISPLAY_PLUGIN*) g_list_nth_data(display_plugins, i);
+      if (!g_strcasecmp(dp->name(), name)) {
+        cp = dp;
         break;
       }
     }
@@ -210,9 +222,9 @@ set_as_default_clicked(GtkWidget* widget, gpointer data) {
     gtk_tree_model_get(model, &iter, 0, &name, -1);
     int i, len = g_list_length(display_plugins);
     for (i = 0; i < len; i++) {
-      PLUGIN_INFO* pi = (PLUGIN_INFO*) g_list_nth_data(display_plugins, i);
-      if (!g_strcasecmp(pi->name(), name)) {
-        current_plugin = pi;
+      DISPLAY_PLUGIN* dp = (DISPLAY_PLUGIN*) g_list_nth_data(display_plugins, i);
+      if (!g_strcasecmp(dp->name(), name)) {
+        current_display = dp;
         set_config_string("default_display", name);
         break;
       }
@@ -231,13 +243,13 @@ preview_clicked(GtkWidget* widget, gpointer data) {
     gtk_tree_model_get(model, &iter, 0, &name, -1);
     int i, len = g_list_length(display_plugins);
     for (i = 0; i < len; i++) {
-      PLUGIN_INFO* pi = (PLUGIN_INFO*) g_list_nth_data(display_plugins, i);
-      if (!g_strcasecmp(pi->name(), name)) {
+      DISPLAY_PLUGIN* dp = (DISPLAY_PLUGIN*) g_list_nth_data(display_plugins, i);
+      if (!g_strcasecmp(dp->name(), name)) {
         NOTIFICATION_INFO* ni = g_new0(NOTIFICATION_INFO, 1);
         ni->title = g_strdup("Preview Display");
-        ni->text = g_strdup_printf("This is a preview of the '%s' display.", pi->name());
+        ni->text = g_strdup_printf("This is a preview of the '%s' display.", dp->name());
         ni->icon = g_build_filename(DATADIR, "data", "icon.png", NULL);
-        g_idle_add((GSourceFunc) pi->show, ni);
+        g_idle_add((GSourceFunc) dp->show, ni);
         break;
       }
     }
@@ -315,9 +327,9 @@ settings_clicked(GtkWidget* widget, GdkEvent* event, gpointer user_data) {
     int i, len = g_list_length(display_plugins);
     for (i = 0; i < len; i++) {
       gtk_list_store_append(GTK_LIST_STORE(model), &iter);
-      PLUGIN_INFO* pi = (PLUGIN_INFO*) g_list_nth_data(display_plugins, i);
-      gtk_list_store_set(GTK_LIST_STORE(model), &iter, 0, pi->name(), -1);
-      if (pi == current_plugin)
+      DISPLAY_PLUGIN* dp = (DISPLAY_PLUGIN*) g_list_nth_data(display_plugins, i);
+      gtk_list_store_set(GTK_LIST_STORE(model), &iter, 0, dp->name(), -1);
+      if (dp == current_display)
         gtk_tree_selection_select_iter(select, &iter);
     }
   }
@@ -586,13 +598,15 @@ recv_thread(gpointer data) {
   free(top);
   closesocket(sock);
   if (need_to_show) {
-    PLUGIN_INFO* cp = current_plugin;
-    int i, len = g_list_length(display_plugins);
-    for (i = 0; i < len; i++) {
-      PLUGIN_INFO* pi = (PLUGIN_INFO*) g_list_nth_data(display_plugins, i);
-      if (!g_strcasecmp(pi->name(), display)) {
-        cp = pi;
-        break;
+    DISPLAY_PLUGIN* cp = current_display;
+    if (display) {
+      int i, len = g_list_length(display_plugins);
+      for (i = 0; i < len; i++) {
+        DISPLAY_PLUGIN* dp = (DISPLAY_PLUGIN*) g_list_nth_data(display_plugins, i);
+        if (!g_strcasecmp(dp->name(), display)) {
+          cp = dp;
+          break;
+        }
       }
     }
     g_idle_add((GSourceFunc) cp->show, ni); // call once
@@ -733,7 +747,7 @@ load_display_plugins() {
 
   gchar* default_display = get_config_string("default_display");
 
-  current_plugin = NULL;
+  current_display = NULL;
   while ((filename = g_dir_read_name(dir))) {
     if (!g_str_has_suffix(filename, G_MODULE_SUFFIX))
       continue;
@@ -744,34 +758,93 @@ load_display_plugins() {
       g_free(fullpath);
       continue;
     }
-    PLUGIN_INFO* pi = g_new0(PLUGIN_INFO, 1);
-    pi->handle = handle;
-    g_module_symbol(handle, "notification_show", (void**) &pi->show);
-    g_module_symbol(handle, "notification_init", (void**) &pi->init);
-    g_module_symbol(handle, "notification_term", (void**) &pi->term);
-    g_module_symbol(handle, "notification_name", (void**) &pi->name);
-    g_module_symbol(handle, "notification_description", (void**) &pi->description);
-    g_module_symbol(handle, "notification_thumbnail", (void**) &pi->thumbnail);
-    display_plugins = g_list_append(display_plugins, pi);
-    if (pi && pi->name && !g_strcasecmp(pi->name(), default_display)) current_plugin = pi;
+    DISPLAY_PLUGIN* dp = g_new0(DISPLAY_PLUGIN, 1);
+    dp->handle = handle;
+    g_module_symbol(handle, "display_show", (void**) &dp->show);
+    g_module_symbol(handle, "display_init", (void**) &dp->init);
+    g_module_symbol(handle, "display_term", (void**) &dp->term);
+    g_module_symbol(handle, "display_name", (void**) &dp->name);
+    g_module_symbol(handle, "display_description", (void**) &dp->description);
+    g_module_symbol(handle, "display_thumbnail", (void**) &dp->thumbnail);
+    if (dp->init && !dp->init()) {
+      g_free(dp);
+      continue;
+    }
+    display_plugins = g_list_append(display_plugins, dp);
+    if (dp && dp->name && !g_strcasecmp(dp->name(), default_display)) current_display = dp;
   }
   g_dir_close(dir);
 
   g_free(default_display);
   g_free(path);
 
-  if (!current_plugin) current_plugin = g_list_nth_data(display_plugins, 0);
-  if (current_plugin->init) current_plugin->init();
+  if (!current_display) current_display = g_list_nth_data(display_plugins, 0);
 }
 
 static void
 unload_display_plugins() {
   int i, len = g_list_length(display_plugins);
   for (i = 0; i < len; i++) {
-    PLUGIN_INFO* pi = (PLUGIN_INFO*) g_list_nth_data(display_plugins, i);
-    if (pi->term) pi->term();
-    g_module_close(pi->handle);
-    g_free(pi);
+    DISPLAY_PLUGIN* dp = (DISPLAY_PLUGIN*) g_list_nth_data(display_plugins, i);
+    if (dp->term) dp->term();
+    g_module_close(dp->handle);
+    g_free(dp);
+  }
+}
+
+static void
+subscribe_show(NOTIFICATION_INFO* ni) {
+printf("%s\n", ni->text);
+  g_idle_add((GSourceFunc) current_display->show, ni);
+}
+
+static void
+load_subscribe_plugins() {
+  GDir *dir;
+  const gchar *filename;
+  gchar* path = g_build_filename(DATADIR, "subscribe", NULL);
+  dir = g_dir_open(path, 0, NULL);
+
+  sc.show = subscribe_show;
+  while ((filename = g_dir_read_name(dir))) {
+    if (!g_str_has_suffix(filename, G_MODULE_SUFFIX))
+      continue;
+
+    gchar* fullpath = g_build_filename(path, filename, NULL);
+    GModule* handle = g_module_open(fullpath, G_MODULE_BIND_LAZY);
+    if (!handle) {
+      g_free(fullpath);
+      continue;
+    }
+    SUBSCRIBE_PLUGIN* sp = g_new0(SUBSCRIBE_PLUGIN, 1);
+    sp->handle = handle;
+    g_module_symbol(handle, "subscribe_start", (void**) &sp->start);
+    g_module_symbol(handle, "subscribe_stop", (void**) &sp->stop);
+    g_module_symbol(handle, "subscribe_init", (void**) &sp->init);
+    g_module_symbol(handle, "subscribe_term", (void**) &sp->term);
+    g_module_symbol(handle, "subscribe_name", (void**) &sp->name);
+    g_module_symbol(handle, "subscribe_description", (void**) &sp->description);
+    g_module_symbol(handle, "subscribe_thumbnail", (void**) &sp->thumbnail);
+    if (sp->init && !sp->init(&sc)) {
+      g_free(sp);
+      continue;
+    }
+    sp->start();
+    subscribe_plugins = g_list_append(subscribe_plugins, sp);
+  }
+  g_dir_close(dir);
+
+  g_free(path);
+}
+
+static void
+unload_subscribe_plugins() {
+  int i, len = g_list_length(subscribe_plugins);
+  for (i = 0; i < len; i++) {
+    SUBSCRIBE_PLUGIN* sp = (SUBSCRIBE_PLUGIN*) g_list_nth_data(subscribe_plugins, i);
+    if (sp->term) sp->term();
+    g_module_close(sp->handle);
+    g_free(sp);
   }
 }
 
@@ -880,9 +953,11 @@ main(int argc, char* argv[]) {
   create_menu();
   fd = create_server();
   load_display_plugins();
+  load_subscribe_plugins();
 
   gtk_main();
 
+  unload_subscribe_plugins();
   unload_display_plugins();
   destroy_server(fd);
   destroy_menu();
