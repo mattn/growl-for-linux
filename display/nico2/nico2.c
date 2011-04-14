@@ -205,7 +205,7 @@ url2pixbuf(const char* url, GError** error) {
       if (loader) gdk_pixbuf_loader_close(loader, NULL);
     } else {
       _error = g_error_new_literal(G_FILE_ERROR, res,
-          curl_easy_strerror(res));
+      curl_easy_strerror(res));
     }
 
     free(head);
@@ -233,24 +233,24 @@ open_url(const gchar* url) {
 }
 
 static void
-notification_clicked(GtkWidget* widget, GdkEvent* event, gpointer user_data) {
+display_clicked(GtkWidget* widget, GdkEvent* event, gpointer user_data) {
   DISPLAY_INFO* di = (DISPLAY_INFO*) user_data;
   if (di->timeout >= 30) di->timeout = 30;
   if (di->ni->url && *di->ni->url) open_url(di->ni->url);
 }
 
 static gboolean
-notification_animation_func(gpointer data) {
+display_animation_func(gpointer data) {
   DISPLAY_INFO* di = (DISPLAY_INFO*) data;
 
   if (di->x + di->width < 0) {
     gtk_widget_destroy(di->popup);
     di->popup = NULL;
     notifications = g_list_remove(notifications, di);
-    g_free(di->ni->title);
-    g_free(di->ni->text);
-    g_free(di->ni->icon);
-    g_free(di->ni->url);
+    if (di->ni->title) g_free(di->ni->title);
+    if (di->ni->text) g_free(di->ni->text);
+    if (di->ni->icon) g_free(di->ni->icon);
+    if (di->ni->url) g_free(di->ni->url);
     g_free(di->ni);
     g_free(di);
     return FALSE;
@@ -262,7 +262,7 @@ notification_animation_func(gpointer data) {
 }
 
 G_MODULE_EXPORT gboolean
-notification_show(NOTIFICATION_INFO* ni) {
+display_show(NOTIFICATION_INFO* ni) {
   GdkColor color;
   GtkWidget* fixed;
   GtkWidget* image = NULL;
@@ -347,7 +347,7 @@ notification_show(NOTIFICATION_INFO* ni) {
   pango_font_description_free(font_desc);
 
   gtk_widget_set_events(di->popup, GDK_BUTTON_PRESS_MASK);
-  g_signal_connect(G_OBJECT(di->popup), "button-press-event", G_CALLBACK(notification_clicked), di);
+  g_signal_connect(G_OBJECT(di->popup), "button-press-event", G_CALLBACK(display_clicked), di);
 
   gtk_window_move(GTK_WINDOW(di->popup), di->x, di->y);
   gtk_widget_show_all(di->popup);
@@ -361,35 +361,35 @@ notification_show(NOTIFICATION_INFO* ni) {
   g_object_unref(bitmap);
 
   g_object_ref(di->popup);
-  g_timeout_add(20, notification_animation_func, di);
+  g_timeout_add(20, display_animation_func, di);
 
   return FALSE;
 }
 
 G_MODULE_EXPORT gboolean
-notification_init(gchar* _datadir) {
+display_init(gchar* _datadir) {
   datadir = g_strdup(_datadir);
   return TRUE;
 }
 
 G_MODULE_EXPORT void
-notification_term() {
+display_term() {
 }
 
 G_MODULE_EXPORT gchar*
-notification_name() {
+display_name() {
   return "Nico2";
 }
 
 G_MODULE_EXPORT gchar*
-notification_description() {
+display_description() {
   return "<span size=\"large\"><b>Nico2</b></span>\n"
     "<span>This is nico2 notification display.</span>\n"
     "<span>Slide notification from right to left similar to nico nico douga.</span>\n";
 }
 
 G_MODULE_EXPORT char**
-notification_thumbnail() {
+display_thumbnail() {
   return display_nico2;
 }
 

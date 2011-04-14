@@ -41,7 +41,6 @@
 #endif
 
 static GList* notifications = NULL;
-static gchar* datadir = NULL;
 static GdkPixmap* pixmap = NULL;
 static GdkBitmap* bitmap = NULL;
 static gint pixmap_width, pixmap_height;
@@ -209,7 +208,7 @@ url2pixbuf(const char* url, GError** error) {
       if (loader) gdk_pixbuf_loader_close(loader, NULL);
     } else {
       _error = g_error_new_literal(G_FILE_ERROR, res,
-          curl_easy_strerror(res));
+      curl_easy_strerror(res));
     }
 
     free(head);
@@ -237,23 +236,23 @@ open_url(const gchar* url) {
 }
 
 static void
-notification_clicked(GtkWidget* widget, GdkEvent* event, gpointer user_data) {
+display_clicked(GtkWidget* widget, GdkEvent* event, gpointer user_data) {
   DISPLAY_INFO* di = (DISPLAY_INFO*) user_data;
   if (di->timeout >= 30) di->timeout = 30;
   if (di->ni->url && *di->ni->url) open_url(di->ni->url);
 }
 
 static gboolean
-notification_animation_func(gpointer data) {
+display_animation_func(gpointer data) {
   DISPLAY_INFO* di = (DISPLAY_INFO*) data;
 
   if (di->timeout-- < 0) {
     gtk_widget_destroy(di->popup);
     notifications = g_list_remove(notifications, di);
-    g_free(di->ni->title);
-    g_free(di->ni->text);
-    g_free(di->ni->icon);
-    g_free(di->ni->url);
+    if (di->ni->title) g_free(di->ni->title);
+    if (di->ni->text) g_free(di->ni->text);
+    if (di->ni->icon) g_free(di->ni->icon);
+    if (di->ni->url) g_free(di->ni->url);
     g_free(di->ni);
     g_free(di);
     return FALSE;
@@ -275,7 +274,7 @@ notifications_compare(gconstpointer a, gconstpointer b) {
 }
 
 static gboolean
-notification_expose(GtkWidget *widget, GdkEventExpose *event, gpointer data) {
+display_expose(GtkWidget *widget, GdkEventExpose *event, gpointer data) {
   gdk_window_clear_area(
     widget->window,
     event->area.x, event->area.y, event->area.width, event->area.height);
@@ -294,7 +293,7 @@ label_size_allocate(GtkWidget* label, GtkAllocation* allocation, gpointer data) 
 }
 
 G_MODULE_EXPORT gboolean
-notification_show(NOTIFICATION_INFO* ni) {
+display_show(NOTIFICATION_INFO* ni) {
   GdkColor color;
   GtkWidget* vbox;
   GtkWidget* hbox;
@@ -349,7 +348,7 @@ notification_show(NOTIFICATION_INFO* ni) {
   gtk_window_stick(GTK_WINDOW(di->popup));
 
   vbox = gtk_vbox_new(FALSE, 5);
-  gtk_container_set_border_width(GTK_CONTAINER(vbox), 15);
+  gtk_container_set_border_width(GTK_CONTAINER(vbox), 18);
   gtk_container_add(GTK_CONTAINER(di->popup), vbox);
 
   hbox = gtk_hbox_new(FALSE, 5);
@@ -390,7 +389,7 @@ notification_show(NOTIFICATION_INFO* ni) {
   pango_font_description_free(font_desc);
 
   gtk_widget_set_events(di->popup, GDK_BUTTON_PRESS_MASK);
-  g_signal_connect(G_OBJECT(di->popup), "button-press-event", G_CALLBACK(notification_clicked), di);
+  g_signal_connect(G_OBJECT(di->popup), "button-press-event", G_CALLBACK(display_clicked), di);
 
   di->offset = 0;
   di->timeout = 500;
@@ -406,37 +405,36 @@ notification_show(NOTIFICATION_INFO* ni) {
   gdk_drawable_get_size(pixmap, &pixmap_width, &pixmap_height);
   gtk_widget_set_size_request(di->popup, pixmap_width, pixmap_height);
   gdk_window_shape_combine_mask(di->popup->window, bitmap, 0, 0);
-  g_signal_connect(G_OBJECT(di->popup), "expose-event", G_CALLBACK(notification_expose), di);
+  g_signal_connect(G_OBJECT(di->popup), "expose-event", G_CALLBACK(display_expose), di);
 
-  g_timeout_add(10, notification_animation_func, di);
+  g_timeout_add(10, display_animation_func, di);
 
   return FALSE;
 }
 
 G_MODULE_EXPORT gboolean
-notification_init(gchar* _datadir) {
-  datadir = g_strdup(_datadir);
+display_init() {
   return TRUE;
 }
 
 G_MODULE_EXPORT void
-notification_term() {
+display_term() {
 }
 
 G_MODULE_EXPORT gchar*
-notification_name() {
+display_name() {
   return "Balloon";
 }
 
 G_MODULE_EXPORT gchar*
-notification_description() {
+display_description() {
   return "<span size=\"large\"><b>Balloon</b></span>\n"
     "<span>This is balloon notification display.</span>\n"
     "<span>Fade-in black box. And fadeout after a while.</span>\n";
 }
 
 G_MODULE_EXPORT char**
-notification_thumbnail() {
+display_thumbnail() {
   return display_balloon;
 }
 
