@@ -149,8 +149,19 @@ set_config_string(const char* key, const char* value) {
 }
 
 static void
+my_gtk_status_icon_position_menu(GtkMenu* menu, gint* x, gint* y, gboolean* push_in, gpointer data) {
+  gtk_status_icon_position_menu(menu, x, y, push_in, data);
+#ifdef _WIN32
+  RECT rect;
+  SystemParametersInfo(SPI_GETWORKAREA, 0, &rect, 0);
+  gint h = GTK_WIDGET(menu)->requisition.height;
+  if (*y + h > rect.bottom) *y -= h;
+#endif
+}
+
+static void
 status_icon_popup(GtkStatusIcon* status_icon, guint button, guint32 activate_time, gpointer menu) {
-  gtk_menu_popup(GTK_MENU(menu), NULL, NULL, gtk_status_icon_position_menu, status_icon, button, activate_time);
+  gtk_menu_popup(GTK_MENU(menu), NULL, NULL, my_gtk_status_icon_position_menu, status_icon, button, activate_time);
 }
 
 static void
