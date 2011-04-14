@@ -9,4 +9,8 @@ typedef struct {
   gint timeout;
 } NOTIFICATION_INFO;
 
+typedef struct {
+  void (*show)(NOTIFICATION_INFO* ni);
+} SUBSCRIPTOR_CONTEXT;
+
 #endif /* _gol_h_ */
