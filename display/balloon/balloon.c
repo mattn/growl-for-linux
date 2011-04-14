@@ -288,10 +288,14 @@ notification_expose(GtkWidget *widget, GdkEventExpose *event, gpointer data) {
   return FALSE;
 }
 
+static void
+label_size_allocate(GtkWidget* label, GtkAllocation* allocation, gpointer data) {
+  gtk_widget_set_size_request(label, allocation->width - 2, -1);
+}
+
 G_MODULE_EXPORT gboolean
 notification_show(NOTIFICATION_INFO* ni) {
   GdkColor color;
-  GtkWidget* fixed;
   GtkWidget* vbox;
   GtkWidget* hbox;
   GtkWidget* label;
@@ -338,20 +342,18 @@ notification_show(NOTIFICATION_INFO* ni) {
 
   di->popup = gtk_window_new(GTK_WINDOW_POPUP);
   gtk_window_set_title(GTK_WINDOW(di->popup), "growl-for-linux");
-  gtk_window_set_resizable(GTK_WINDOW(di->popup), TRUE);
+  gtk_window_set_resizable(GTK_WINDOW(di->popup), FALSE);
   gtk_window_set_decorated(GTK_WINDOW(di->popup), FALSE);
   gtk_window_set_keep_above(GTK_WINDOW(di->popup), TRUE);
 
   gtk_window_stick(GTK_WINDOW(di->popup));
 
-  fixed = gtk_fixed_new();
-  gtk_container_set_border_width(GTK_CONTAINER(fixed), 30);
-  gtk_container_add(GTK_CONTAINER(di->popup), fixed);
-
   vbox = gtk_vbox_new(FALSE, 5);
-  gtk_container_add(GTK_CONTAINER(fixed), vbox);
+  gtk_container_set_border_width(GTK_CONTAINER(vbox), 15);
+  gtk_container_add(GTK_CONTAINER(di->popup), vbox);
 
   hbox = gtk_hbox_new(FALSE, 5);
+  gtk_box_pack_start(GTK_BOX(vbox), hbox, FALSE, TRUE, 0);
 
   if (di->ni->icon && *di->ni->icon) {
     GdkPixbuf* pixbuf = url2pixbuf(di->ni->icon, NULL);
@@ -377,11 +379,10 @@ notification_show(NOTIFICATION_INFO* ni) {
   gtk_widget_modify_font(label, font_desc);
   gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, FALSE, 0);
 
-  gtk_box_pack_start(GTK_BOX(vbox), hbox, FALSE, FALSE, 0);
-
   label = gtk_label_new(di->ni->text);
   gdk_color_parse("white", &color);
   gtk_widget_modify_fg(label, GTK_STATE_NORMAL, &color);
+  g_signal_connect(G_OBJECT(label), "size-allocate", G_CALLBACK(label_size_allocate), NULL);
   gtk_label_set_line_wrap(GTK_LABEL(label), TRUE);
   gtk_label_set_line_wrap_mode(GTK_LABEL(label), PANGO_WRAP_CHAR);
   gtk_box_pack_start(GTK_BOX(vbox), label, TRUE, FALSE, 0);
@@ -397,14 +398,13 @@ notification_show(NOTIFICATION_INFO* ni) {
   gtk_window_move(GTK_WINDOW(di->popup), di->x, di->y);
   gtk_window_set_opacity(GTK_WINDOW(di->popup), 0);
   gtk_widget_set_app_paintable(di->popup, TRUE);
-  //gtk_widget_set_double_buffered(di->popup, FALSE);
   gtk_widget_show_all(di->popup);
 
   if (pixmap == NULL) {
      pixmap = gdk_pixmap_create_from_xpm_d(di->popup->window, &bitmap, NULL, balloon);
   }
   gdk_drawable_get_size(pixmap, &pixmap_width, &pixmap_height);
-  gtk_widget_set_size_request(fixed, pixmap_width, pixmap_height);
+  gtk_widget_set_size_request(di->popup, pixmap_width, pixmap_height);
   gdk_window_shape_combine_mask(di->popup->window, bitmap, 0, 0);
   g_signal_connect(G_OBJECT(di->popup), "expose-event", G_CALLBACK(notification_expose), di);
 

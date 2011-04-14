@@ -257,8 +257,7 @@ notification_animation_func(gpointer data) {
 
   if (di->offset < 160) {
     di->offset += 2;
-    gtk_window_resize(GTK_WINDOW(di->popup), 180, di->offset);
-    gtk_window_move(GTK_WINDOW(di->popup), di->x, di->y - di->offset);
+	gdk_window_move_resize(di->popup->window, di->x, di->y - di->offset, 180, di->offset);
   }
 
   if (di->timeout < 30) {
@@ -272,12 +271,16 @@ notifications_compare(gconstpointer a, gconstpointer b) {
   return ((DISPLAY_INFO*)b)->pos < ((DISPLAY_INFO*)a)->pos;
 }
 
+static void
+label_size_allocate(GtkWidget* label, GtkAllocation* allocation, gpointer data) {
+  gtk_widget_set_size_request(label, allocation->width - 2, -1);
+}
+
 G_MODULE_EXPORT gboolean
 notification_show(gpointer data) {
   NOTIFICATION_INFO* ni = (NOTIFICATION_INFO*) data;
 
   GdkColor color;
-  GtkWidget* fixed;
   GtkWidget* vbox;
   GtkWidget* hbox;
   GtkWidget* label;
@@ -324,7 +327,7 @@ notification_show(gpointer data) {
 
   di->popup = gtk_window_new(GTK_WINDOW_POPUP);
   gtk_window_set_title(GTK_WINDOW(di->popup), "growl-for-linux");
-  gtk_window_set_resizable(GTK_WINDOW(di->popup), TRUE);
+  gtk_window_set_resizable(GTK_WINDOW(di->popup), FALSE);
   gtk_window_set_decorated(GTK_WINDOW(di->popup), FALSE);
   gtk_window_set_keep_above(GTK_WINDOW(di->popup), TRUE);
 
@@ -333,14 +336,12 @@ notification_show(gpointer data) {
   gdk_color_parse("lightgray", &color);
   gtk_widget_modify_bg(di->popup, GTK_STATE_NORMAL, &color);
 
-  fixed = gtk_fixed_new();
-  gtk_container_set_border_width(GTK_CONTAINER(fixed), 10);
-  gtk_container_add(GTK_CONTAINER(di->popup), fixed);
-
   vbox = gtk_vbox_new(FALSE, 5);
-  gtk_container_add(GTK_CONTAINER(fixed), vbox);
+  gtk_container_set_border_width(GTK_CONTAINER(vbox), 5);
+  gtk_container_add(GTK_CONTAINER(di->popup), vbox);
 
   hbox = gtk_hbox_new(FALSE, 5);
+  gtk_box_pack_start(GTK_BOX(vbox), hbox, FALSE, TRUE, 0);
 
   if (di->ni->icon && *di->ni->icon) {
     GdkPixbuf* pixbuf = url2pixbuf(di->ni->icon, NULL);
@@ -366,14 +367,13 @@ notification_show(gpointer data) {
   gtk_widget_modify_font(label, font_desc);
   gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, FALSE, 0);
 
-  gtk_box_pack_start(GTK_BOX(vbox), hbox, FALSE, FALSE, 0);
-
   label = gtk_label_new(di->ni->text);
   gdk_color_parse("black", &color);
   gtk_widget_modify_fg(label, GTK_STATE_NORMAL, &color);
+  g_signal_connect(G_OBJECT(label), "size-allocate", G_CALLBACK(label_size_allocate), NULL);
   gtk_label_set_line_wrap(GTK_LABEL(label), TRUE);
   gtk_label_set_line_wrap_mode(GTK_LABEL(label), PANGO_WRAP_CHAR);
-  gtk_box_pack_start(GTK_BOX(vbox), label, TRUE, FALSE, 0);
+  gtk_box_pack_start(GTK_BOX(vbox), label, FALSE, FALSE, 0);
 
   pango_font_description_free(font_desc);
 
