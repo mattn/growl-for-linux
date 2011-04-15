@@ -295,7 +295,14 @@ display_show(NOTIFICATION_INFO* ni) {
   gtk_container_add(GTK_CONTAINER(di->popup), fixed);
 
   if (di->ni->icon && *di->ni->icon) {
-    GdkPixbuf* pixbuf = url2pixbuf(di->ni->icon, NULL);
+    GdkPixbuf* pixbuf;
+    if (di->ni->local) {
+      gchar* newurl = g_filename_from_uri(di->ni->icon, NULL, NULL);
+      GError* error = NULL;
+      pixbuf = gdk_pixbuf_new_from_file(newurl ? newurl : di->ni->icon, &error);
+      if (newurl) g_free(newurl);
+    } else
+      pixbuf = url2pixbuf(di->ni->icon, NULL);
     if (pixbuf) {
       GdkPixbuf* tmp = gdk_pixbuf_scale_simple(pixbuf, 32, 32, GDK_INTERP_TILES);
       if (tmp) {
@@ -304,8 +311,8 @@ display_show(NOTIFICATION_INFO* ni) {
       }
       image = gtk_image_new_from_pixbuf(pixbuf);
       gtk_container_add(GTK_CONTAINER(fixed), image);
+      g_object_unref(pixbuf);
     }
-    g_object_unref(pixbuf);
   }
 
   PangoFontDescription* font_desc = pango_font_description_new();
@@ -336,7 +343,8 @@ display_show(NOTIFICATION_INFO* ni) {
   gdk_color_parse("white", &color);
   gdk_colormap_alloc_color(colormap, &color, TRUE, TRUE);
   gdk_gc_set_foreground (gc, &color);
-  gdk_draw_rectangle(bitmap, gc, TRUE, 0, di->height / 2 - 16, 32, 32);
+  if (image)
+    gdk_draw_rectangle(bitmap, gc, TRUE, 0, di->height / 2 - 16, 32, 32);
   gdk_draw_layout(bitmap, gc, 32 + 5, 0, layout);
 
   pango_font_description_free(font_desc);

@@ -64,6 +64,9 @@ typedef int socklen_t;
 #else
 # define closesocket(x) close(x)
 typedef int sockopt_t;
+# ifndef SD_BOTH
+#  define SD_BOTH SHUT_RDWR
+# endif
 #endif
 
 typedef struct {
@@ -250,6 +253,7 @@ preview_clicked(GtkWidget* widget, gpointer data) {
         ni->title = g_strdup("Preview Display");
         ni->text = g_strdup_printf("This is a preview of the '%s' display.", dp->name());
         ni->icon = g_build_filename(DATADIR, "data", "icon.png", NULL);
+        ni->local = TRUE;
         g_idle_add((GSourceFunc) dp->show, ni);
         break;
       }

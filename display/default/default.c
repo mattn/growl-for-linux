@@ -338,7 +338,14 @@ display_show(gpointer data) {
   gtk_box_pack_start(GTK_BOX(vbox), hbox, FALSE, TRUE, 0);
 
   if (di->ni->icon && *di->ni->icon) {
-    GdkPixbuf* pixbuf = url2pixbuf(di->ni->icon, NULL);
+    GdkPixbuf* pixbuf;
+    if (di->ni->local) {
+      gchar* newurl = g_filename_from_uri(di->ni->icon, NULL, NULL);
+      GError* error = NULL;
+      pixbuf = gdk_pixbuf_new_from_file(newurl ? newurl : di->ni->icon, &error);
+      if (newurl) g_free(newurl);
+    } else
+      pixbuf = url2pixbuf(di->ni->icon, NULL);
     if (pixbuf) {
       GdkPixbuf* tmp = gdk_pixbuf_scale_simple(pixbuf, 32, 32, GDK_INTERP_TILES);
       if (tmp) {
@@ -346,9 +353,9 @@ display_show(gpointer data) {
         pixbuf = tmp;
       }
       image = gtk_image_new_from_pixbuf(pixbuf);
-      gtk_box_pack_start(GTK_BOX(hbox), image, FALSE, FALSE, 0);
+      gtk_container_add(GTK_CONTAINER(hbox), image);
+      g_object_unref(pixbuf);
     }
-    g_object_unref(pixbuf);
   }
 
   PangoFontDescription* font_desc = pango_font_description_new();
