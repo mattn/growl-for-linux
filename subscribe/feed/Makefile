@@ -1,4 +1,4 @@
-PKGCONFIG=gtk+-2.0 libcurl sqlite3
+PKGCONFIG=glib-2.0 libcurl libxml-2.0
 CFLAGS=
 
 all : libfeed.so
