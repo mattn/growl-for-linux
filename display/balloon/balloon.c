@@ -365,7 +365,7 @@ display_show(NOTIFICATION_INFO* ni) {
         pixbuf = tmp;
       }
       image = gtk_image_new_from_pixbuf(pixbuf);
-      gtk_container_add(GTK_CONTAINER(hbox), image);
+      gtk_box_pack_start(GTK_BOX(hbox), image, FALSE, FALSE, 0);
       g_object_unref(pixbuf);
     }
   }
