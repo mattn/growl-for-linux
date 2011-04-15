@@ -101,14 +101,15 @@ static SUBSCRIPTOR_CONTEXT sc;
 #endif
 
 static long
-readall(int fd, char** ptr) {
+read_all(int fd, char** ptr) {
   int i = 0, r;
-  *ptr = (char*) calloc(BUFSIZ, 1);
+  *ptr = (char*) calloc(BUFSIZ + 1, 1);
   while (*ptr && (r = recv(fd, *ptr + i, BUFSIZ, 0)) > 0) {
     i += r;
     if (r > 2 && !strncmp(*ptr + i - 4, "\r\n\r\n", 4)) break;
-    *ptr = realloc(*ptr, BUFSIZ + i);
+    *ptr = realloc(*ptr, BUFSIZ + i + 1);
   }
+  *(*ptr+i) = 0;
   return i;
 }
 
@@ -418,9 +419,8 @@ recv_thread(gpointer data) {
 
   char* display = NULL;
   char* ptr;
-  int r = readall(sock, &ptr);
+  int r = read_all(sock, &ptr);
   char* top = ptr;
-  char* end = ptr + r;
   if (!strncmp(ptr, "GNTP/1.0 ", 9)) {
     ptr += 9;
     if (!strncmp(ptr, "REGISTER ", 9)) {
@@ -433,11 +433,9 @@ recv_thread(gpointer data) {
       if (!strncmp(ptr, "NONE", 4) && strchr("\n ", *(ptr+5))) {
         if (is_local_app && get_config_bool("require_password_for_local_apps")) goto leave;
         if (!is_local_app && get_config_bool("require_password_for_lan_apps")) goto leave;
-        ptr = strchr(ptr, '\r');
-        if (!ptr || ptr > end) goto leave;
-        *ptr++ = 0;
-        if (*ptr != '\n') goto leave;
-        *ptr++ = 0;
+        if (!(ptr = strstr(ptr, "\r\n"))) goto leave;
+        *ptr = 0;
+        ptr += 2;
         data = (char*) calloc(r-(ptr-top)-4+1, 1);
         if (!data) goto leave;
         memcpy(data, ptr, r-(ptr-top)-4);
@@ -447,13 +445,11 @@ recv_thread(gpointer data) {
             strncmp(ptr, "3DES:", 5)) goto leave;
 
         char* crypt_algorythm = ptr;
-        ptr = strchr(ptr, ':');
-        if (!ptr || ptr > end) goto leave;
+        while (*ptr != ':') ptr++;
         *ptr++ = 0;
         char* iv;
         iv = ptr;
-        ptr = strchr(ptr, ' ');
-        if (!ptr || ptr > end) goto leave;
+        if (!(ptr = strchr(ptr, ' '))) goto leave;
         *ptr++ = 0;
 
         if (strncmp(ptr, "MD5:", 4) &&
@@ -461,20 +457,16 @@ recv_thread(gpointer data) {
             strncmp(ptr, "SHA256:", 7)) goto leave;
 
         char* hash_algorythm = ptr;
-        ptr = strchr(ptr, ':');
-        if (!ptr || ptr > end) goto leave;
+        while (*ptr != ':') ptr++;
         *ptr++ = 0;
         char* key = ptr;
-        ptr = strchr(ptr, '.');
-        if (!ptr || ptr > end) goto leave;
+        if (!(ptr = strchr(ptr, '.'))) goto leave;
         *ptr++ = 0;
         char* salt = ptr;
 
-        ptr = strchr(ptr, '\r');
-        if (!ptr || ptr > end) goto leave;
-        *ptr++ = 0;
-        if (*ptr != '\n') goto leave;
-        *ptr++ = 0;
+        if (!(ptr = strstr(ptr, "\r\n"))) goto leave;
+        *ptr = 0;
+        ptr += 2;
 
         int n, keylen, saltlen, ivlen;
 
@@ -547,11 +539,17 @@ recv_thread(gpointer data) {
       ptr = data;
       while (*ptr) {
         char* line = ptr;
-        ptr = strchr(ptr, '\r');
-        if (!ptr) goto leave;
-        *ptr++ = 0;
-        if (*ptr != '\n') goto leave;
-        *ptr++ = 0;
+        while (*ptr) {
+          if (*ptr == '\r') {
+            if (*(ptr+1) == '\n') {
+              *ptr = 0;
+              ptr += 2;
+              break;
+            }
+            *ptr = '\n';
+          }
+          ptr++;
+        }
         if (!strncmp(line, "Notification-Title:", 19)) {
           line += 20;
           while(isspace(*line)) line++;
