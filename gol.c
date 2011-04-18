@@ -264,7 +264,9 @@ preview_clicked(GtkWidget* widget, gpointer data) {
 
 static gboolean
 password_focus_out(GtkWidget* widget, GdkEvent* event, gpointer data) {
-  set_config_string("password", gtk_entry_get_text(GTK_ENTRY(widget)));
+  g_free(password);
+  password = g_strdup(gtk_entry_get_text(GTK_ENTRY(widget)));
+  set_config_string("password", password);
   return FALSE;
 }
 
@@ -401,7 +403,7 @@ exit_clicked(GtkWidget* widget, GdkEvent* event, gpointer user_data) {
 }
 
 static gpointer
-recv_thread(gpointer data) {
+gntp_recv_proc(gpointer data) {
   int sock = (int) data;
   int need_to_show = 0;
   int is_local_app = FALSE;
@@ -409,7 +411,7 @@ recv_thread(gpointer data) {
   NOTIFICATION_INFO* ni = g_new0(NOTIFICATION_INFO, 1);
   if (!ni) {
     perror("g_new0");
-    return;
+    return NULL;
   }
 
   struct sockaddr_in client;
@@ -853,7 +855,7 @@ unload_subscribe_plugins() {
 }
 
 static gboolean
-socket_accepted(GIOChannel* source, GIOCondition condition, gpointer data) {
+gntp_accepted(GIOChannel* source, GIOCondition condition, gpointer data) {
   int fd = g_io_channel_unix_get_fd(source);
   int sock;
   struct sockaddr_in client;
@@ -865,20 +867,123 @@ socket_accepted(GIOChannel* source, GIOCondition condition, gpointer data) {
   }
 
 #ifdef G_THREADS_ENABLED
-  g_thread_create(recv_thread, (gpointer) sock, FALSE, NULL);
+  g_thread_create(gntp_recv_proc, (gpointer) sock, FALSE, NULL);
 #else
-  recv_thread((gpointer) sock);
+  gntp_recv_proc((gpointer) sock);
 #endif
   return TRUE;
 }
 
-static int
-create_server() {
-#ifdef _WIN32
-  WSADATA wsaData;
-  WSAStartup(MAKEWORD(2, 2), &wsaData);
-#endif
+typedef struct {
+  unsigned char ver;
+  unsigned char type;
+  unsigned short app_name_length;
+  unsigned char nall;
+  unsigned char ndef;
+} GROWL_REGIST_PACKET;
 
+typedef struct {
+  unsigned char ver;
+  unsigned char type;
+  unsigned short flags;
+  unsigned short notification_length;
+  unsigned short title_length;
+  unsigned short description_length;
+  unsigned short app_name_length;
+} GROWL_NOTIFY_PACKET;
+
+static gboolean
+udp_recv_proc(GIOChannel* source, GIOCondition condition, gpointer data) {
+  int is_local_app = FALSE;
+  int fd = g_io_channel_unix_get_fd(source);
+  char buf[BUFSIZ];
+  memset(buf, 0, sizeof(buf));
+
+  ssize_t len = recvfrom(fd, (char*) buf, sizeof(buf), 0, NULL, NULL);
+  if (len > 0) {
+    if (buf[0] == 1) {
+      if (buf[1] == 0 || buf[1] == 2 || buf[1] == 4) {
+        //GROWL_REGIST_PACKET* packet = (GROWL_REGIST_PACKET*) &buf[0];
+      } else
+      if (buf[1] == 1 || buf[1] == 3 || buf[1] == 5) {
+        GROWL_NOTIFY_PACKET* packet = (GROWL_NOTIFY_PACKET*) &buf[0];
+        if (packet->type == 1) {
+          char digest[MD5_DIGEST_LENGTH] = {0};
+          MD5_CTX ctx;
+          MD5_Init(&ctx);
+          MD5_Update(&ctx, buf, len - sizeof(digest));
+          MD5_Update(&ctx, (char*) password, strlen(password));
+          MD5_Final((unsigned char*) digest, &ctx);
+          int n;
+          for (n = 0; n < sizeof(digest); n++) {
+            if (digest[n] != buf[len-sizeof(digest)+n])
+              return TRUE;
+          }
+        } else
+        if (packet->type == 3) {
+          char digest[SHA256_DIGEST_LENGTH] = {0};
+          SHA256_CTX ctx;
+          SHA256_Init(&ctx);
+          SHA256_Update(&ctx, buf, len - sizeof(digest));
+          SHA256_Update(&ctx, password, strlen(password));
+          SHA256_Final((unsigned char*) digest, &ctx);
+          int n;
+          for (n = 0; n < sizeof(digest); n++) {
+            if (digest[n] != buf[len-sizeof(digest)+n])
+              return TRUE;
+          }
+        } else {
+          if (is_local_app && get_config_bool("require_password_for_local_apps")) goto leave;
+          if (!is_local_app && get_config_bool("require_password_for_lan_apps")) goto leave;
+        }
+        NOTIFICATION_INFO* ni = g_new0(NOTIFICATION_INFO, 1);
+        ni->title = g_strndup(
+            &buf[sizeof(GROWL_NOTIFY_PACKET)
+              + ntohs(packet->notification_length)], ntohs(packet->title_length));
+        ni->text = g_strndup(
+            &buf[sizeof(GROWL_NOTIFY_PACKET)
+              + ntohs(packet->notification_length) + ntohs(packet->title_length)],
+              ntohs(packet->description_length));
+        ni->local = TRUE;
+        g_idle_add((GSourceFunc) current_display->show, ni); // call once
+      }
+    }
+  }
+leave:
+
+  return TRUE;
+}
+
+static int
+create_udp_server() {
+  int fd;
+  if ((fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
+    perror("socket");
+    exit(1);
+  }
+
+  struct sockaddr_in server_addr;
+  memset((char *) &server_addr, 0, sizeof(server_addr));
+  server_addr.sin_family = AF_INET;
+  server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+  server_addr.sin_port = htons(9887);
+
+  if (bind(fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
+    perror("bind");
+    exit(1);
+  }
+
+  fd_set fdset;
+  FD_SET(fd, &fdset);
+  GIOChannel* channel = g_io_channel_unix_new(fd);
+  g_io_add_watch(channel, G_IO_IN | G_IO_ERR, udp_recv_proc, NULL);
+  g_io_channel_unref(channel);
+
+  return fd;
+}
+
+static int
+create_gntp_server() {
   int fd;
   if ((fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
     perror("socket");
@@ -917,24 +1022,31 @@ create_server() {
   fd_set fdset;
   FD_SET(fd, &fdset);
   GIOChannel* channel = g_io_channel_unix_new(fd);
-  g_io_add_watch(channel, G_IO_IN | G_IO_ERR, socket_accepted, NULL);
+  g_io_add_watch(channel, G_IO_IN | G_IO_ERR, gntp_accepted, NULL);
   g_io_channel_unref(channel);
 
   return fd;
 }
 
-static void
-destroy_server(int fd) {
-  closesocket(fd);
 
-#ifdef _WIN32
-  WSACleanup();
-#endif
+
+static void
+destroy_gntp_server(int fd) {
+  closesocket(fd);
+}
+
+static void
+destroy_udp_server(int fd) {
+  closesocket(fd);
 }
 
 int
 main(int argc, char* argv[]) {
-  int fd;
+#ifdef _WIN32
+  WSADATA wsaData;
+  WSAStartup(MAKEWORD(2, 2), &wsaData);
+#endif
+  int gntp_fd, udp_fd;
 
   gchar* program = g_find_program_in_path(argv[0]);
   exepath = g_path_get_dirname(program);
@@ -955,7 +1067,8 @@ main(int argc, char* argv[]) {
 
   create_config();
   create_menu();
-  fd = create_server();
+  gntp_fd = create_gntp_server();
+  udp_fd = create_udp_server();
   load_display_plugins();
   load_subscribe_plugins();
 
@@ -963,11 +1076,15 @@ main(int argc, char* argv[]) {
 
   unload_subscribe_plugins();
   unload_display_plugins();
-  destroy_server(fd);
+  destroy_gntp_server(gntp_fd);
+  destroy_udp_server(udp_fd);
   destroy_menu();
   destroy_config();
   g_free(exepath);
 
+#ifdef _WIN32
+  WSACleanup();
+#endif
   return 0;
 }
 
