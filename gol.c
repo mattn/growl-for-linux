@@ -409,6 +409,7 @@ recv_thread(gpointer data) {
   NOTIFICATION_INFO* ni = g_new0(NOTIFICATION_INFO, 1);
   if (!ni) {
     perror("g_new0");
+    return;
   }
 
   struct sockaddr_in client;

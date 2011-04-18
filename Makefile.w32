@@ -39,3 +39,6 @@ gol.res : gol.rc
 
 clean:
 	-rm *.o *.res *.exe
+	-cd display/default && ${MAKE} -f Makefile.w32 clean
+	-cd display/balloon && ${MAKE} -f Makefile.w32 clean
+	-cd display/nico2 && ${MAKE} -f Makefile.w32 clean
