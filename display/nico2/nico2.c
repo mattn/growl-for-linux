@@ -268,6 +268,7 @@ display_show(NOTIFICATION_INFO* ni) {
   DISPLAY_INFO* di = g_new0(DISPLAY_INFO, 1);
   if (!di) {
     perror("g_new0");
+    return FALSE;
   }
   di->ni = ni;
 
