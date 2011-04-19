@@ -384,6 +384,7 @@ display_show(NOTIFICATION_INFO* ni) {
   gdk_color_parse("white", &color);
   gtk_widget_modify_fg(label, GTK_STATE_NORMAL, &color);
   g_signal_connect(G_OBJECT(label), "size-allocate", G_CALLBACK(label_size_allocate), NULL);
+  gtk_label_set_justify(GTK_LABEL(label), GTK_JUSTIFY_LEFT);
   gtk_label_set_line_wrap(GTK_LABEL(label), TRUE);
   gtk_label_set_line_wrap_mode(GTK_LABEL(label), PANGO_WRAP_CHAR);
   gtk_box_pack_start(GTK_BOX(vbox), label, TRUE, FALSE, 0);

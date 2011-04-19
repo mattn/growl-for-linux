@@ -91,6 +91,8 @@ typedef struct {
 } DISPLAY_PLUGIN;
 
 static gchar* password = NULL;
+static gboolean require_password_for_local_apps = FALSE;
+static gboolean require_password_for_lan_apps = FALSE;
 static sqlite3 *db = NULL;
 static GtkStatusIcon* status_icon = NULL;
 static GList* display_plugins = NULL;
@@ -271,9 +273,15 @@ password_focus_out(GtkWidget* widget, GdkEvent* event, gpointer data) {
 }
 
 static void
-required_password_toggled(GtkToggleButton *togglebutton, gpointer data) {
-  gchar* key = (gchar*) data;
-  set_config_bool(key, gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(togglebutton)));
+require_password_for_local_apps_changed(GtkToggleButton *togglebutton, gpointer data) {
+  require_password_for_local_apps = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(togglebutton));
+  set_config_bool("require_password_for_local_apps", require_password_for_local_apps);
+}
+
+static void
+require_password_for_lan_apps_changed(GtkToggleButton *togglebutton, gpointer data) {
+  require_password_for_lan_apps = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(togglebutton));
+  set_config_bool("require_password_for_lan_apps", require_password_for_lan_apps);
 }
 
 static void
@@ -347,12 +355,12 @@ settings_clicked(GtkWidget* widget, GdkEvent* event, gpointer user_data) {
     gtk_notebook_append_page(GTK_NOTEBOOK(notebook), vbox, gtk_label_new("Security"));
     GtkWidget* checkbutton;
     checkbutton = gtk_check_button_new_with_label("Require password for local apps");
-    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(checkbutton), get_config_bool("require_password_for_local_apps"));
-    g_signal_connect(G_OBJECT(checkbutton), "toggled", G_CALLBACK(required_password_toggled), "require_password_for_local_apps");
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(checkbutton), require_password_for_local_apps);
+    g_signal_connect(G_OBJECT(checkbutton), "toggled", G_CALLBACK(require_password_for_local_apps_changed), NULL);
     gtk_box_pack_start(GTK_BOX(vbox), checkbutton, FALSE, FALSE, 0);
     checkbutton = gtk_check_button_new_with_label("Require password for LAN apps");
-    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(checkbutton), get_config_bool("require_password_for_lan_apps"));
-    g_signal_connect(G_OBJECT(checkbutton), "toggled", G_CALLBACK(required_password_toggled), "require_password_for_lan_apps");
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(checkbutton), require_password_for_lan_apps);
+    g_signal_connect(G_OBJECT(checkbutton), "toggled", G_CALLBACK(require_password_for_lan_apps_changed), NULL);
     gtk_box_pack_start(GTK_BOX(vbox), checkbutton, FALSE, FALSE, 0);
     GtkWidget* hbox = gtk_hbox_new(FALSE, 5);
     gtk_box_pack_start(GTK_BOX(vbox), hbox, FALSE, FALSE, 0);
@@ -405,14 +413,7 @@ exit_clicked(GtkWidget* widget, GdkEvent* event, gpointer user_data) {
 static gpointer
 gntp_recv_proc(gpointer data) {
   int sock = (int) data;
-  int need_to_show = 0;
   int is_local_app = FALSE;
-
-  NOTIFICATION_INFO* ni = g_new0(NOTIFICATION_INFO, 1);
-  if (!ni) {
-    perror("g_new0");
-    return NULL;
-  }
 
   struct sockaddr_in client;
   int client_len = sizeof(client);
@@ -424,126 +425,131 @@ gntp_recv_proc(gpointer data) {
     }
   }
 
-  char* display = NULL;
   char* ptr;
   int r = read_all(sock, &ptr);
   char* top = ptr;
   if (!strncmp(ptr, "GNTP/1.0 ", 9)) {
     ptr += 9;
-    if (!strncmp(ptr, "REGISTER ", 9)) {
-      ptr += 9;
-      // TODO: register
-    } else
-    if (!strncmp(ptr, "NOTIFY ", 7)) {
-      ptr += 7;
-      char* data = NULL;
-      if (!strncmp(ptr, "NONE", 4) && strchr("\n ", *(ptr+5))) {
-        if (is_local_app && get_config_bool("require_password_for_local_apps")) goto leave;
-        if (!is_local_app && get_config_bool("require_password_for_lan_apps")) goto leave;
-        if (!(ptr = strstr(ptr, "\r\n"))) goto leave;
-        *ptr = 0;
-        ptr += 2;
-        data = (char*) calloc(r-(ptr-top)-4+1, 1);
-        if (!data) goto leave;
-        memcpy(data, ptr, r-(ptr-top)-4);
-      } else {
-        if (strncmp(ptr, "AES:", 4) &&
-            strncmp(ptr, "DES:", 4) &&
-            strncmp(ptr, "3DES:", 5)) goto leave;
 
-        char* crypt_algorythm = ptr;
-        while (*ptr != ':') ptr++;
-        *ptr++ = 0;
-        char* iv;
-        iv = ptr;
-        if (!(ptr = strchr(ptr, ' '))) goto leave;
-        *ptr++ = 0;
+    char* command = ptr;
+    if (!strncmp(ptr, "REGISTER ", 9)) ptr += 8;
+    else if (!strncmp(ptr, "NOTIFY ", 7)) ptr += 6;
+    else goto leave;
 
-        if (strncmp(ptr, "MD5:", 4) &&
-            strncmp(ptr, "SHA1:", 5) &&
-            strncmp(ptr, "SHA256:", 7)) goto leave;
+    *ptr++ = 0;
 
-        char* hash_algorythm = ptr;
-        while (*ptr != ':') ptr++;
-        *ptr++ = 0;
-        char* key = ptr;
-        if (!(ptr = strchr(ptr, '.'))) goto leave;
-        *ptr++ = 0;
-        char* salt = ptr;
+    char* data = NULL;
+    if (!strncmp(ptr, "NONE", 4) && strchr("\n ", *(ptr+5))) {
+      if (is_local_app && get_config_bool("require_password_for_local_apps")) goto leave;
+      if (!is_local_app && get_config_bool("require_password_for_lan_apps")) goto leave;
+      if (!(ptr = strstr(ptr, "\r\n"))) goto leave;
+      *ptr = 0;
+      ptr += 2;
+      data = (char*) calloc(r-(ptr-top)-4+1, 1);
+      if (!data) goto leave;
+      memcpy(data, ptr, r-(ptr-top)-4);
+    } else {
+      if (strncmp(ptr, "AES:", 4) &&
+          strncmp(ptr, "DES:", 4) &&
+          strncmp(ptr, "3DES:", 5)) goto leave;
 
-        if (!(ptr = strstr(ptr, "\r\n"))) goto leave;
-        *ptr = 0;
-        ptr += 2;
+      char* crypt_algorythm = ptr;
+      while (*ptr != ':') ptr++;
+      *ptr++ = 0;
+      char* iv;
+      iv = ptr;
+      if (!(ptr = strchr(ptr, ' '))) goto leave;
+      *ptr++ = 0;
 
-        int n, keylen, saltlen, ivlen;
+      if (strncmp(ptr, "MD5:", 4) &&
+          strncmp(ptr, "SHA1:", 5) &&
+          strncmp(ptr, "SHA256:", 7)) goto leave;
 
-        char hex[3];
-        hex[2] = 0;
-        saltlen = strlen(salt) / 2;
-        for (n = 0; n < saltlen; n++)
-          salt[n] = unhex(salt[n * 2]) * 16 + unhex(salt[n * 2 + 1]);
-        keylen = strlen(key) / 2;
-        for (n = 0; n < keylen; n++)
-          key[n] = unhex(key[n * 2]) * 16 + unhex(key[n * 2 + 1]);
-        ivlen = strlen(iv) / 2;
-        for (n = 0; n < ivlen; n++)
-          iv[n] = unhex(iv[n * 2]) * 16 + unhex(iv[n * 2 + 1]);
+      char* hash_algorythm = ptr;
+      while (*ptr != ':') ptr++;
+      *ptr++ = 0;
+      char* key = ptr;
+      if (!(ptr = strchr(ptr, '.'))) goto leave;
+      *ptr++ = 0;
+      char* salt = ptr;
 
-        char digest[32] = {0};
-        memset(digest, 0, sizeof(digest));
+      if (!(ptr = strstr(ptr, "\r\n"))) goto leave;
+      *ptr = 0;
+      ptr += 2;
 
-        if (!strcmp(hash_algorythm, "MD5")) {
-          MD5_CTX ctx;
-          MD5_Init(&ctx);
-          MD5_Update(&ctx, password, strlen(password));
-          MD5_Update(&ctx, salt, saltlen);
-          MD5_Final((unsigned char*) digest, &ctx);
-        }
-        if (!strcmp(hash_algorythm, "SHA1")) {
-          SHA_CTX ctx;
-          SHA1_Init(&ctx);
-          SHA1_Update(&ctx, password, strlen(password));
-          SHA1_Update(&ctx, salt, saltlen);
-          SHA1_Final((unsigned char*) digest, &ctx);
-        }
-        if (!strcmp(hash_algorythm, "SHA256")) {
-          SHA256_CTX ctx;
-          SHA256_Init(&ctx);
-          SHA256_Update(&ctx, password, strlen(password));
-          SHA256_Update(&ctx, salt, saltlen);
-          SHA256_Final((unsigned char*) digest, &ctx);
-        }
+      int n, keylen, saltlen, ivlen;
 
-        data = (char*) calloc(r, 1);
-        if (!data) goto leave;
-        if (!strcmp(crypt_algorythm, "AES")) {
-          AES_KEY aeskey;
-          AES_set_decrypt_key((unsigned char*) digest, 24 * 8, &aeskey);
-          AES_cbc_encrypt((unsigned char*) ptr, (unsigned char*) data,
-              r-(ptr-top)-6, &aeskey, (unsigned char*) iv, AES_DECRYPT);
-        }
-        if (!strcmp(crypt_algorythm, "DES")) {
-          des_key_schedule schedule;
-          DES_set_key_unchecked((const_DES_cblock*) &digest, &schedule);
-          DES_ncbc_encrypt((unsigned char*) ptr, (unsigned char*) data,
-              r-(ptr-top)-6, &schedule, (const_DES_cblock*) &iv, DES_DECRYPT);
-        }
-        if (!strcmp(crypt_algorythm, "3DES")) {
-          char key1[8], key2[8], key3[8];
-          memcpy(key1, digest+ 0, 8);
-          memcpy(key2, digest+ 8, 8);
-          memcpy(key3, digest+16, 8);
-          des_key_schedule schedule1, schedule2, schedule3;
-          DES_set_key_unchecked((const_DES_cblock*) &key1, &schedule1);
-          DES_set_key_unchecked((const_DES_cblock*) &key2, &schedule2);
-          DES_set_key_unchecked((const_DES_cblock*) &key3, &schedule3);
-          des_ede3_cbc_encrypt((unsigned char*) ptr, (unsigned char*) data,
-              r-(ptr-top)-6, schedule1, schedule2, schedule3,
-              (const_DES_cblock*) &iv, DES_DECRYPT);
-        }
+      char hex[3];
+      hex[2] = 0;
+      saltlen = strlen(salt) / 2;
+      for (n = 0; n < saltlen; n++)
+        salt[n] = unhex(salt[n * 2]) * 16 + unhex(salt[n * 2 + 1]);
+      keylen = strlen(key) / 2;
+      for (n = 0; n < keylen; n++)
+        key[n] = unhex(key[n * 2]) * 16 + unhex(key[n * 2 + 1]);
+      ivlen = strlen(iv) / 2;
+      for (n = 0; n < ivlen; n++)
+        iv[n] = unhex(iv[n * 2]) * 16 + unhex(iv[n * 2 + 1]);
+
+      char digest[32] = {0};
+      memset(digest, 0, sizeof(digest));
+
+      if (!strcmp(hash_algorythm, "MD5")) {
+        MD5_CTX ctx;
+        MD5_Init(&ctx);
+        MD5_Update(&ctx, password, strlen(password));
+        MD5_Update(&ctx, salt, saltlen);
+        MD5_Final((unsigned char*) digest, &ctx);
+      }
+      if (!strcmp(hash_algorythm, "SHA1")) {
+        SHA_CTX ctx;
+        SHA1_Init(&ctx);
+        SHA1_Update(&ctx, password, strlen(password));
+        SHA1_Update(&ctx, salt, saltlen);
+        SHA1_Final((unsigned char*) digest, &ctx);
+      }
+      if (!strcmp(hash_algorythm, "SHA256")) {
+        SHA256_CTX ctx;
+        SHA256_Init(&ctx);
+        SHA256_Update(&ctx, password, strlen(password));
+        SHA256_Update(&ctx, salt, saltlen);
+        SHA256_Final((unsigned char*) digest, &ctx);
       }
 
-      ptr = data;
+      data = (char*) calloc(r, 1);
+      if (!data) goto leave;
+      if (!strcmp(crypt_algorythm, "AES")) {
+        AES_KEY aeskey;
+        AES_set_decrypt_key((unsigned char*) digest, 24 * 8, &aeskey);
+        AES_cbc_encrypt((unsigned char*) ptr, (unsigned char*) data,
+            r-(ptr-top)-6, &aeskey, (unsigned char*) iv, AES_DECRYPT);
+      }
+      if (!strcmp(crypt_algorythm, "DES")) {
+        des_key_schedule schedule;
+        DES_set_key_unchecked((const_DES_cblock*) &digest, &schedule);
+        DES_ncbc_encrypt((unsigned char*) ptr, (unsigned char*) data,
+            r-(ptr-top)-6, &schedule, (const_DES_cblock*) &iv, DES_DECRYPT);
+      }
+      if (!strcmp(crypt_algorythm, "3DES")) {
+        char key1[8], key2[8], key3[8];
+        memcpy(key1, digest+ 0, 8);
+        memcpy(key2, digest+ 8, 8);
+        memcpy(key3, digest+16, 8);
+        des_key_schedule schedule1, schedule2, schedule3;
+        DES_set_key_unchecked((const_DES_cblock*) &key1, &schedule1);
+        DES_set_key_unchecked((const_DES_cblock*) &key2, &schedule2);
+        DES_set_key_unchecked((const_DES_cblock*) &key3, &schedule3);
+        des_ede3_cbc_encrypt((unsigned char*) ptr, (unsigned char*) data,
+            r-(ptr-top)-6, schedule1, schedule2, schedule3,
+            (const_DES_cblock*) &iv, DES_DECRYPT);
+      }
+    }
+
+    ptr = data;
+    if (!strcmp(command, "REGISTER")) {
+      char* application_name = NULL;
+      char* application_icon = NULL;
+      int notifications_count = 0;
       while (*ptr) {
         char* line = ptr;
         while (*ptr) {
@@ -557,44 +563,176 @@ gntp_recv_proc(gpointer data) {
           }
           ptr++;
         }
+        if (strlen(line) == 0) break;
+
+        if (!strncmp(line, "Application-Name:", 17)) {
+          line += 18;
+          while(isspace(*line)) line++;
+          if (application_name) g_free(application_name);
+          application_name = g_strdup(line);
+        }
+        if (!strncmp(line, "Application-Icon:", 17)) {
+          line += 18;
+          while(isspace(*line)) line++;
+          if (application_icon) g_free(application_icon);
+          application_icon = g_strdup(line);
+        }
+        if (!strncmp(line, "Notifications-Count:", 20)) {
+          line += 21;
+          while(isspace(*line)) line++;
+          notifications_count = atol(line);
+        }
+      }
+      char* notification_name = NULL;
+      char* notification_icon = NULL;
+      gboolean notification_enabled = FALSE;
+      char* notification_display_name = NULL;
+      int n;
+      for (n = 0; n < notifications_count; n++) {
+        while (*ptr) {
+          char* line = ptr;
+          while (*ptr) {
+            if (*ptr == '\r') {
+              if (*(ptr+1) == '\n') {
+                *ptr = 0;
+                ptr += 2;
+                break;
+              }
+              *ptr = '\n';
+            }
+            ptr++;
+          }
+          if (strlen(line) == 0) break;
+
+          if (!strncmp(line, "Notification-Name:", 18)) {
+            line += 19;
+            while(isspace(*line)) line++;
+            if (notification_name) g_free(notification_name);
+            notification_name = g_strdup(line);
+          }
+          if (!strncmp(line, "Notification-Icon:", 18)) {
+            line += 19;
+            while(isspace(*line)) line++;
+            if (notification_icon) g_free(notification_icon);
+            notification_icon = g_strdup(line);
+          }
+          if (!strncmp(line, "Notification-Enabled:", 18)) {
+            line += 19;
+            while(isspace(*line)) line++;
+            notification_enabled = strcasecmp(line, "true") == 0;
+          }
+          if (!strncmp(line, "Notification-Display-Name:", 26)) {
+            line += 27;
+            while(isspace(*line)) line++;
+            if (notification_display_name) g_free(notification_display_name);
+            notification_display_name = g_strdup(line);
+          }
+        }
+      }
+      if (application_name && notification_name) {
+        ptr = "GNTP/1.0 OK\r\n\r\n";
+        send(sock, ptr, strlen(ptr), 0);
+      } else {
+        ptr = "GNTP/1.0 -ERROR Invalid data\r\n"
+            "Error-Description: Invalid data\r\n\r\n";
+        send(sock, ptr, strlen(ptr), 0);
+      }
+      if (application_name) g_free(application_name);
+      if (application_icon) g_free(application_icon);
+      if (notification_name) g_free(notification_name);
+      if (notification_icon) g_free(notification_icon);
+      if (notification_display_name) g_free(notification_display_name);
+    } else {
+      NOTIFICATION_INFO* ni = g_new0(NOTIFICATION_INFO, 1);
+      if (!ni) {
+        perror("g_new0");
+        goto leave;
+      }
+      char* application_name = NULL;
+      char* notification_display_name = NULL;
+      while (*ptr) {
+        char* line = ptr;
+        while (*ptr) {
+          if (*ptr == '\r') {
+            if (*(ptr+1) == '\n') {
+              *ptr = 0;
+              ptr += 2;
+              break;
+            }
+            *ptr = '\n';
+          }
+          ptr++;
+        }
+        if (strlen(line) == 0) break;
+
+        if (!strncmp(line, "Application-Name:", 17)) {
+          line += 18;
+          while(isspace(*line)) line++;
+          if (ni->title) g_free(ni->title);
+          ni->title = g_strdup(line);
+        }
         if (!strncmp(line, "Notification-Title:", 19)) {
           line += 20;
           while(isspace(*line)) line++;
+          if (ni->title) g_free(ni->title);
           ni->title = g_strdup(line);
         }
         if (!strncmp(line, "Notification-Text:", 18)) {
           line += 19;
           while(isspace(*line)) line++;
+          if (ni->text) g_free(ni->text);
           ni->text = g_strdup(line);
         }
         if (!strncmp(line, "Notification-Icon:", 18)) {
           line += 19;
           while(isspace(*line)) line++;
+          if (ni->icon) g_free(ni->icon);
           ni->icon = g_strdup(line);
         }
         if (!strncmp(line, "Notification-Callback-Target:", 29)) {
           line += 30;
           while(isspace(*line)) line++;
+          if (ni->url) g_free(ni->url);
           ni->url = g_strdup(line);
         }
         if (!strncmp(line, "Notification-Display-Name:", 26)) {
           line += 27;
           while(isspace(*line)) line++;
-          display = g_strdup(line);
+          notification_display_name = g_strdup(line);
         }
       }
+  
+      if (ni->title && ni->text) {
+        ptr = "GNTP/1.0 OK\r\n\r\n";
+        send(sock, ptr, strlen(ptr), 0);
 
-      if (ni->title && ni->text)
-        need_to_show = 1;
-      else {
+        DISPLAY_PLUGIN* cp = current_display;
+        if (notification_display_name) {
+          int i, len = g_list_length(display_plugins);
+          for (i = 0; i < len; i++) {
+            DISPLAY_PLUGIN* dp = (DISPLAY_PLUGIN*) g_list_nth_data(display_plugins, i);
+            if (!g_strcasecmp(dp->name(), notification_display_name)) {
+              cp = dp;
+              break;
+            }
+          }
+        }
+        g_idle_add((GSourceFunc) cp->show, ni); // call once
+      } else {
         ptr = "GNTP/1.0 -ERROR Invalid data\r\n"
             "Error-Description: Invalid data\r\n\r\n";
         send(sock, ptr, strlen(ptr), 0);
+
+        if (ni->title) g_free(ni->title);
+        if (ni->text) g_free(ni->text);
+        if (ni->icon) g_free(ni->icon);
+        if (ni->url) g_free(ni->url);
+        g_free(ni);
+        if (notification_display_name) g_free(notification_display_name);
+        if (application_name) g_free(application_name);
       }
-      free(data);
     }
-    ptr = "GNTP/1.0 OK\r\n\r\n";
-    send(sock, ptr, strlen(ptr), 0);
+    free(data);
   } else {
     ptr = "GNTP/1.0 -ERROR Invalid command\r\n"
         "Error-Description: Invalid command\r\n\r\n";
@@ -603,27 +741,6 @@ gntp_recv_proc(gpointer data) {
   free(top);
   shutdown(sock, SD_BOTH);
   closesocket(sock);
-  if (need_to_show) {
-    DISPLAY_PLUGIN* cp = current_display;
-    if (display) {
-      int i, len = g_list_length(display_plugins);
-      for (i = 0; i < len; i++) {
-        DISPLAY_PLUGIN* dp = (DISPLAY_PLUGIN*) g_list_nth_data(display_plugins, i);
-        if (!g_strcasecmp(dp->name(), display)) {
-          cp = dp;
-          break;
-        }
-      }
-    }
-    g_idle_add((GSourceFunc) cp->show, ni); // call once
-  } else {
-    g_free(ni->title);
-    g_free(ni->text);
-    g_free(ni->icon);
-    g_free(ni->url);
-    g_free(ni);
-  }
-  g_free(display);
   return NULL;
 
 leave:
@@ -633,7 +750,6 @@ leave:
   free(top);
   shutdown(sock, SD_BOTH);
   closesocket(sock);
-  free(ni);
   return NULL;
 }
 
@@ -737,6 +853,8 @@ create_config() {
   rc = sqlite3_open(confdb, &db);
 
   password = get_config_string("password");
+  require_password_for_local_apps = get_config_bool("require_password_for_local_apps");
+  require_password_for_lan_apps = get_config_bool("require_password_for_lan_apps");
 }
 
 static void
@@ -933,8 +1051,8 @@ udp_recv_proc(GIOChannel* source, GIOCondition condition, gpointer data) {
               return TRUE;
           }
         } else {
-          if (is_local_app && get_config_bool("require_password_for_local_apps")) goto leave;
-          if (!is_local_app && get_config_bool("require_password_for_lan_apps")) goto leave;
+          if (is_local_app && require_password_for_local_apps) goto leave;
+          if (!is_local_app && require_password_for_lan_apps) goto leave;
         }
         NOTIFICATION_INFO* ni = g_new0(NOTIFICATION_INFO, 1);
         ni->title = g_strndup(
