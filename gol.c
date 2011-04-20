@@ -254,7 +254,7 @@ preview_clicked(GtkWidget* widget, gpointer data) {
         NOTIFICATION_INFO* ni = g_new0(NOTIFICATION_INFO, 1);
         ni->title = g_strdup("Preview Display");
         ni->text = g_strdup_printf("This is a preview of the '%s' display.", dp->name());
-        ni->icon = g_build_filename(DATADIR, "data", "icon.png", NULL);
+        ni->icon = g_build_filename(DATADIR, "data", "mattn.png", NULL);
         ni->local = TRUE;
         g_idle_add((GSourceFunc) dp->show, ni);
         break;
