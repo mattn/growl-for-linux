@@ -1,0 +1,42 @@
+Growl For Linux
+===============
+
+Introduction:
+-------------
+
+	Growl For Linux is Linux-compatible of Growl. Growl is a notification
+	system for Mac OS X. 
+
+Installation:
+-------------
+
+    Growl For Linux require following libraries.
+    
+    * openssl
+    * libcurl
+    * gtk+-2.0
+    * sqlite3
+    
+    Type "make". This should produce a program "gol".
+    You can run it by typing "./gol".
+
+Usage:
+------
+
+    # ./gol
+    
+    Why "gol" ?, "gol" mean "Growl On Linux". (or ゴルア).
+    Currently, This is required.
+
+License:
+--------
+
+    Growl For Linux is BSD style license. see also COPYING.
+	This product includes software developed by the OpenSSL Project for use in
+	the OpenSSL Toolkit (http://www.openssl.org/).
+
+Author:
+-------
+
+    Yasuhiro Matsumoto <mattn.jp@gmail.com>
+

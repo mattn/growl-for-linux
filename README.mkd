@@ -24,7 +24,7 @@ Installation:
 Usage:
 ------
 
->     # ./gol p4ssw0rd
+>     # ./gol
 > 
 > Why "gol" ?, "gol" mean "Growl On Linux". (or ゴルア).
 > Currently, This is required.
