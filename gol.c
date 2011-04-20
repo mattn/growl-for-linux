@@ -127,11 +127,11 @@ unhex(unsigned char c) {
 }
 
 static gboolean
-get_config_bool(const char* key) {
+get_config_bool(const char* key, gboolean def) {
   const char* sql = sqlite3_mprintf("select value from config where key = '%q'", key);
   sqlite3_stmt *stmt = NULL;
   sqlite3_prepare(db, sql, strlen(sql), &stmt, NULL);
-  gboolean ret = FALSE;
+  gboolean ret = def;
   if (sqlite3_step(stmt) == SQLITE_ROW) {
     ret = (gboolean) sqlite3_column_int(stmt, 0);
   }
@@ -140,7 +140,7 @@ get_config_bool(const char* key) {
 }
 
 static gchar*
-get_config_string(const char* key) {
+get_config_string(const char* key, const char* def) {
   const char* sql = sqlite3_mprintf("select value from config where key = '%q'", key);
   sqlite3_stmt *stmt = NULL;
   sqlite3_prepare(db, sql, strlen(sql), &stmt, NULL);
@@ -148,7 +148,7 @@ get_config_string(const char* key) {
   if (sqlite3_step(stmt) == SQLITE_ROW) {
     value = g_strdup((char*) sqlite3_column_text(stmt, 0));
   } else {
-    value = g_strdup("");
+    value = g_strdup(def ? def : "");
   }
   sqlite3_finalize(stmt);
   return value;
@@ -440,8 +440,8 @@ gntp_recv_proc(gpointer data) {
 
     char* data = NULL;
     if (!strncmp(ptr, "NONE", 4) && strchr("\n ", *(ptr+5))) {
-      if (is_local_app && get_config_bool("require_password_for_local_apps")) goto leave;
-      if (!is_local_app && get_config_bool("require_password_for_lan_apps")) goto leave;
+      if (is_local_app && get_config_bool("require_password_for_local_apps", FALSE)) goto leave;
+      if (!is_local_app && get_config_bool("require_password_for_lan_apps", FALSE)) goto leave;
       if (!(ptr = strstr(ptr, "\r\n"))) goto leave;
       *ptr = 0;
       ptr += 2;
@@ -828,14 +828,16 @@ destroy_menu() {
   gtk_status_icon_set_visible(GTK_STATUS_ICON(status_icon), FALSE);
 }
 
-static void
+static gboolean
 create_config() {
   char* error;
   gchar* confdir = (gchar*) g_get_user_config_dir();
   confdir = g_build_path(G_DIR_SEPARATOR_S, confdir, "gol", NULL);
-  g_mkdir_with_parents(confdir, 0700);
+  if (g_mkdir_with_parents(confdir, 0700) < 0) {
+    g_critical("Can't create directory: %s", confdir);
+    return FALSE;
+  }
   gchar* confdb = g_build_filename(confdir, "config.db", NULL);
-  int rc;
   if (!g_file_test(confdb, G_FILE_TEST_EXISTS)) {
     char* sqls[] = {
       "create table config(key text not null primary key, value text not null)",
@@ -843,18 +845,29 @@ create_config() {
       NULL
     };
     char** sql = sqls;
-    rc = sqlite3_open(confdb, &db);
+    if (sqlite3_open(confdb, &db) != SQLITE_OK) {
+      g_critical("Can't open database: %s", confdb);
+      return FALSE;
+    }
     while (*sql) {
-      rc = sqlite3_exec(db, *sql, 0, 0, &error);
+      if (sqlite3_exec(db, *sql, 0, 0, &error) != SQLITE_OK) {
+        g_critical("Can't execute sql: %s", *sql);
+        return FALSE;
+      }
       sql++;
     }
     sqlite3_close(db);
   }
-  rc = sqlite3_open(confdb, &db);
+  if (sqlite3_open(confdb, &db) != SQLITE_OK) {
+    g_critical("Can't open database: %s", confdb);
+    return FALSE;
+  }
 
-  password = get_config_string("password");
-  require_password_for_local_apps = get_config_bool("require_password_for_local_apps");
-  require_password_for_lan_apps = get_config_bool("require_password_for_lan_apps");
+  password = get_config_string("password", "");
+  require_password_for_local_apps = get_config_bool("require_password_for_local_apps", FALSE);
+  require_password_for_lan_apps = get_config_bool("require_password_for_lan_apps", FALSE);
+
+  return TRUE;
 }
 
 static void
@@ -863,14 +876,18 @@ destroy_config() {
   sqlite3_close(db);
 }
 
-static void
+static gboolean
 load_display_plugins() {
   GDir *dir;
   const gchar *filename;
   gchar* path = g_build_filename(DATADIR, "display", NULL);
   dir = g_dir_open(path, 0, NULL);
+  if (!dir) {
+    g_critical("Display plugin directory isn't found: %s", path);
+    return FALSE;
+  }
 
-  gchar* default_display = get_config_string("default_display");
+  gchar* default_display = get_config_string("default_display", "Default");
 
   current_display = NULL;
   while ((filename = g_dir_read_name(dir))) {
@@ -898,12 +915,19 @@ load_display_plugins() {
     display_plugins = g_list_append(display_plugins, dp);
     if (dp && dp->name && !g_strcasecmp(dp->name(), default_display)) current_display = dp;
   }
-  g_dir_close(dir);
 
-  g_free(default_display);
+  g_dir_close(dir);
   g_free(path);
+  g_free(default_display);
+
+  if (g_list_length(display_plugins) == 0) {
+    g_critical("No display plugins found.");
+    return FALSE;
+  }
 
   if (!current_display) current_display = g_list_nth_data(display_plugins, 0);
+
+  return TRUE;
 }
 
 static void
@@ -922,12 +946,16 @@ subscribe_show(NOTIFICATION_INFO* ni) {
   g_idle_add((GSourceFunc) current_display->show, ni);
 }
 
-static void
+static gboolean
 load_subscribe_plugins() {
   GDir *dir;
   const gchar *filename;
   gchar* path = g_build_filename(DATADIR, "subscribe", NULL);
   dir = g_dir_open(path, 0, NULL);
+  if (!dir) {
+    g_warning("Subscribe plugin directory isn't found: %s", path);
+    return TRUE;
+  }
 
   sc.show = subscribe_show;
   while ((filename = g_dir_read_name(dir))) {
@@ -956,9 +984,11 @@ load_subscribe_plugins() {
     sp->start();
     subscribe_plugins = g_list_append(subscribe_plugins, sp);
   }
-  g_dir_close(dir);
 
+  g_dir_close(dir);
   g_free(path);
+
+  return TRUE;
 }
 
 static void
@@ -1077,7 +1107,7 @@ create_udp_server() {
   int fd;
   if ((fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
     perror("socket");
-    exit(1);
+    return -1;
   }
 
   struct sockaddr_in server_addr;
@@ -1088,7 +1118,7 @@ create_udp_server() {
 
   if (bind(fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
     perror("bind");
-    exit(1);
+    return -1;
   }
 
   fd_set fdset;
@@ -1105,19 +1135,19 @@ create_gntp_server() {
   int fd;
   if ((fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
     perror("socket");
-    exit(1);
+    return -1;
   }
 
   sockopt_t sockopt;
   sockopt = 1;
   if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &sockopt, sizeof(sockopt)) == -1) {
     perror("setsockopt");
-    exit(1);
+    return -1;
   }
   sockopt = 1;
   if (setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &sockopt, sizeof(sockopt)) == -1) {
     perror("setsockopt");
-    exit(1);
+    return -1;
   }
 
   struct sockaddr_in server_addr;
@@ -1128,13 +1158,13 @@ create_gntp_server() {
 
   if (bind(fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
     perror("bind");
-    exit(1);
+    return -1;
   }
 
   if (listen(fd, SOMAXCONN) < 0) {
     perror("listen");
     closesocket(fd);
-    exit(1);
+    return -1;
   }
 
   fd_set fdset;
@@ -1185,13 +1215,14 @@ main(int argc, char* argv[]) {
 
   create_config();
   create_menu();
-  gntp_fd = create_gntp_server();
-  udp_fd = create_udp_server();
-  load_display_plugins();
-  load_subscribe_plugins();
+  if ((gntp_fd = create_gntp_server()) < 0) goto leave;
+  if ((udp_fd = create_udp_server()) < 0) goto leave;
+  if (!load_display_plugins()) goto leave;
+  if (!load_subscribe_plugins()) goto leave;
 
   gtk_main();
 
+leave:
   unload_subscribe_plugins();
   unload_display_plugins();
   destroy_gntp_server(gntp_fd);
