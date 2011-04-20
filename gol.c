@@ -101,6 +101,9 @@ static DISPLAY_PLUGIN* current_display = NULL;
 static gchar* exepath = NULL;
 static SUBSCRIPTOR_CONTEXT sc;
 
+#ifndef LIBDIR
+# define LIBDIR exepath
+#endif
 #ifndef DATADIR
 # define DATADIR exepath
 #endif
@@ -398,7 +401,9 @@ about_click(GtkWidget* widget, gpointer user_data) {
     utf8 = NULL;
   }
   gtk_about_dialog_set_website(GTK_ABOUT_DIALOG(dialog), "http://mattn.kaoriya.net/");
-  logo = gdk_pixbuf_new_from_file("./data/growl4linux.jpg", NULL);
+  gchar* path = g_build_filename(DATADIR, "data", NULL);
+  gchar* fullpath = g_build_filename(path, "growl4linux.jpg", NULL);
+  logo = gdk_pixbuf_new_from_file(fullpath, NULL);
   gtk_about_dialog_set_logo (GTK_ABOUT_DIALOG(dialog), logo);
   gtk_window_set_position(GTK_WINDOW(dialog), GTK_WIN_POS_CENTER);
   gtk_dialog_run(GTK_DIALOG(dialog));
@@ -802,7 +807,9 @@ create_menu() {
   GtkWidget* menu_item;
 
   // TODO: absolute path
-  status_icon = gtk_status_icon_new_from_file("./data/icon.png");
+  gchar* path = g_build_filename(DATADIR, "data", NULL);
+  gchar* fullpath = g_build_filename(path, "icon.png", NULL);
+  status_icon = gtk_status_icon_new_from_file(fullpath);
   gtk_status_icon_set_tooltip(status_icon, "Growl");
   gtk_status_icon_set_visible(status_icon, TRUE);
   menu = gtk_menu_new();
@@ -880,7 +887,7 @@ static gboolean
 load_display_plugins() {
   GDir *dir;
   const gchar *filename;
-  gchar* path = g_build_filename(DATADIR, "display", NULL);
+  gchar* path = g_build_filename(LIBDIR, "display", NULL);
   dir = g_dir_open(path, 0, NULL);
   if (!dir) {
     g_critical("Display plugin directory isn't found: %s", path);
@@ -950,7 +957,7 @@ static gboolean
 load_subscribe_plugins() {
   GDir *dir;
   const gchar *filename;
-  gchar* path = g_build_filename(DATADIR, "subscribe", NULL);
+  gchar* path = g_build_filename(LIBDIR, "subscribe", NULL);
   dir = g_dir_open(path, 0, NULL);
   if (!dir) {
     g_warning("Subscribe plugin directory isn't found: %s", path);
