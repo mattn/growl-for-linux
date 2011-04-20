@@ -34,7 +34,6 @@ AC_CHECK_FUNCS([inet_ntoa memset socket strchr strncasecmp strpbrk strstr])
 
 AC_CONFIG_FILES([Makefile
                  data/Makefile
-                 display/Makefile
                  display/balloon/Makefile
                  display/default/Makefile
                  display/nico2/Makefile
