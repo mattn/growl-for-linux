@@ -33,6 +33,7 @@
 #define REQUEST_TIMEOUT            (5)
 
 SUBSCRIPTOR_CONTEXT* sc = NULL;
+gchar* last_id = NULL;
 
 #define XML_CONTENT(x) (x->children ? (char*) x->children->content : NULL)
 
@@ -86,6 +87,7 @@ memfstrdup(MEMFILE* mf) {
 static gboolean
 delay_show(gpointer data) {
   sc->show((NOTIFICATION_INFO*) data);
+  return FALSE;
 }
 
 static gboolean
@@ -137,6 +139,7 @@ fetch_feed(gpointer data) {
   if (!path || xmlXPathNodeSetIsEmpty(path->nodesetval)) goto leave;
   nodes = path->nodesetval;
   int n, length = xmlXPathNodeSetGetLength(nodes);
+  gchar* first_id = NULL;
   for(n = 0; n < length; n++) {
     char* id = NULL;
     char* user_id = NULL;
@@ -172,6 +175,8 @@ fetch_feed(gpointer data) {
       }
       status = status->next;
     }
+    if (!first_id) first_id = id;
+    if (id && last_id && !strcmp(id, last_id)) break;
 
     if (text && user_id) {
       NOTIFICATION_INFO* ni = g_new0(NOTIFICATION_INFO, 1);
@@ -181,6 +186,8 @@ fetch_feed(gpointer data) {
       g_timeout_add(1000 * (n+1), delay_show, ni);
     }
   }
+  if (last_id) g_free(last_id);
+  if (first_id) last_id = g_strdup(first_id);
 
 leave:
   if (body) free(body);
