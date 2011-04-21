@@ -1,4 +1,5 @@
 CFLAGS=
+PACKAGE_VERSION=$(shell cat VERSION)
 
 all : gol.exe displays
 
@@ -29,7 +30,7 @@ gol.exe : gol.o gol.res
 		gol.res
 
 gol.o : gol.c gol.h
-	gcc -g -Wall -c $(CFLAGS) -o gol.o \
+	gcc -g -Wall -c $(CFLAGS) -o gol.o -DPACKAGE_VERSION=\"$(PACKAGE_VERSION)\" \
         -mms-bitfields -Ic:/gtk/include/gtk-2.0 -Ic:/gtk/lib/gtk-2.0/include -Ic:/gtk/include/atk-1.0 -Ic:/gtk/include/cairo -Ic:/gtk/include/pango-1.0 -Ic:/gtk/include/glib-2.0 -Ic:/gtk/lib/glib-2.0/include -Ic:/gtk/include/freetype2 -Ic:/gtk/include -Ic:/gtk/include/libpng14 -Ic:/gtk/include/libxml2 \
 		-Ic:/openssl-win32/include \
 		gol.c

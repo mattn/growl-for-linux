@@ -155,19 +155,6 @@ get_subscriber_enabled(const char* name) {
   return ret;
 }
 
-static gint
-get_config_int(const char* key, gint def) {
-  const char* sql = sqlite3_mprintf("select value from config where key = '%q'", key);
-  sqlite3_stmt *stmt = NULL;
-  sqlite3_prepare(db, sql, strlen(sql), &stmt, NULL);
-  gint ret = 0;
-  if (sqlite3_step(stmt) == SQLITE_ROW) {
-    ret = sqlite3_column_int(stmt, 0);
-  }
-  sqlite3_finalize(stmt);
-  return ret;
-}
-
 static gchar*
 get_config_string(const char* key, const char* def) {
   const char* sql = sqlite3_mprintf("select value from config where key = '%q'", key);
@@ -418,6 +405,7 @@ about_click(GtkWidget* widget, gpointer user_data) {
   dialog = gtk_about_dialog_new();
   gtk_about_dialog_set_name(GTK_ABOUT_DIALOG(dialog), "Growl For Linux");
   gtk_about_dialog_set_authors(GTK_ABOUT_DIALOG(dialog), authors);
+  gtk_about_dialog_set_version(GTK_ABOUT_DIALOG(dialog), PACKAGE_VERSION);
   if (g_file_get_contents("COPYING", &contents, NULL, NULL)) {
     utf8 = g_locale_to_utf8(contents, -1, NULL, NULL, NULL);
     g_free(contents);
@@ -891,7 +879,7 @@ create_menu() {
 
 static void
 destroy_menu() {
-  gtk_status_icon_set_visible(GTK_STATUS_ICON(status_icon), FALSE);
+  if (status_icon) gtk_status_icon_set_visible(GTK_STATUS_ICON(status_icon), FALSE);
 }
 
 static gboolean
