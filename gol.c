@@ -245,7 +245,7 @@ application_tree_selection_changed(GtkTreeSelection *selection, gpointer data) {
 
   GtkListStore* model2 = (GtkListStore*) g_object_get_data(G_OBJECT(data), "model2");
   gtk_list_store_clear(model2);
-  const char* sql = sqlite3_mprintf("select name from notification where app_name = '%q' order by name", app_name);
+  const char* sql = sqlite3_mprintf("select distinct name from notification where app_name = '%q' order by name", app_name);
   sqlite3_stmt *stmt = NULL;
   sqlite3_prepare(db, sql, strlen(sql), &stmt, NULL);
   while (sqlite3_step(stmt) == SQLITE_ROW) {
@@ -500,7 +500,7 @@ settings_clicked(GtkWidget* widget, GdkEvent* event, gpointer user_data) {
     g_signal_connect(G_OBJECT(combobox), "changed", G_CALLBACK(notification_enabled_changed), dialog);
     gtk_box_pack_start(GTK_BOX(hbox), combobox, FALSE, FALSE, 0);
 
-    const char* sql = "select app_name from notification order by app_name";
+    const char* sql = "select distinct app_name from notification order by app_name";
     sqlite3_stmt *stmt = NULL;
     sqlite3_prepare(db, sql, strlen(sql), &stmt, NULL);
     while (sqlite3_step(stmt) == SQLITE_ROW) {
