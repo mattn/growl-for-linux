@@ -258,7 +258,9 @@ application_tree_selection_changed(GtkTreeSelection *selection, gpointer data) {
   g_free(app_name);
 
   gtk_widget_set_sensitive(
-    (GtkWidget*) g_object_get_data(G_OBJECT(data), "enabled"), FALSE);
+    (GtkWidget*) g_object_get_data(G_OBJECT(data), "enable"), FALSE);
+  gtk_widget_set_sensitive(
+    (GtkWidget*) g_object_get_data(G_OBJECT(data), "display"), FALSE);
 }
 
 static void
@@ -346,21 +348,37 @@ notification_tree_selection_changed(GtkTreeSelection *selection, gpointer data) 
   gtk_tree_model_get(model1, &iter1, 0, &app_name, -1);
   gtk_tree_model_get(model2, &iter2, 0, &name, -1);
 
-  GtkWidget* combobox = (GtkWidget*) g_object_get_data(G_OBJECT(data), "enabled");
-  gtk_widget_set_sensitive(combobox, TRUE);
+  GtkWidget* combobox1 = (GtkWidget*) g_object_get_data(G_OBJECT(data), "enable");
+  gtk_widget_set_sensitive(combobox1, TRUE);
+  gtk_combo_box_set_active(GTK_COMBO_BOX(combobox1), -1);
+  GtkWidget* combobox2 = (GtkWidget*) g_object_get_data(G_OBJECT(data), "display");
+  gtk_widget_set_sensitive(combobox2, TRUE);
+  gtk_combo_box_set_active(GTK_COMBO_BOX(combobox2), -1);
 
-  const char* sql = sqlite3_mprintf("select enable from notification where app_name = '%q' and name = '%q'", app_name, name);
+  const char* sql = sqlite3_mprintf("select enable, display from notification where app_name = '%q' and name = '%q'", app_name, name);
   sqlite3_stmt *stmt = NULL;
   sqlite3_prepare(db, sql, strlen(sql), &stmt, NULL);
   if (sqlite3_step(stmt) == SQLITE_ROW) {
-    gtk_combo_box_set_active(GTK_COMBO_BOX(combobox),
+    gtk_combo_box_set_active(GTK_COMBO_BOX(combobox1),
         sqlite3_column_int(stmt, 0) != 0 ? 0 : 1);
+    char* display = (char*) sqlite3_column_text(stmt, 1);
+    int i, len = g_list_length(display_plugins);
+    for (i = 0; i < len; i++) {
+      DISPLAY_PLUGIN* dp = (DISPLAY_PLUGIN*) g_list_nth_data(display_plugins, i);
+      if (!g_strcasecmp(dp->name(), display)) {
+        gtk_combo_box_set_active(GTK_COMBO_BOX(combobox2), i);
+        break;
+      }
+    }
   }
   sqlite3_finalize(stmt);
+
+  g_free(app_name);
+  g_free(name);
 }
 
 static void
-notification_enabled_changed(GtkComboBox *combobox, gpointer data) {
+notification_enable_changed(GtkComboBox *combobox, gpointer data) {
   GtkTreeIter iter1;
   GtkTreeIter iter2;
   GtkWidget* tree1 = g_object_get_data(G_OBJECT(data), "tree1");
@@ -381,6 +399,37 @@ notification_enabled_changed(GtkComboBox *combobox, gpointer data) {
   gint enable = gtk_combo_box_get_active(combobox) == 0 ? 1 : 0;
 
   sqlite3_exec(db, sqlite3_mprintf("update notification set enable = %d where app_name = '%q' and name = '%q'", enable, app_name, name), NULL, NULL, NULL);
+
+  g_free(app_name);
+  g_free(name);
+}
+
+static void
+notification_display_changed(GtkComboBox *combobox, gpointer data) {
+  GtkTreeIter iter1;
+  GtkTreeIter iter2;
+  GtkWidget* tree1 = g_object_get_data(G_OBJECT(data), "tree1");
+  GtkWidget* tree2 = g_object_get_data(G_OBJECT(data), "tree2");
+  GtkTreeSelection* selection1 = gtk_tree_view_get_selection(GTK_TREE_VIEW(tree1));
+  GtkTreeSelection* selection2 = gtk_tree_view_get_selection(GTK_TREE_VIEW(tree2));
+  GtkTreeModel* model1;
+  GtkTreeModel* model2;
+
+  if (!gtk_tree_selection_get_selected(selection1, &model1, &iter1)) return;
+  if (!gtk_tree_selection_get_selected(selection2, &model2, &iter2)) return;
+
+  gchar* app_name;
+  gchar* name;
+  gtk_tree_model_get(model1, &iter1, 0, &app_name, -1);
+  gtk_tree_model_get(model2, &iter2, 0, &name, -1);
+
+  gchar* display = gtk_combo_box_get_active_text(combobox);
+
+  sqlite3_exec(db, sqlite3_mprintf("update notification set display = '%q' where app_name = '%q' and name = '%q'", display, app_name, name), NULL, NULL, NULL);
+
+  g_free(display);
+  g_free(app_name);
+  g_free(name);
 }
 
 static void
@@ -490,18 +539,31 @@ settings_clicked(GtkWidget* widget, GdkEvent* event, gpointer user_data) {
     hbox = gtk_hbox_new(FALSE, 5);
     gtk_box_pack_start(GTK_BOX(vbox), hbox, FALSE, FALSE, 0);
 
-    GtkWidget* label = gtk_label_new("Enabled:");
+    GtkWidget* label = gtk_label_new("Enable:");
     gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, FALSE, 0);
     GtkWidget* combobox = gtk_combo_box_new_text();
-    g_object_set_data(G_OBJECT(dialog), "enabled", combobox);
+    g_object_set_data(G_OBJECT(dialog), "enable", combobox);
     gtk_combo_box_append_text(GTK_COMBO_BOX(combobox), "Enable");
     gtk_combo_box_append_text(GTK_COMBO_BOX(combobox), "Disable");
     gtk_widget_set_sensitive(combobox, FALSE);
-    g_signal_connect(G_OBJECT(combobox), "changed", G_CALLBACK(notification_enabled_changed), dialog);
+    g_signal_connect(G_OBJECT(combobox), "changed", G_CALLBACK(notification_enable_changed), dialog);
     gtk_box_pack_start(GTK_BOX(hbox), combobox, FALSE, FALSE, 0);
 
-    const char* sql = "select distinct app_name from notification order by app_name";
+    hbox = gtk_hbox_new(FALSE, 5);
+    gtk_box_pack_start(GTK_BOX(vbox), hbox, FALSE, FALSE, 0);
+
+    label = gtk_label_new("Display:");
+    gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, FALSE, 0);
+    combobox = gtk_combo_box_new_text();
+    g_object_set_data(G_OBJECT(dialog), "display", combobox);
+    gtk_widget_set_sensitive(combobox, FALSE);
+    g_signal_connect(G_OBJECT(combobox), "changed", G_CALLBACK(notification_display_changed), dialog);
+    gtk_box_pack_start(GTK_BOX(hbox), combobox, FALSE, FALSE, 0);
+
+    const char* sql;
     sqlite3_stmt *stmt = NULL;
+
+    sql = "select distinct app_name from notification order by app_name";
     sqlite3_prepare(db, sql, strlen(sql), &stmt, NULL);
     while (sqlite3_step(stmt) == SQLITE_ROW) {
       GtkTreeIter iter;
@@ -509,6 +571,12 @@ settings_clicked(GtkWidget* widget, GdkEvent* event, gpointer user_data) {
       gtk_list_store_set(GTK_LIST_STORE(model1), &iter, 0, sqlite3_column_text(stmt, 0), -1);
     }
     sqlite3_finalize(stmt);
+
+    int i, len = g_list_length(display_plugins);
+    for (i = 0; i < len; i++) {
+      DISPLAY_PLUGIN* dp = (DISPLAY_PLUGIN*) g_list_nth_data(display_plugins, i);
+      gtk_combo_box_append_text(GTK_COMBO_BOX(combobox), dp->name());
+    }
   }
   
   {
@@ -894,16 +962,18 @@ gntp_recv_proc(gpointer data) {
         ptr = "GNTP/1.0 OK\r\n\r\n";
         send(sock, ptr, strlen(ptr), 0);
 
-        gboolean enabled = FALSE;
-        const char* sql = sqlite3_mprintf("select enable from notification where app_name = '%q' and name = '%q'", application_name, notification_name);
+        gboolean enable = FALSE;
+        gchar* display = NULL;
+        const char* sql = sqlite3_mprintf("select enable, display from notification where app_name = '%q' and name = '%q'", application_name, notification_name);
         sqlite3_stmt *stmt = NULL;
         sqlite3_prepare(db, sql, strlen(sql), &stmt, NULL);
         if (sqlite3_step(stmt) == SQLITE_ROW) {
-          enabled = (gboolean) sqlite3_column_int(stmt, 0);
+          enable = (gboolean) sqlite3_column_int(stmt, 0);
+          if (!notification_display_name) notification_display_name = g_strdup(sqlite3_column_text(stmt, 1));
         }
         sqlite3_finalize(stmt);
 
-        if (enabled) {
+        if (enable) {
           DISPLAY_PLUGIN* cp = current_display;
           if (notification_display_name) {
             int i, len = g_list_length(display_plugins);
@@ -927,9 +997,10 @@ gntp_recv_proc(gpointer data) {
         if (ni->icon) g_free(ni->icon);
         if (ni->url) g_free(ni->url);
         g_free(ni);
-        if (notification_display_name) g_free(notification_display_name);
-        if (application_name) g_free(application_name);
       }
+      if (notification_name) g_free(notification_name);
+      if (notification_display_name) g_free(notification_display_name);
+      if (application_name) g_free(application_name);
     }
     free(data);
   } else {
