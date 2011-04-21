@@ -277,8 +277,6 @@ display_show(NOTIFICATION_INFO* ni) {
   gdk_screen_get_monitor_geometry(screen, monitor_num, &rect);
 
   notifications = g_list_append(notifications, di);
-  di->x = rect.width;
-  di->y = rect.y + rand() % rect.height;
 
   di->popup = gtk_window_new(GTK_WINDOW_POPUP);
   gtk_window_set_title(GTK_WINDOW(di->popup), "growl-for-linux");
@@ -328,7 +326,11 @@ display_show(NOTIFICATION_INFO* ni) {
   g_free(text);
   pango_layout_set_font_description(layout, font_desc);
   pango_layout_get_pixel_size(layout, &di->width, &di->height);
+
+  di->x = rect.width;
+  di->y = rect.y + rand() % (rect.height - di->height);
   di->width += 32 + 5;
+
   if (image)
     gtk_fixed_move(GTK_FIXED(fixed), image, 0, di->height / 2 - 16);
   GdkBitmap* bitmap = gdk_pixmap_new(di->popup->window, di->width, di->height, 1);
@@ -365,7 +367,7 @@ display_show(NOTIFICATION_INFO* ni) {
   g_object_unref(bitmap);
 
   g_object_ref(di->popup);
-  g_timeout_add(20, display_animation_func, di);
+  g_timeout_add(100, display_animation_func, di);
 
   return FALSE;
 }
