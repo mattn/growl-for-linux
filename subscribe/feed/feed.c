@@ -84,6 +84,11 @@ memfstrdup(MEMFILE* mf) {
 }
 
 static gboolean
+delay_show(gpointer data) {
+  sc->show((NOTIFICATION_INFO*) data);
+}
+
+static gboolean
 fetch_feed(gpointer data) {
   CURL* curl = NULL;
   CURLcode res = CURLE_OK;
@@ -173,7 +178,7 @@ fetch_feed(gpointer data) {
       ni->title = g_strdup(user_name);
       ni->text = g_strdup(text);
       ni->icon = g_strdup(icon);
-      sc->show(ni);
+      g_timeout_add(1000 * (n+1), delay_show, ni);
     }
   }
 
@@ -183,7 +188,8 @@ leave:
   if (ctx) xmlXPathFreeContext(ctx);
   if (doc) xmlFreeDoc(doc);
    
-  return TRUE;
+  g_timeout_add(1000 * length, fetch_feed, NULL);
+  return FALSE;
 }
 
 G_MODULE_EXPORT gboolean
@@ -198,7 +204,7 @@ subscribe_term() {
 
 G_MODULE_EXPORT gboolean
 subscribe_start() {
-  g_timeout_add(1000 * 10, fetch_feed, NULL);
+  g_timeout_add(10, fetch_feed, NULL);
   return TRUE;
 }
 

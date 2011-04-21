@@ -143,8 +143,8 @@ get_config_bool(const char* key, gboolean def) {
 }
 
 static gboolean
-get_subscriber_enabled(const char* key) {
-  const char* sql = sqlite3_mprintf("select enable from subscriber where key = '%q'", key);
+get_subscriber_enabled(const char* name) {
+  const char* sql = sqlite3_mprintf("select enable from subscriber where name = '%q'", name);
   sqlite3_stmt *stmt = NULL;
   sqlite3_prepare(db, sql, strlen(sql), &stmt, NULL);
   gboolean ret = FALSE;
