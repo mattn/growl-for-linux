@@ -142,6 +142,32 @@ get_config_bool(const char* key, gboolean def) {
   return ret;
 }
 
+static gboolean
+get_subscriber_enabled(const char* key) {
+  const char* sql = sqlite3_mprintf("select enable from subscriber where key = '%q'", key);
+  sqlite3_stmt *stmt = NULL;
+  sqlite3_prepare(db, sql, strlen(sql), &stmt, NULL);
+  gboolean ret = FALSE;
+  if (sqlite3_step(stmt) == SQLITE_ROW) {
+    ret = (gboolean) sqlite3_column_int(stmt, 0);
+  }
+  sqlite3_finalize(stmt);
+  return ret;
+}
+
+static gint
+get_config_int(const char* key, gint def) {
+  const char* sql = sqlite3_mprintf("select value from config where key = '%q'", key);
+  sqlite3_stmt *stmt = NULL;
+  sqlite3_prepare(db, sql, strlen(sql), &stmt, NULL);
+  gint ret = 0;
+  if (sqlite3_step(stmt) == SQLITE_ROW) {
+    ret = sqlite3_column_int(stmt, 0);
+  }
+  sqlite3_finalize(stmt);
+  return ret;
+}
+
 static gchar*
 get_config_string(const char* key, const char* def) {
   const char* sql = sqlite3_mprintf("select value from config where key = '%q'", key);
@@ -588,12 +614,12 @@ gntp_recv_proc(gpointer data) {
           notifications_count = atol(line);
         }
       }
-      char* notification_name = NULL;
-      char* notification_icon = NULL;
-      gboolean notification_enabled = FALSE;
-      char* notification_display_name = NULL;
       int n;
       for (n = 0; n < notifications_count; n++) {
+        char* notification_name = NULL;
+        char* notification_icon = NULL;
+        gboolean notification_enabled = FALSE;
+        char* notification_display_name = NULL;
         while (*ptr) {
           char* line = ptr;
           while (*ptr) {
@@ -621,8 +647,8 @@ gntp_recv_proc(gpointer data) {
             if (notification_icon) g_free(notification_icon);
             notification_icon = g_strdup(line);
           }
-          if (!strncmp(line, "Notification-Enabled:", 18)) {
-            line += 19;
+          if (!strncmp(line, "Notification-Enabled:", 21)) {
+            line += 22;
             while(isspace(*line)) line++;
             notification_enabled = strcasecmp(line, "true") == 0;
           }
@@ -633,8 +659,26 @@ gntp_recv_proc(gpointer data) {
             notification_display_name = g_strdup(line);
           }
         }
+
+        sqlite3_exec(db, sqlite3_mprintf("delete from notification where name = '%q'", notification_name), NULL, NULL, NULL);
+        sqlite3_exec(db,
+            sqlite3_mprintf(
+                "insert into notification("
+                "app_name, app_icon, name, icon, enable, display, sticky) values('%q', '%q', '%q', '%q', %d, '%q', %d)",
+                    application_name,
+                    application_icon ? application_icon : "",
+                    notification_name,
+                    notification_icon ? notification_icon : "",
+                    notification_enabled,
+                    notification_display_name ? notification_display_name : "Default",
+                    FALSE
+					), NULL, NULL, NULL);
+
+        if (notification_name) g_free(notification_name);
+        if (notification_icon) g_free(notification_icon);
+        if (notification_display_name) g_free(notification_display_name);
       }
-      if (application_name && notification_name) {
+      if (n == notifications_count) {
         ptr = "GNTP/1.0 OK\r\n\r\n";
         send(sock, ptr, strlen(ptr), 0);
       } else {
@@ -644,9 +688,6 @@ gntp_recv_proc(gpointer data) {
       }
       if (application_name) g_free(application_name);
       if (application_icon) g_free(application_icon);
-      if (notification_name) g_free(notification_name);
-      if (notification_icon) g_free(notification_icon);
-      if (notification_display_name) g_free(notification_display_name);
     } else {
       NOTIFICATION_INFO* ni = g_new0(NOTIFICATION_INFO, 1);
       if (!ni) {
@@ -654,6 +695,7 @@ gntp_recv_proc(gpointer data) {
         goto leave;
       }
       char* application_name = NULL;
+      char* notification_name = NULL;
       char* notification_display_name = NULL;
       while (*ptr) {
         char* line = ptr;
@@ -673,8 +715,14 @@ gntp_recv_proc(gpointer data) {
         if (!strncmp(line, "Application-Name:", 17)) {
           line += 18;
           while(isspace(*line)) line++;
-          if (ni->title) g_free(ni->title);
-          ni->title = g_strdup(line);
+          if (application_name) g_free(application_name);
+          application_name = g_strdup(line);
+        }
+        if (!strncmp(line, "Notification-Name:", 18)) {
+          line += 19;
+          while(isspace(*line)) line++;
+          if (notification_name) g_free(notification_name);
+          notification_name = g_strdup(line);
         }
         if (!strncmp(line, "Notification-Title:", 19)) {
           line += 20;
@@ -711,18 +759,29 @@ gntp_recv_proc(gpointer data) {
         ptr = "GNTP/1.0 OK\r\n\r\n";
         send(sock, ptr, strlen(ptr), 0);
 
-        DISPLAY_PLUGIN* cp = current_display;
-        if (notification_display_name) {
-          int i, len = g_list_length(display_plugins);
-          for (i = 0; i < len; i++) {
-            DISPLAY_PLUGIN* dp = (DISPLAY_PLUGIN*) g_list_nth_data(display_plugins, i);
-            if (!g_strcasecmp(dp->name(), notification_display_name)) {
-              cp = dp;
-              break;
+		gboolean enabled = FALSE;
+        const char* sql = sqlite3_mprintf("select enable from notification where app_name = '%q' and name = '%q'", application_name, notification_name);
+        sqlite3_stmt *stmt = NULL;
+        sqlite3_prepare(db, sql, strlen(sql), &stmt, NULL);
+        if (sqlite3_step(stmt) == SQLITE_ROW) {
+          enabled = (gboolean) sqlite3_column_int(stmt, 0);
+        }
+        sqlite3_finalize(stmt);
+
+		if (enabled) {
+          DISPLAY_PLUGIN* cp = current_display;
+          if (notification_display_name) {
+            int i, len = g_list_length(display_plugins);
+            for (i = 0; i < len; i++) {
+              DISPLAY_PLUGIN* dp = (DISPLAY_PLUGIN*) g_list_nth_data(display_plugins, i);
+              if (!g_strcasecmp(dp->name(), notification_display_name)) {
+                cp = dp;
+                break;
+              }
             }
           }
+          g_idle_add((GSourceFunc) cp->show, ni); // call once
         }
-        g_idle_add((GSourceFunc) cp->show, ni); // call once
       } else {
         ptr = "GNTP/1.0 -ERROR Invalid data\r\n"
             "Error-Description: Invalid data\r\n\r\n";
@@ -836,38 +895,59 @@ destroy_menu() {
 }
 
 static gboolean
-create_config() {
+load_config() {
   char* error;
   gchar* confdir = (gchar*) g_get_user_config_dir();
   confdir = g_build_path(G_DIR_SEPARATOR_S, confdir, "gol", NULL);
   if (g_mkdir_with_parents(confdir, 0700) < 0) {
+    perror("mkdir");
     g_critical("Can't create directory: %s", confdir);
     return FALSE;
   }
   gchar* confdb = g_build_filename(confdir, "config.db", NULL);
-  if (!g_file_test(confdb, G_FILE_TEST_EXISTS)) {
-    char* sqls[] = {
-      "create table config(key text not null primary key, value text not null)",
-      "create table notification(name text not null primary key, enable bool not null, display text not null, sticky bool not null)",
-      NULL
-    };
-    char** sql = sqls;
-    if (sqlite3_open(confdb, &db) != SQLITE_OK) {
-      g_critical("Can't open database: %s", confdb);
-      return FALSE;
-    }
-    while (*sql) {
-      if (sqlite3_exec(db, *sql, 0, 0, &error) != SQLITE_OK) {
-        g_critical("Can't execute sql: %s", *sql);
-        return FALSE;
-      }
-      sql++;
-    }
-    sqlite3_close(db);
-  }
+  gboolean exist = g_file_test(confdb, G_FILE_TEST_EXISTS);
   if (sqlite3_open(confdb, &db) != SQLITE_OK) {
     g_critical("Can't open database: %s", confdb);
     return FALSE;
+  }
+  if (!exist) {
+    if (sqlite3_exec(db, "create table config(key text not null primary key, value text not null)", 0, 0, &error) != SQLITE_OK) {
+      g_critical("Can't create configuration table");
+      return FALSE;
+    }
+  }
+
+  gchar* version = get_config_string("version", "");
+  if (strcmp(version, PACKAGE_VERSION)) {
+    char* sqls[] = {
+      "drop table _notification",
+      "drop table _subscriber",
+      "alter table notification rename to _notification",
+      "alter table subscriber rename to _subscriber",
+      "create table notification("
+		  "app_name text not null,"
+		  "app_icon text not null,"
+		  "name text not null,"
+		  "icon text not null,"
+		  "enable int not null,"
+		  "display text not null,"
+		  "sticky int not null,"
+		  "primary key(app_name, name))",
+      "create table subscriber("
+		  "name text not null primary key,"
+		  "enable int not null)",
+      "insert into notification from select * from _notification",
+      "insert into subscriber from select * from subscriber",
+      "drop table _notification",
+      "drop table _subscriber",
+      NULL
+    };
+    char** sql = sqls;
+    while (*sql) {
+      sqlite3_exec(db, *sql, 0, 0, &error);
+      sql++;
+    }
+	set_config_string("version", PACKAGE_VERSION);
   }
 
   password = get_config_string("password", "");
@@ -878,7 +958,7 @@ create_config() {
 }
 
 static void
-destroy_config() {
+unload_config() {
   g_free(password);
   sqlite3_close(db);
 }
@@ -890,6 +970,7 @@ load_display_plugins() {
   gchar* path = g_build_filename(LIBDIR, "display", NULL);
   dir = g_dir_open(path, 0, NULL);
   if (!dir) {
+    perror("open");
     g_critical("Display plugin directory isn't found: %s", path);
     return FALSE;
   }
@@ -988,7 +1069,7 @@ load_subscribe_plugins() {
       g_free(sp);
       continue;
     }
-    sp->start();
+	if (get_subscriber_enabled(sp->name())) sp->start();
     subscribe_plugins = g_list_append(subscribe_plugins, sp);
   }
 
@@ -1220,22 +1301,22 @@ main(int argc, char* argv[]) {
   signal(SIGINT, signal_handler);
 #endif
 
-  create_config();
-  create_menu();
+  if (!load_config()) goto leave;
   if ((gntp_fd = create_gntp_server()) < 0) goto leave;
   if ((udp_fd = create_udp_server()) < 0) goto leave;
   if (!load_display_plugins()) goto leave;
   if (!load_subscribe_plugins()) goto leave;
+  create_menu();
 
   gtk_main();
 
 leave:
+  destroy_menu();
   unload_subscribe_plugins();
   unload_display_plugins();
   destroy_gntp_server(gntp_fd);
   destroy_udp_server(udp_fd);
-  destroy_menu();
-  destroy_config();
+  unload_config();
   g_free(exepath);
 
 #ifdef _WIN32
