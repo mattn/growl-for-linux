@@ -672,7 +672,7 @@ gntp_recv_proc(gpointer data) {
                     notification_enabled,
                     notification_display_name ? notification_display_name : "Default",
                     FALSE
-					), NULL, NULL, NULL);
+                    ), NULL, NULL, NULL);
 
         if (notification_name) g_free(notification_name);
         if (notification_icon) g_free(notification_icon);
@@ -754,12 +754,12 @@ gntp_recv_proc(gpointer data) {
           notification_display_name = g_strdup(line);
         }
       }
-  
+
       if (ni->title && ni->text) {
         ptr = "GNTP/1.0 OK\r\n\r\n";
         send(sock, ptr, strlen(ptr), 0);
 
-		gboolean enabled = FALSE;
+        gboolean enabled = FALSE;
         const char* sql = sqlite3_mprintf("select enable from notification where app_name = '%q' and name = '%q'", application_name, notification_name);
         sqlite3_stmt *stmt = NULL;
         sqlite3_prepare(db, sql, strlen(sql), &stmt, NULL);
@@ -768,7 +768,7 @@ gntp_recv_proc(gpointer data) {
         }
         sqlite3_finalize(stmt);
 
-		if (enabled) {
+        if (enabled) {
           DISPLAY_PLUGIN* cp = current_display;
           if (notification_display_name) {
             int i, len = g_list_length(display_plugins);
@@ -925,17 +925,17 @@ load_config() {
       "alter table notification rename to _notification",
       "alter table subscriber rename to _subscriber",
       "create table notification("
-		  "app_name text not null,"
-		  "app_icon text not null,"
-		  "name text not null,"
-		  "icon text not null,"
-		  "enable int not null,"
-		  "display text not null,"
-		  "sticky int not null,"
-		  "primary key(app_name, name))",
+          "app_name text not null,"
+          "app_icon text not null,"
+          "name text not null,"
+          "icon text not null,"
+          "enable int not null,"
+          "display text not null,"
+          "sticky int not null,"
+          "primary key(app_name, name))",
       "create table subscriber("
-		  "name text not null primary key,"
-		  "enable int not null)",
+          "name text not null primary key,"
+          "enable int not null)",
       "insert into notification from select * from _notification",
       "insert into subscriber from select * from subscriber",
       "drop table _notification",
@@ -947,7 +947,7 @@ load_config() {
       sqlite3_exec(db, *sql, 0, 0, &error);
       sql++;
     }
-	set_config_string("version", PACKAGE_VERSION);
+    set_config_string("version", PACKAGE_VERSION);
   }
 
   password = get_config_string("password", "");
@@ -1069,7 +1069,7 @@ load_subscribe_plugins() {
       g_free(sp);
       continue;
     }
-	if (get_subscriber_enabled(sp->name())) sp->start();
+    if (get_subscriber_enabled(sp->name())) sp->start();
     subscribe_plugins = g_list_append(subscribe_plugins, sp);
   }
 
