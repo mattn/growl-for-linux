@@ -199,39 +199,66 @@ status_icon_popup(GtkStatusIcon* status_icon, guint button, guint32 activate_tim
 }
 
 static void
-tree_selection_changed(GtkTreeSelection *selection, gpointer data) {
+display_tree_selection_changed(GtkTreeSelection *selection, gpointer data) {
   GtkTreeIter iter;
   GtkTreeModel* model;
-  if (gtk_tree_selection_get_selected(selection, &model, &iter)) {
-    DISPLAY_PLUGIN* cp = current_display;
-    gchar* name;
-    gtk_tree_model_get(model, &iter, 0, &name, -1);
-    int i, len = g_list_length(display_plugins);
-    for (i = 0; i < len; i++) {
-      DISPLAY_PLUGIN* dp = (DISPLAY_PLUGIN*) g_list_nth_data(display_plugins, i);
-      if (!g_strcasecmp(dp->name(), name)) {
-        cp = dp;
-        break;
-      }
-    }
+  if (!gtk_tree_selection_get_selected(selection, &model, &iter)) return;
 
-    GtkWidget* label = (GtkWidget*) g_object_get_data(G_OBJECT(data), "description");
-    gtk_label_set_markup(GTK_LABEL(label), "");
-    if (cp->description) {
-      gtk_label_set_markup(GTK_LABEL(label), cp->description());
+  DISPLAY_PLUGIN* cp = current_display;
+  gchar* name;
+  gtk_tree_model_get(model, &iter, 0, &name, -1);
+  int i, len = g_list_length(display_plugins);
+  for (i = 0; i < len; i++) {
+    DISPLAY_PLUGIN* dp = (DISPLAY_PLUGIN*) g_list_nth_data(display_plugins, i);
+    if (!g_strcasecmp(dp->name(), name)) {
+      cp = dp;
+      break;
     }
-
-    GtkWidget* image = (GtkWidget*) g_object_get_data(G_OBJECT(data), "thumbnail");
-    gtk_image_clear(GTK_IMAGE(image));
-    if (cp->thumbnail) {
-      GdkBitmap* bitmap;
-      GdkPixmap* pixmap = gdk_pixmap_colormap_create_from_xpm_d(NULL, gdk_colormap_get_system(), &bitmap, NULL, cp->thumbnail());
-      gtk_image_set_from_pixmap(GTK_IMAGE(image), pixmap, bitmap);
-      gdk_pixmap_unref(pixmap);
-      gdk_bitmap_unref(bitmap);
-    }
-    g_free(name);
   }
+
+  GtkWidget* label = (GtkWidget*) g_object_get_data(G_OBJECT(data), "description");
+  gtk_label_set_markup(GTK_LABEL(label), "");
+  if (cp->description) {
+    gtk_label_set_markup(GTK_LABEL(label), cp->description());
+  }
+
+  GtkWidget* image = (GtkWidget*) g_object_get_data(G_OBJECT(data), "thumbnail");
+  gtk_image_clear(GTK_IMAGE(image));
+  if (cp->thumbnail) {
+    GdkBitmap* bitmap;
+    GdkPixmap* pixmap = gdk_pixmap_colormap_create_from_xpm_d(NULL, gdk_colormap_get_system(), &bitmap, NULL, cp->thumbnail());
+    gtk_image_set_from_pixmap(GTK_IMAGE(image), pixmap, bitmap);
+    gdk_pixmap_unref(pixmap);
+    gdk_bitmap_unref(bitmap);
+  }
+  g_free(name);
+}
+
+static void
+application_tree_selection_changed(GtkTreeSelection *selection, gpointer data) {
+  GtkTreeIter iter;
+  GtkTreeModel* model1;
+  if (!gtk_tree_selection_get_selected(selection, &model1, &iter)) return;
+
+  gchar* app_name;
+  gtk_tree_model_get(model1, &iter, 0, &app_name, -1);
+
+  GtkListStore* model2 = (GtkListStore*) g_object_get_data(G_OBJECT(data), "model2");
+  gtk_list_store_clear(model2);
+  const char* sql = sqlite3_mprintf("select name from notification where app_name = '%q' order by name", app_name);
+  sqlite3_stmt *stmt = NULL;
+  sqlite3_prepare(db, sql, strlen(sql), &stmt, NULL);
+  while (sqlite3_step(stmt) == SQLITE_ROW) {
+    GtkTreeIter iter;
+    gtk_list_store_append(GTK_LIST_STORE(model2), &iter);
+    gtk_list_store_set(GTK_LIST_STORE(model2), &iter, 0, sqlite3_column_text(stmt, 0), -1);
+  }
+  sqlite3_finalize(stmt);
+
+  g_free(app_name);
+
+  gtk_widget_set_sensitive(
+    (GtkWidget*) g_object_get_data(G_OBJECT(data), "enabled"), FALSE);
 }
 
 static void
@@ -301,6 +328,62 @@ require_password_for_lan_apps_changed(GtkToggleButton *togglebutton, gpointer da
 }
 
 static void
+notification_tree_selection_changed(GtkTreeSelection *selection, gpointer data) {
+  GtkTreeIter iter1;
+  GtkTreeIter iter2;
+  GtkWidget* tree1 = g_object_get_data(G_OBJECT(data), "tree1");
+  GtkWidget* tree2 = g_object_get_data(G_OBJECT(data), "tree2");
+  GtkTreeSelection* selection1 = gtk_tree_view_get_selection(GTK_TREE_VIEW(tree1));
+  GtkTreeSelection* selection2 = gtk_tree_view_get_selection(GTK_TREE_VIEW(tree2));
+  GtkTreeModel* model1;
+  GtkTreeModel* model2;
+
+  if (!gtk_tree_selection_get_selected(selection1, &model1, &iter1)) return;
+  if (!gtk_tree_selection_get_selected(selection2, &model2, &iter2)) return;
+
+  gchar* app_name;
+  gchar* name;
+  gtk_tree_model_get(model1, &iter1, 0, &app_name, -1);
+  gtk_tree_model_get(model2, &iter2, 0, &name, -1);
+
+  GtkWidget* combobox = (GtkWidget*) g_object_get_data(G_OBJECT(data), "enabled");
+  gtk_widget_set_sensitive(combobox, TRUE);
+
+  const char* sql = sqlite3_mprintf("select enable from notification where app_name = '%q' and name = '%q'", app_name, name);
+  sqlite3_stmt *stmt = NULL;
+  sqlite3_prepare(db, sql, strlen(sql), &stmt, NULL);
+  if (sqlite3_step(stmt) == SQLITE_ROW) {
+    gtk_combo_box_set_active(GTK_COMBO_BOX(combobox),
+        sqlite3_column_int(stmt, 0) != 0 ? 0 : 1);
+  }
+  sqlite3_finalize(stmt);
+}
+
+static void
+notification_enabled_changed(GtkComboBox *combobox, gpointer data) {
+  GtkTreeIter iter1;
+  GtkTreeIter iter2;
+  GtkWidget* tree1 = g_object_get_data(G_OBJECT(data), "tree1");
+  GtkWidget* tree2 = g_object_get_data(G_OBJECT(data), "tree2");
+  GtkTreeSelection* selection1 = gtk_tree_view_get_selection(GTK_TREE_VIEW(tree1));
+  GtkTreeSelection* selection2 = gtk_tree_view_get_selection(GTK_TREE_VIEW(tree2));
+  GtkTreeModel* model1;
+  GtkTreeModel* model2;
+
+  if (!gtk_tree_selection_get_selected(selection1, &model1, &iter1)) return;
+  if (!gtk_tree_selection_get_selected(selection2, &model2, &iter2)) return;
+
+  gchar* app_name;
+  gchar* name;
+  gtk_tree_model_get(model1, &iter1, 0, &app_name, -1);
+  gtk_tree_model_get(model2, &iter2, 0, &name, -1);
+
+  gint enable = gtk_combo_box_get_active(combobox) == 0 ? 1 : 0;
+
+  sqlite3_exec(db, sqlite3_mprintf("update notification set enable = %d where app_name = '%q' and name = '%q'", enable, app_name, name), NULL, NULL, NULL);
+}
+
+static void
 settings_clicked(GtkWidget* widget, GdkEvent* event, gpointer user_data) {
   GtkWidget* dialog;
   GtkWidget* notebook;
@@ -320,18 +403,18 @@ settings_clicked(GtkWidget* widget, GdkEvent* event, gpointer user_data) {
     GtkWidget* hbox = gtk_hbox_new(FALSE, 5);
     gtk_container_set_border_width(GTK_CONTAINER(hbox), 10);
     gtk_notebook_append_page(GTK_NOTEBOOK(notebook), hbox, gtk_label_new("Display"));
+
     GtkListStore* model = (GtkListStore *)gtk_list_store_new(1, G_TYPE_STRING, GDK_TYPE_DISPLAY);
     GtkWidget* tree_view = gtk_tree_view_new_with_model(GTK_TREE_MODEL(model));
     GtkTreeSelection* select = gtk_tree_view_get_selection(GTK_TREE_VIEW(tree_view));
     gtk_tree_selection_set_mode(select, GTK_SELECTION_SINGLE);
-    g_signal_connect(G_OBJECT(select), "changed", G_CALLBACK(tree_selection_changed), dialog);
+    g_signal_connect(G_OBJECT(select), "changed", G_CALLBACK(display_tree_selection_changed), dialog);
     gtk_box_pack_start(GTK_BOX(hbox), tree_view, FALSE, FALSE, 0);
     GtkTreeViewColumn* column = gtk_tree_view_column_new_with_attributes(
-        "Name", gtk_cell_renderer_text_new(), "text", 0, NULL);
+        "Display", gtk_cell_renderer_text_new(), "text", 0, NULL);
     gtk_tree_view_column_set_min_width(GTK_TREE_VIEW_COLUMN(column), 80);
     gtk_tree_view_append_column(GTK_TREE_VIEW(tree_view), column);
 
-    GtkTreeIter iter;
     GtkWidget* vbox = gtk_vbox_new(FALSE, 20);
     gtk_box_pack_start(GTK_BOX(hbox), vbox, TRUE, FALSE, 0);
     GtkWidget* label = gtk_label_new("");
@@ -343,7 +426,7 @@ settings_clicked(GtkWidget* widget, GdkEvent* event, gpointer user_data) {
     gtk_box_pack_start(GTK_BOX(vbox), align, FALSE, FALSE, 0);
     GtkWidget* image = gtk_image_new();
     g_object_set_data(G_OBJECT(dialog), "thumbnail", image);
-    gtk_box_pack_start(GTK_BOX(vbox), image, TRUE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(vbox), image, TRUE, TRUE, 0);
 
     hbox = gtk_hbox_new(FALSE, 5);
     gtk_box_pack_start(GTK_BOX(vbox), hbox, TRUE, FALSE, 0);
@@ -357,6 +440,7 @@ settings_clicked(GtkWidget* widget, GdkEvent* event, gpointer user_data) {
 
     int i, len = g_list_length(display_plugins);
     for (i = 0; i < len; i++) {
+      GtkTreeIter iter;
       gtk_list_store_append(GTK_LIST_STORE(model), &iter);
       DISPLAY_PLUGIN* dp = (DISPLAY_PLUGIN*) g_list_nth_data(display_plugins, i);
       gtk_list_store_set(GTK_LIST_STORE(model), &iter, 0, dp->name(), -1);
@@ -366,9 +450,72 @@ settings_clicked(GtkWidget* widget, GdkEvent* event, gpointer user_data) {
   }
 
   {
+    GtkWidget* hbox = gtk_hbox_new(FALSE, 5);
+    gtk_container_set_border_width(GTK_CONTAINER(hbox), 10);
+    gtk_notebook_append_page(GTK_NOTEBOOK(notebook), hbox, gtk_label_new("Application"));
+
+    GtkListStore* model1 = (GtkListStore *)gtk_list_store_new(1, G_TYPE_STRING, GDK_TYPE_DISPLAY);
+    g_object_set_data(G_OBJECT(dialog), "model1", model1);
+    GtkWidget* tree_view = gtk_tree_view_new_with_model(GTK_TREE_MODEL(model1));
+    g_object_set_data(G_OBJECT(dialog), "tree1", tree_view);
+    GtkTreeSelection* select = gtk_tree_view_get_selection(GTK_TREE_VIEW(tree_view));
+    gtk_tree_selection_set_mode(select, GTK_SELECTION_SINGLE);
+    g_signal_connect(G_OBJECT(select), "changed", G_CALLBACK(application_tree_selection_changed), dialog);
+    gtk_box_pack_start(GTK_BOX(hbox), tree_view, FALSE, FALSE, 0);
+    GtkTreeViewColumn* column = gtk_tree_view_column_new_with_attributes(
+        "Application", gtk_cell_renderer_text_new(), "text", 0, NULL);
+    gtk_tree_view_column_set_min_width(GTK_TREE_VIEW_COLUMN(column), 80);
+    gtk_tree_view_append_column(GTK_TREE_VIEW(tree_view), column);
+
+    GtkListStore* model2 = (GtkListStore *)gtk_list_store_new(1, G_TYPE_STRING, GDK_TYPE_DISPLAY);
+    g_object_set_data(G_OBJECT(dialog), "model2", model2);
+    tree_view = gtk_tree_view_new_with_model(GTK_TREE_MODEL(model2));
+    g_object_set_data(G_OBJECT(dialog), "tree2", tree_view);
+    select = gtk_tree_view_get_selection(GTK_TREE_VIEW(tree_view));
+    gtk_tree_selection_set_mode(select, GTK_SELECTION_SINGLE);
+    g_signal_connect(G_OBJECT(select), "changed", G_CALLBACK(notification_tree_selection_changed), dialog);
+    gtk_box_pack_start(GTK_BOX(hbox), tree_view, FALSE, FALSE, 0);
+    column = gtk_tree_view_column_new_with_attributes(
+        "Notification", gtk_cell_renderer_text_new(), "text", 0, NULL);
+    gtk_tree_view_column_set_min_width(GTK_TREE_VIEW_COLUMN(column), 80);
+    gtk_tree_view_append_column(GTK_TREE_VIEW(tree_view), column);
+
+    GtkWidget* frame = gtk_frame_new("Setting");
+    gtk_box_pack_start(GTK_BOX(hbox), frame, TRUE, TRUE, 0);
+
+    GtkWidget* vbox = gtk_vbox_new(FALSE, 5);
+    gtk_container_set_border_width(GTK_CONTAINER(vbox), 10);
+    gtk_container_add(GTK_CONTAINER(frame), vbox);
+
+    hbox = gtk_hbox_new(FALSE, 5);
+    gtk_box_pack_start(GTK_BOX(vbox), hbox, FALSE, FALSE, 0);
+
+    GtkWidget* label = gtk_label_new("Enabled:");
+    gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, FALSE, 0);
+    GtkWidget* combobox = gtk_combo_box_new_text();
+    g_object_set_data(G_OBJECT(dialog), "enabled", combobox);
+    gtk_combo_box_append_text(GTK_COMBO_BOX(combobox), "Enable");
+    gtk_combo_box_append_text(GTK_COMBO_BOX(combobox), "Disable");
+    gtk_widget_set_sensitive(combobox, FALSE);
+    g_signal_connect(G_OBJECT(combobox), "changed", G_CALLBACK(notification_enabled_changed), dialog);
+    gtk_box_pack_start(GTK_BOX(hbox), combobox, FALSE, FALSE, 0);
+
+    const char* sql = "select app_name from notification order by app_name";
+    sqlite3_stmt *stmt = NULL;
+    sqlite3_prepare(db, sql, strlen(sql), &stmt, NULL);
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+      GtkTreeIter iter;
+      gtk_list_store_append(GTK_LIST_STORE(model1), &iter);
+      gtk_list_store_set(GTK_LIST_STORE(model1), &iter, 0, sqlite3_column_text(stmt, 0), -1);
+    }
+    sqlite3_finalize(stmt);
+  }
+  
+  {
     GtkWidget* vbox = gtk_vbox_new(FALSE, 5);
     gtk_container_set_border_width(GTK_CONTAINER(vbox), 10);
     gtk_notebook_append_page(GTK_NOTEBOOK(notebook), vbox, gtk_label_new("Security"));
+
     GtkWidget* checkbutton;
     checkbutton = gtk_check_button_new_with_label("Require password for local apps");
     gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(checkbutton), require_password_for_local_apps);
@@ -648,7 +795,7 @@ gntp_recv_proc(gpointer data) {
           }
         }
 
-        sqlite3_exec(db, sqlite3_mprintf("delete from notification where name = '%q'", notification_name), NULL, NULL, NULL);
+        sqlite3_exec(db, sqlite3_mprintf("delete from notification where app_name = '%q' and name = '%q'", application_name, notification_name), NULL, NULL, NULL);
         sqlite3_exec(db,
             sqlite3_mprintf(
                 "insert into notification("
