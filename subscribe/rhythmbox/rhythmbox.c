@@ -329,7 +329,7 @@ get_rhythmbox_info(gpointer data) {
     NOTIFICATION_INFO* ni = g_new0(NOTIFICATION_INFO, 1);
     ni->title = g_strdup(title);
     ni->text = g_strdup_printf("%s\n%s", album, artist);
-    ni->icon = get_album_art("Ozzy", "Ozmosis");
+    ni->icon = get_album_art(artist, album);
     g_timeout_add(10, delay_show, ni);
 
     if (last_title) g_free(last_title);
