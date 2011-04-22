@@ -34,6 +34,7 @@
 
 SUBSCRIPTOR_CONTEXT* sc = NULL;
 gchar* last_id = NULL;
+gboolean enable = FALSE;
 
 #define XML_CONTENT(x) (x->children ? (char*) x->children->content : NULL)
 
@@ -92,6 +93,8 @@ delay_show(gpointer data) {
 
 static gboolean
 fetch_tweets(gpointer data) {
+  if (!enable) return FALSE;
+
   CURL* curl = NULL;
   CURLcode res = CURLE_OK;
   long http_status = 0;
@@ -211,12 +214,14 @@ subscribe_term() {
 
 G_MODULE_EXPORT gboolean
 subscribe_start() {
+  enable = TRUE;
   g_timeout_add(10, fetch_tweets, NULL);
   return TRUE;
 }
 
 G_MODULE_EXPORT void
 subscribe_stop() {
+  enable = FALSE;
 }
 
 G_MODULE_EXPORT gchar*

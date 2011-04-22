@@ -37,6 +37,7 @@
 SUBSCRIPTOR_CONTEXT* sc = NULL;
 DBusGConnection *conn = NULL;
 DBusGProxy* proxy = NULL;
+gboolean enable = FALSE;
 
 gchar* last_title = NULL;
 gchar* last_artist = NULL;
@@ -197,6 +198,8 @@ leave:
 
 static gboolean
 get_rhythmbox_info(gpointer data) {
+  if (!enable) return FALSE;
+
   DBusGProxy *player = NULL;
   DBusGProxy *shell = NULL;
   GError *error = NULL;
@@ -356,12 +359,14 @@ subscribe_term() {
 
 G_MODULE_EXPORT gboolean
 subscribe_start() {
+  enable = TRUE;
   g_timeout_add(1000, get_rhythmbox_info, NULL);
   return TRUE;
 }
 
 G_MODULE_EXPORT void
 subscribe_stop() {
+  enable = FALSE;
 }
 
 G_MODULE_EXPORT gchar*
