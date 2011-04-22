@@ -17,6 +17,7 @@ Installation:
 > * libcurl
 > * gtk+-2.0
 > * sqlite3
+> * dbus-glib-1
 > 
 > Type "make". This should produce a program "gol".
 > You can run it by typing "./gol".
