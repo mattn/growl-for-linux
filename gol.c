@@ -760,13 +760,17 @@ settings_clicked(GtkWidget* widget, GdkEvent* event, gpointer user_data) {
 
 static void
 about_click(GtkWidget* widget, gpointer user_data) {
-  const gchar* authors[2] = {"mattn", NULL};
+  const gchar* authors[2] = {"mattn <mattn.jp@gmail.com>", NULL};
   gchar* contents = NULL;
   gchar* utf8 = NULL;
   GdkPixbuf* logo = NULL;
   GtkWidget* dialog;
   dialog = gtk_about_dialog_new();
   gtk_about_dialog_set_name(GTK_ABOUT_DIALOG(dialog), "Growl For Linux");
+  gtk_about_dialog_set_website(GTK_ABOUT_DIALOG(dialog),
+		  "https://github.com/mattn/growl-for-linux/");
+  gtk_about_dialog_set_comments(GTK_ABOUT_DIALOG(dialog),
+		  "A notification system for linux");
   gtk_about_dialog_set_authors(GTK_ABOUT_DIALOG(dialog), authors);
   gtk_about_dialog_set_version(GTK_ABOUT_DIALOG(dialog), PACKAGE_VERSION);
   if (g_file_get_contents("COPYING", &contents, NULL, NULL)) {
