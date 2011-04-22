@@ -3,6 +3,8 @@
 *.la
 *.lo
 *.o
+*.so
+*.desktop
 autom4te.cache
 aclocal.m4
 compile
