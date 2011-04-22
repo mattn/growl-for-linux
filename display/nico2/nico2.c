@@ -251,7 +251,7 @@ display_animation_func(gpointer data) {
     return FALSE;
   }
 
-  di->x -= 5;
+  di->x -= 10;
   gdk_window_move(di->popup->window, di->x, di->y);
   return TRUE;
 }
@@ -359,6 +359,7 @@ display_show(NOTIFICATION_INFO* ni) {
   gtk_widget_show_all(di->popup);
 
   gtk_widget_set_size_request(fixed, di->width, di->height);
+  gdk_window_set_back_pixmap (di->popup->window, NULL, FALSE);
   gdk_window_shape_combine_mask(di->popup->window, bitmap, 0, 0);
 
   g_object_unref(gc);
