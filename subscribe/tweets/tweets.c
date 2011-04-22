@@ -91,7 +91,7 @@ delay_show(gpointer data) {
 }
 
 static gboolean
-fetch_feed(gpointer data) {
+fetch_tweets(gpointer data) {
   CURL* curl = NULL;
   CURLcode res = CURLE_OK;
   long http_status = 0;
@@ -195,7 +195,7 @@ leave:
   if (ctx) xmlXPathFreeContext(ctx);
   if (doc) xmlFreeDoc(doc);
    
-  g_timeout_add(1000 * length, fetch_feed, NULL);
+  g_timeout_add(1000 * length, fetch_tweets, NULL);
   return FALSE;
 }
 
@@ -211,7 +211,7 @@ subscribe_term() {
 
 G_MODULE_EXPORT gboolean
 subscribe_start() {
-  g_timeout_add(10, fetch_feed, NULL);
+  g_timeout_add(10, fetch_tweets, NULL);
   return TRUE;
 }
 
@@ -221,14 +221,15 @@ subscribe_stop() {
 
 G_MODULE_EXPORT gchar*
 subscribe_name() {
-  return "Feed";
+  return "Tweets";
 }
 
 G_MODULE_EXPORT gchar*
 subscribe_description() {
-  return "<span size=\"large\"><b>Feed</b></span>\n"
-    "<span>This is feed subscriber.</span>\n"
-    "<span>Polling feed, and show notification.</span>\n";
+  return "<span size=\"large\"><b>Tweets</b></span>\n"
+    "<span>This is tweets subscriber.</span>\n"
+    "<span>Polling twitter timeline, and show notification.</span>\n";
+    "<span>Currently, fetching public timeline.</span>\n";
 }
 
 G_MODULE_EXPORT char**

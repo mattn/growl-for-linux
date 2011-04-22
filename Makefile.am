@@ -1,5 +1,5 @@
 ACLOCAL_AMFLAGS = -I m4
-SUBDIRS = data display/balloon display/default display/nico2 subscribe/feed
+SUBDIRS = data display/balloon display/default display/nico2 subscribe/tweets
 
 bin_PROGRAMS = gol
 gol_SOURCES = gol.c gol.h

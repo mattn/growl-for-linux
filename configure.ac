@@ -37,6 +37,6 @@ AC_CONFIG_FILES([Makefile
                  display/balloon/Makefile
                  display/default/Makefile
                  display/nico2/Makefile
-                 subscribe/feed/Makefile
+                 subscribe/tweets/Makefile
                  data/gol.desktop])
 AC_OUTPUT
