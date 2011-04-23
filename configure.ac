@@ -1,5 +1,5 @@
 AC_PREREQ([2.65])
-AC_INIT([growl-for-linux], [0.0], [mattn.jp@gmail.com])
+AC_INIT([growl-for-linux], [0.1], [mattn.jp@gmail.com])
 AC_CONFIG_SRCDIR([gol.c])
 AC_CONFIG_MACRO_DIR([m4])
 
