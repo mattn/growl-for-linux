@@ -19,8 +19,17 @@ Installation:
 > * sqlite3
 > * dbus-glib-1
 > 
-> Type "make". This should produce a program "gol".
-> You can run it by typing "./gol".
+> If you are developer, then type following.
+> 
+>     # ./autogen.sh
+>     # ./configure
+>     # make && make install
+> 
+> If you are ubuntu user, then type following.
+
+>     # sudo add-apt-repository ppa:mattn/growl-for-linux
+>     # sudo add-get update
+>     # sudo add-get install growl-for-linux
 
 Usage:
 ------
