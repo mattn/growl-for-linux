@@ -1721,8 +1721,8 @@ main(int argc, char* argv[]) {
   WSADATA wsaData;
   WSAStartup(MAKEWORD(2, 2), &wsaData);
 #endif
-  GIOChannel* gntp_fd;
-  GIOChannel* udp_fd;
+  GIOChannel* gntp_io;
+  GIOChannel* udp_io;
 
   gchar* program = g_find_program_in_path(argv[0]);
   exepath = g_path_get_dirname(program);
@@ -1742,8 +1742,8 @@ main(int argc, char* argv[]) {
 #endif
 
   if (!load_config()) goto leave;
-  if ((gntp_fd = create_gntp_server()) < 0) goto leave;
-  if ((udp_fd = create_udp_server()) < 0) goto leave;
+  if ((gntp_io = create_gntp_server()) == NULL) goto leave;
+  if ((udp_io = create_udp_server()) == NULL) goto leave;
   if (!load_display_plugins()) goto leave;
   if (!load_subscribe_plugins()) goto leave;
   create_menu();
@@ -1754,8 +1754,8 @@ leave:
   destroy_menu();
   unload_subscribe_plugins();
   unload_display_plugins();
-  destroy_gntp_server(gntp_fd);
-  destroy_udp_server(udp_fd);
+  destroy_gntp_server(gntp_io);
+  destroy_udp_server(udp_io);
   unload_config();
   if (exepath) g_free(exepath);
 
