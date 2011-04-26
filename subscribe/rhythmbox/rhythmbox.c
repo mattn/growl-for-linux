@@ -360,7 +360,7 @@ subscribe_term() {
 G_MODULE_EXPORT gboolean
 subscribe_start() {
   enable = TRUE;
-  g_timeout_add(1000, get_rhythmbox_info, NULL);
+  g_timeout_add(5000, get_rhythmbox_info, NULL);
   return TRUE;
 }
 
