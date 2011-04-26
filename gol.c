@@ -140,6 +140,7 @@ get_config_bool(const char* key, gboolean def) {
     ret = (gboolean) sqlite3_column_int(stmt, 0);
   }
   sqlite3_finalize(stmt);
+  sqlite3_free((void*) sql);
   return ret;
 }
 
@@ -154,6 +155,7 @@ get_subscriber_enabled(const char* name) {
     ret = (gboolean) sqlite3_column_int(stmt, 0);
   }
   sqlite3_finalize(stmt);
+  sqlite3_free((void*) sql);
   return ret;
 }
 
@@ -170,25 +172,35 @@ get_config_string(const char* key, const char* def) {
     value = g_strdup(def ? def : "");
   }
   sqlite3_finalize(stmt);
+  sqlite3_free((void*) sql);
   return value;
 }
 
 static void
 set_config_bool(const char* key, gboolean value) {
-  sqlite3_exec(db, sqlite3_mprintf(
-        "delete from config where key = '%q'", key), NULL, NULL, NULL);
-  sqlite3_exec(db, sqlite3_mprintf(
+  const char* sql;
+  sql = sqlite3_mprintf(
+        "delete from config where key = '%q'", key);
+  sqlite3_exec(db, sql, NULL, NULL, NULL);
+  sqlite3_free((void*) sql);
+  sql = sqlite3_mprintf(
         "insert into config(key, value) values('%q', '%q')",
-          key, value ? "1" : "0"), NULL, NULL, NULL);
+          key, value ? "1" : "0");
+  sqlite3_exec(db, sql, NULL, NULL, NULL);
+  sqlite3_free((void*) sql);
 }
 
 static void
 set_config_string(const char* key, const char* value) {
-  sqlite3_exec(db, sqlite3_mprintf(
-        "delete from config where key = '%q'", key), NULL, NULL, NULL);
-  sqlite3_exec(db, sqlite3_mprintf(
-        "insert into config(key, value) values('%q', '%q')", key, value),
-        NULL, NULL, NULL);
+  const char* sql;
+  sql = sqlite3_mprintf(
+        "delete from config where key = '%q'", key);
+  sqlite3_exec(db, sql, NULL, NULL, NULL);
+  sqlite3_free((void*) sql);
+  sql = sqlite3_mprintf(
+        "insert into config(key, value) values('%q', '%q')", key, value);
+  sqlite3_exec(db, sql, NULL, NULL, NULL);
+  sqlite3_free((void*) sql);
 }
 
 static void
@@ -274,6 +286,7 @@ application_tree_selection_changed(GtkTreeSelection *selection, gpointer data) {
         sqlite3_column_text(stmt, 0), -1);
   }
   sqlite3_finalize(stmt);
+  sqlite3_free((void*) sql);
 
   g_free(app_name);
 
@@ -373,11 +386,16 @@ subscriber_enable_toggled(
   enable ^= 1;
   gtk_list_store_set(GTK_LIST_STORE(model), &iter, 0, enable, -1);
 
-  sqlite3_exec(db, sqlite3_mprintf(
-        "delete from subscriber where name = '%q'", name), NULL, NULL, NULL);
-  sqlite3_exec(db, sqlite3_mprintf(
+  const char* sql;
+  sql = sqlite3_mprintf(
+        "delete from subscriber where name = '%q'", name);
+  sqlite3_exec(db, sql, NULL, NULL, NULL);
+  sqlite3_free((void*) sql);
+  sql = sqlite3_mprintf(
         "insert into subscriber(name, enable) values('%q', %d)",
-          name, enable ? 1 : 0), NULL, NULL, NULL);
+          name, enable ? 1 : 0);
+  sqlite3_exec(db, sql, NULL, NULL, NULL);
+  sqlite3_free((void*) sql);
 
   int i, len = g_list_length(subscribe_plugins);
   for (i = 0; i < len; i++) {
@@ -444,6 +462,7 @@ notification_tree_selection_changed(GtkTreeSelection *selection, gpointer data) 
     }
   }
   sqlite3_finalize(stmt);
+  sqlite3_free((void*) sql);
 
   g_free(app_name);
   g_free(name);
@@ -472,10 +491,12 @@ notification_enable_changed(GtkComboBox *combobox, gpointer data) {
 
   gint enable = gtk_combo_box_get_active(combobox) == 0 ? 1 : 0;
 
-  sqlite3_exec(db, sqlite3_mprintf(
+  const char* sql = sqlite3_mprintf(
         "update notification set enable = %d"
         " where app_name = '%q' and name = '%q'",
-        enable, app_name, name), NULL, NULL, NULL);
+        enable, app_name, name);
+  sqlite3_exec(db, sql, NULL, NULL, NULL);
+  sqlite3_free((void*) sql);
 
   g_free(app_name);
   g_free(name);
@@ -504,10 +525,12 @@ notification_display_changed(GtkComboBox *combobox, gpointer data) {
 
   gchar* display = gtk_combo_box_get_active_text(combobox);
 
-  sqlite3_exec(db, sqlite3_mprintf(
+  const char* sql = sqlite3_mprintf(
         "update notification set display = '%q'"
         " where app_name = '%q' and name = '%q'",
-        display, app_name, name), NULL, NULL, NULL);
+        display, app_name, name);
+  sqlite3_exec(db, sql, NULL, NULL, NULL);
+  sqlite3_free((void*) sql);
 
   g_free(display);
   g_free(app_name);
@@ -1019,12 +1042,13 @@ gntp_recv_proc(gpointer data) {
           }
         }
 
-        sqlite3_exec(db,
-            sqlite3_mprintf(
+		const char* sql;
+        sql = sqlite3_mprintf(
               "delete from notification where app_name = '%q' and name = '%q'",
-                application_name, notification_name), NULL, NULL, NULL);
-        sqlite3_exec(db,
-            sqlite3_mprintf(
+                application_name, notification_name);
+        sqlite3_exec(db, sql, NULL, NULL, NULL);
+		sqlite3_free((void*) sql);
+        sql = sqlite3_mprintf(
               "insert into notification("
               "app_name, app_icon, name, icon, enable, display, sticky)"
               " values('%q', '%q', '%q', '%q', %d, '%q', %d)",
@@ -1035,8 +1059,9 @@ gntp_recv_proc(gpointer data) {
                 notification_enabled,
                 notification_display_name ?
                   notification_display_name : "Default",
-                FALSE
-                ), NULL, NULL, NULL);
+                FALSE);
+        sqlite3_exec(db, sql, NULL, NULL, NULL);
+		sqlite3_free((void*) sql);
 
         if (notification_name) g_free(notification_name);
         if (notification_icon) g_free(notification_icon);
@@ -1137,6 +1162,7 @@ gntp_recv_proc(gpointer data) {
                 g_strdup((char*) sqlite3_column_text(stmt, 1));
         }
         sqlite3_finalize(stmt);
+		sqlite3_free((void*) sql);
 
         if (enable) {
           DISPLAY_PLUGIN* cp = current_display;
@@ -1240,7 +1266,9 @@ create_menu() {
   // TODO: absolute path
   gchar* path = g_build_filename(DATADIR, "data", NULL);
   gchar* fullpath = g_build_filename(path, "icon.png", NULL);
+  g_free(path);
   status_icon = gtk_status_icon_new_from_file(fullpath);
+  g_free(fullpath);
   gtk_status_icon_set_tooltip(status_icon, "Growl");
   gtk_status_icon_set_visible(status_icon, TRUE);
   menu = gtk_menu_new();
@@ -1263,6 +1291,7 @@ create_menu() {
   g_signal_connect(G_OBJECT(menu_item), "activate",
       G_CALLBACK(exit_clicked), NULL);
   gtk_menu_shell_append(GTK_MENU_SHELL(menu), menu_item);
+
   gtk_widget_show_all(menu);
 }
 
@@ -1274,24 +1303,28 @@ destroy_menu() {
 
 static gboolean
 load_config() {
-  char* error;
   gchar* confdir = (gchar*) g_get_user_config_dir();
-  confdir = g_build_path(G_DIR_SEPARATOR_S, confdir, "gol", NULL);
-  if (g_mkdir_with_parents(confdir, 0700) < 0) {
+  gchar* appdir = g_build_path(G_DIR_SEPARATOR_S, confdir, "gol", NULL);
+  g_free(confdir);
+  if (g_mkdir_with_parents(appdir, 0700) < 0) {
     perror("mkdir");
-    g_critical("Can't create directory: %s", confdir);
+    g_critical("Can't create directory: %s", appdir);
+    g_free(appdir);
     return FALSE;
   }
-  gchar* confdb = g_build_filename(confdir, "config.db", NULL);
+  gchar* confdb = g_build_filename(appdir, "config.db", NULL);
+  g_free(appdir);
   gboolean exist = g_file_test(confdb, G_FILE_TEST_EXISTS);
   if (sqlite3_open(confdb, &db) != SQLITE_OK) {
     g_critical("Can't open database: %s", confdb);
+    g_free(confdb);
     return FALSE;
   }
+  g_free(confdb);
   if (!exist) {
     if (sqlite3_exec(db, "create table config"
           "(key text not null primary key, value text not null)",
-          0, 0, &error) != SQLITE_OK) {
+          NULL, NULL, NULL) != SQLITE_OK) {
       g_critical("Can't create configuration table");
       return FALSE;
     }
@@ -1324,11 +1357,12 @@ load_config() {
     };
     char** sql = sqls;
     while (*sql) {
-      sqlite3_exec(db, *sql, 0, 0, &error);
+      sqlite3_exec(db, *sql, NULL, NULL, NULL);
       sql++;
     }
     set_config_string("version", PACKAGE_VERSION);
   }
+  g_free(version);
 
   password = get_config_string("password", "");
   require_password_for_local_apps =
@@ -1341,8 +1375,8 @@ load_config() {
 
 static void
 unload_config() {
-  g_free(password);
-  sqlite3_close(db);
+  if (password) g_free(password);
+  if (db) sqlite3_close(db);
 }
 
 static gboolean
@@ -1366,8 +1400,8 @@ load_display_plugins() {
 
     gchar* fullpath = g_build_filename(path, filename, NULL);
     GModule* handle = g_module_open(fullpath, G_MODULE_BIND_LAZY);
+    g_free(fullpath);
     if (!handle) {
-      g_free(fullpath);
       continue;
     }
     DISPLAY_PLUGIN* dp = g_new0(DISPLAY_PLUGIN, 1);
@@ -1379,6 +1413,7 @@ load_display_plugins() {
     g_module_symbol(handle, "display_description", (void**) &dp->description);
     g_module_symbol(handle, "display_thumbnail", (void**) &dp->thumbnail);
     if (dp->init && !dp->init()) {
+      g_module_close(dp->handle);
       g_free(dp);
       continue;
     }
@@ -1410,6 +1445,8 @@ unload_display_plugins() {
     g_module_close(dp->handle);
     g_free(dp);
   }
+  g_list_free(display_plugins);
+  display_plugins = NULL;
 }
 
 static void
@@ -1435,8 +1472,8 @@ load_subscribe_plugins() {
 
     gchar* fullpath = g_build_filename(path, filename, NULL);
     GModule* handle = g_module_open(fullpath, G_MODULE_BIND_LAZY);
+    g_free(fullpath);
     if (!handle) {
-      g_free(fullpath);
       continue;
     }
     SUBSCRIBE_PLUGIN* sp = g_new0(SUBSCRIBE_PLUGIN, 1);
@@ -1449,6 +1486,7 @@ load_subscribe_plugins() {
     g_module_symbol(handle, "subscribe_description", (void**) &sp->description);
     g_module_symbol(handle, "subscribe_thumbnail", (void**) &sp->thumbnail);
     if (sp->init && !sp->init(&sc)) {
+      g_module_close(sp->handle);
       g_free(sp);
       continue;
     }
@@ -1472,6 +1510,8 @@ unload_subscribe_plugins() {
     g_module_close(sp->handle);
     g_free(sp);
   }
+  g_list_free(subscribe_plugins);
+  subscribe_plugins = NULL;
 }
 
 static gboolean
@@ -1577,12 +1617,12 @@ leave:
   return TRUE;
 }
 
-static int
+static GIOChannel*
 create_udp_server() {
   int fd;
   if ((fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
     perror("socket");
-    return -1;
+    return NULL;
   }
 
   struct sockaddr_in server_addr;
@@ -1593,7 +1633,7 @@ create_udp_server() {
 
   if (bind(fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
     perror("bind");
-    return -1;
+    return NULL;
   }
 
   fd_set fdset;
@@ -1602,15 +1642,15 @@ create_udp_server() {
   g_io_add_watch(channel, G_IO_IN | G_IO_ERR, udp_recv_proc, NULL);
   g_io_channel_unref(channel);
 
-  return fd;
+  return channel;
 }
 
-static int
+static GIOChannel*
 create_gntp_server() {
   int fd;
   if ((fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
     perror("socket");
-    return -1;
+    return NULL;
   }
 
   sockopt_t sockopt;
@@ -1618,13 +1658,13 @@ create_gntp_server() {
   if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR,
         &sockopt, sizeof(sockopt)) == -1) {
     perror("setsockopt");
-    return -1;
+    return NULL;
   }
   sockopt = 1;
   if (setsockopt(fd, IPPROTO_TCP, TCP_NODELAY,
         &sockopt, sizeof(sockopt)) == -1) {
     perror("setsockopt");
-    return -1;
+    return NULL;
   }
 
   struct sockaddr_in server_addr;
@@ -1635,13 +1675,13 @@ create_gntp_server() {
 
   if (bind(fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
     perror("bind");
-    return -1;
+    return NULL;
   }
 
   if (listen(fd, SOMAXCONN) < 0) {
     perror("listen");
     closesocket(fd);
-    return -1;
+    return NULL;
   }
 
   fd_set fdset;
@@ -1650,19 +1690,25 @@ create_gntp_server() {
   g_io_add_watch(channel, G_IO_IN | G_IO_ERR, gntp_accepted, NULL);
   g_io_channel_unref(channel);
 
-  return fd;
+  return channel;
 }
 
 
 
 static void
-destroy_gntp_server(int fd) {
-  closesocket(fd);
+destroy_gntp_server(GIOChannel* channel) {
+  if (channel) {
+    closesocket(g_io_channel_unix_get_fd(channel));
+    g_io_channel_unref(channel);
+  }
 }
 
 static void
-destroy_udp_server(int fd) {
-  closesocket(fd);
+destroy_udp_server(GIOChannel* channel) {
+  if (channel) {
+    closesocket(g_io_channel_unix_get_fd(channel));
+    g_io_channel_unref(channel);
+  }
 }
 
 int
@@ -1671,7 +1717,8 @@ main(int argc, char* argv[]) {
   WSADATA wsaData;
   WSAStartup(MAKEWORD(2, 2), &wsaData);
 #endif
-  int gntp_fd, udp_fd;
+  GIOChannel* gntp_fd;
+  GIOChannel* udp_fd;
 
   gchar* program = g_find_program_in_path(argv[0]);
   exepath = g_path_get_dirname(program);
@@ -1706,7 +1753,7 @@ leave:
   destroy_gntp_server(gntp_fd);
   destroy_udp_server(udp_fd);
   unload_config();
-  g_free(exepath);
+  if (exepath) g_free(exepath);
 
 #ifdef _WIN32
   WSACleanup();
