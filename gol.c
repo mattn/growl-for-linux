@@ -1310,7 +1310,6 @@ static gboolean
 load_config() {
   gchar* confdir = (gchar*) g_get_user_config_dir();
   gchar* appdir = g_build_path(G_DIR_SEPARATOR_S, confdir, "gol", NULL);
-  g_free(confdir);
   if (g_mkdir_with_parents(appdir, 0700) < 0) {
     perror("mkdir");
     g_critical("Can't create directory: %s", appdir);
