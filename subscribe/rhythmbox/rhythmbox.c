@@ -94,6 +94,7 @@ memfstrdup(MEMFILE* mf) {
 
 static gboolean
 delay_show(gpointer data) {
+  if (!enable) return FALSE;
   sc->show((NOTIFICATION_INFO*) data);
   return FALSE;
 }
