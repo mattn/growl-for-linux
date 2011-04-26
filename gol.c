@@ -808,8 +808,11 @@ about_click(GtkWidget* widget, gpointer user_data) {
       "http://mattn.kaoriya.net/");
   gchar* path = g_build_filename(DATADIR, "data", NULL);
   gchar* fullpath = g_build_filename(path, "growl4linux.jpg", NULL);
+  g_free(path);
   logo = gdk_pixbuf_new_from_file(fullpath, NULL);
+  g_free(fullpath);
   gtk_about_dialog_set_logo (GTK_ABOUT_DIALOG(dialog), logo);
+  g_object_unref(G_OBJECT(logo));
   gtk_window_set_position(GTK_WINDOW(dialog), GTK_WIN_POS_CENTER);
   gtk_dialog_run(GTK_DIALOG(dialog));
   gtk_widget_destroy(dialog);
@@ -1297,8 +1300,10 @@ create_menu() {
 
 static void
 destroy_menu() {
-  if (status_icon)
+  if (status_icon) {
       gtk_status_icon_set_visible(GTK_STATUS_ICON(status_icon), FALSE);
+	  g_object_unref(G_OBJECT(status_icon));
+  }
 }
 
 static gboolean
