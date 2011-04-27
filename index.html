@@ -3,19 +3,21 @@
 <head>
   <meta charset='utf-8'>
   <title>mattn/growl-for-linux @ GitHub</title>
-  <link rel="shortcut icon" href="https://github.com/mattn/growl-for-linux/raw/master/data/gol.ico" />
+  <link rel="shortcut icon" href="static/gol.ico" />
   <link media="all" rel="stylesheet" href="static/jquery.jgrowl.css" type="text/css" />
+  <link media="all" rel="stylesheet" href="static/jquery.lightbox-0.5.css" type="text/css" />
   <link media="all" rel="stylesheet" href="static/style.css" type="text/css" />
 <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.5.1/jquery.min.js"></script>
 <script src="static/jquery.jgrowl.js"></script>
 <script src="static/jquery.lazyload.mini.js"></script>
+<script src="static/jquery.lightbox-0.5.js"></script>
 <script>
 $(function() {
   $("#content img").lazyload({ placeholder: "static/blank.gif", effect: "fadeIn" });
   setTimeout(function() {
     $.jGrowl(
     [
-      '<img style="margin-right: 30px" src="https://github.com/mattn/growl-for-linux/raw/master/data/icon.png" width=48 height=48 align="left" />',
+      '<img style="margin-right: 30px" src="static/icon.png" width=48 height=48 align="left" />',
       '<ul>',
       '<li>Visual Style</li>',
       '<li>Useful Plugins</li>',
@@ -27,6 +29,8 @@ $(function() {
       header: 'Growl For Linux',
     });
   }, 2000);
+
+  $('.screenshots').lightBox();
 })
 </script>
 </head>
@@ -39,7 +43,7 @@ $(function() {
 </div>
 
 <blockquote>
-  <p><img src="https://github.com/mattn/growl-for-linux/raw/master/data/growl4linux.jpg" alt="Growl For Linux" title="Growl For Linux" /></p>
+  <p><img src="static/growl4linux.jpg" alt="Growl For Linux" title="Growl For Linux" /></p>
 </blockquote>
 
 <h2>Introduction:</h2>
@@ -111,7 +115,13 @@ $(function() {
 <h2>Screenshot:</h2>
 
 <blockquote>
-  <p><img src="https://github.com/mattn/growl-for-linux/raw/master/data/screenshot.png" alt="Working on Linux" title="Working on Linux" /></p>
+  <p>
+  <a class="screenshots" href="static/screenshot.png"><img src="static/screenshot-thumb.png" alt="Working on Linux" /></a>
+  <a class="screenshots" href="static/setting-panel1.png"><img src="static/setting-panel1-thumb.png" alt="Setting Panel 1" /></a>
+  <a class="screenshots" href="static/setting-panel2.png"><img src="static/setting-panel2-thumb.png" alt="Setting Panel 2" /></a>
+  <a class="screenshots" href="static/setting-panel3.png"><img src="static/setting-panel3-thumb.png" alt="Setting Panel 3" /></a>
+  <a class="screenshots" href="static/setting-panel4.png"><img src="static/setting-panel4-thumb.png" alt="Setting Panel 4" /></a>
+  </p>
 </blockquote>
 
 <h2>Display Style:</h2>
