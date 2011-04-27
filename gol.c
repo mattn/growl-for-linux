@@ -95,6 +95,7 @@ static gboolean require_password_for_local_apps = FALSE;
 static gboolean require_password_for_lan_apps = FALSE;
 static sqlite3 *db = NULL;
 static GtkStatusIcon* status_icon = NULL;
+static GtkWidget* popup_menu = NULL;
 static GList* display_plugins = NULL;
 static GList* subscribe_plugins = NULL;
 static DISPLAY_PLUGIN* current_display = NULL;
@@ -1263,7 +1264,6 @@ disabled_pixbuf(GdkPixbuf *pixbuf) {
 
 static void
 create_menu() {
-  GtkWidget* menu;
   GtkWidget* menu_item;
 
   // TODO: absolute path
@@ -1274,32 +1274,35 @@ create_menu() {
   g_free(fullpath);
   gtk_status_icon_set_tooltip(status_icon, "Growl");
   gtk_status_icon_set_visible(status_icon, TRUE);
-  menu = gtk_menu_new();
+  popup_menu = gtk_menu_new();
   g_signal_connect(GTK_STATUS_ICON(status_icon), "popup-menu",
-      G_CALLBACK(status_icon_popup), menu);
+      G_CALLBACK(status_icon_popup), popup_menu);
 
   menu_item = gtk_image_menu_item_new_from_stock(GTK_STOCK_PREFERENCES, NULL);
   g_signal_connect(G_OBJECT(menu_item), "activate",
       G_CALLBACK(settings_clicked), NULL);
-  gtk_menu_shell_append(GTK_MENU_SHELL(menu), menu_item);
+  gtk_menu_shell_append(GTK_MENU_SHELL(popup_menu), menu_item);
 
   menu_item = gtk_image_menu_item_new_from_stock(GTK_STOCK_ABOUT, NULL);
   g_signal_connect(G_OBJECT(menu_item), "activate",
       G_CALLBACK(about_click), NULL);
-  gtk_menu_shell_append(GTK_MENU_SHELL(menu), menu_item);
+  gtk_menu_shell_append(GTK_MENU_SHELL(popup_menu), menu_item);
 
-  gtk_menu_shell_append(GTK_MENU_SHELL(menu), gtk_separator_menu_item_new());
+  gtk_menu_shell_append(GTK_MENU_SHELL(popup_menu), gtk_separator_menu_item_new());
 
   menu_item = gtk_image_menu_item_new_from_stock(GTK_STOCK_QUIT, NULL);
   g_signal_connect(G_OBJECT(menu_item), "activate",
       G_CALLBACK(exit_clicked), NULL);
-  gtk_menu_shell_append(GTK_MENU_SHELL(menu), menu_item);
+  gtk_menu_shell_append(GTK_MENU_SHELL(popup_menu), menu_item);
 
-  gtk_widget_show_all(menu);
+  gtk_widget_show_all(popup_menu);
 }
 
 static void
 destroy_menu() {
+  if (popup_menu) {
+	  gtk_widget_destroy(popup_menu);
+  }
   if (status_icon) {
       gtk_status_icon_set_visible(GTK_STATUS_ICON(status_icon), FALSE);
 	  g_object_unref(G_OBJECT(status_icon));
