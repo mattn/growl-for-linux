@@ -359,7 +359,9 @@ display_show(gpointer data) {
     }
   }
 
-  PangoFontDescription* font_desc = pango_font_description_new();
+  PangoFontDescription* font_desc;
+
+  font_desc = pango_font_description_new();
   pango_font_description_set_family(font_desc, "Sans");
   pango_font_description_set_size(font_desc, 12 * PANGO_SCALE);
 
@@ -369,15 +371,22 @@ display_show(gpointer data) {
   gtk_widget_modify_font(label, font_desc);
   gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, FALSE, 0);
 
+  pango_font_description_free(font_desc);
+
+  font_desc = pango_font_description_new();
+  pango_font_description_set_family(font_desc, "Sans");
+  pango_font_description_set_size(font_desc, 8 * PANGO_SCALE);
+
   label = gtk_label_new(di->ni->text);
   gdk_color_parse("black", &color);
   gtk_widget_modify_fg(label, GTK_STATE_NORMAL, &color);
+  gtk_widget_modify_font(label, font_desc);
   g_signal_connect(G_OBJECT(label), "size-allocate", G_CALLBACK(label_size_allocate), NULL);
   gtk_label_set_line_wrap(GTK_LABEL(label), TRUE);
   gtk_label_set_line_wrap_mode(GTK_LABEL(label), PANGO_WRAP_CHAR);
   gtk_box_pack_start(GTK_BOX(vbox), label, FALSE, FALSE, 0);
 
-  pango_font_description_free(font_desc);
+  gtk_widget_modify_font(label, font_desc);
 
   gtk_widget_set_size_request(di->popup, 180, 1);
 
