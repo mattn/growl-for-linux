@@ -3,27 +3,136 @@
 <head>
   <meta charset='utf-8'>
   <title>mattn/growl-for-linux @ GitHub</title>
+  <link rel="shortcut icon" href="https://github.com/mattn/growl-for-linux/raw/master/data/gol.ico" />
+  <link media="all" rel="stylesheet" href="static/jquery.jgrowl.css" type="text/css" />
+  <link media="all" rel="stylesheet" href="static/style.css" type="text/css" />
+<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.5.1/jquery.min.js"></script>
+<script src="static/jquery.jgrowl.js"></script>
+<script src="static/jquery.lazyload.mini.js"></script>
+<script>
+$(function() {
+  $("#content img").lazyload({ placeholder: "static/blank.gif", effect: "fadeIn" });
+  setTimeout(function() {
+    $.jGrowl(
+    [
+      '<img style="margin-right: 30px" src="https://github.com/mattn/growl-for-linux/raw/master/data/gol.ico" align="left" />',
+      '<ul>',
+      '<li>Visual Style</li>',
+      '<li>Useful Plugins</li>',
+      '<li>Working on Linux</li>',
+      '</ul>'
+    ].join(''),
+    {
+      sticky: true,
+      header: 'Growl For Linux',
+    });
+  }, 2000);
+})
+</script>
 </head>
 <body>
-<object classid="clsid:d27cdb6e-ae6d-11cf-96b8-444553540000" codebase="http://download.macromedia.com/pub/shockwave/cabs/flash/swflash.cab#version=6,0,0,0" width="344" height="288" id="gol1.swf" align="">
-  <param name="movie" value="gol1.swf" />
-  <param name="quality" value="high" />
-  <param name="bgcolor" value="#000000" />
-  <embed src="http://localhost/gol/gol1.swf" quality="high" bgcolor="#000" width="344" height="288" name="gol1" align="" type="application/x-shockwave-flash" pluginspage="http://www.macromedia.com/go/getflashplayer"></embed> 
-</object>
-<br />
-<object classid="clsid:d27cdb6e-ae6d-11cf-96b8-444553540000" codebase="http://download.macromedia.com/pub/shockwave/cabs/flash/swflash.cab#version=6,0,0,0" width="344" height="288" id="gol2.swf" align="">
-  <param name="movie" value="gol2.swf" />
-  <param name="quality" value="high" />
-  <param name="bgcolor" value="#ffffff" />
-  <embed src="gol2.swf" quality="high" bgcolor="#158" width="344" height="288" name="gol2" align="" type="application/x-shockwave-flash" pluginspage="http://www.macromedia.com/go/getflashplayer"></embed> 
-</object>
-<br />
-<object classid="clsid:d27cdb6e-ae6d-11cf-96b8-444553540000" codebase="http://download.macromedia.com/pub/shockwave/cabs/flash/swflash.cab#version=6,0,0,0" width="344" height="288" id="gol3.swf" align="">
-  <param name="movie" value="gol3.swf" />
-  <param name="quality" value="high" />
-  <param name="bgcolor" value="#ffffff" />
-  <embed src="gol3.swf" quality="high" bgcolor="#158" width="344" height="288" name="gol3" align="" type="application/x-shockwave-flash" pluginspage="http://www.macromedia.com/go/getflashplayer"></embed> 
-</object>
+<div id="content">
+
+<div id="logo">
+<h1>Growl For Linux</h1>
+<span>a better notification system for linux<span>
+</div>
+
+<blockquote>
+  <p><img src="https://github.com/mattn/growl-for-linux/raw/master/data/growl4linux.jpg" alt="Growl For Linux" title="Growl For Linux" /></p>
+</blockquote>
+
+<h2>Introduction:</h2>
+
+<blockquote>
+  <p>Growl For Linux is Linux-compatible of Growl. Growl is a notification system for Mac OS X. </p>
+</blockquote>
+
+<h2>Installation:</h2>
+
+<blockquote>
+  <p>Growl For Linux require following libraries.</p>
+  
+  <ul>
+  <li>openssl</li>
+  <li>libcurl</li>
+  <li>gtk+-2.0</li>
+  <li>sqlite3</li>
+  <li>dbus-glib-1</li>
+  </ul>
+  
+  <p>If you are developer, then type following.</p>
+
+<pre><code># ./autogen.sh
+# ./configure
+# make &amp;&amp; make install
+</code></pre>
+  
+  <p>If you are ubuntu user, then type following.</p>
+
+<pre><code># sudo add-apt-repository ppa:mattn/growl-for-linux
+# sudo add-get update
+# sudo add-get install growl-for-linux
+</code></pre>
+</blockquote>
+
+<h2>Usage:</h2>
+
+<blockquote>
+<pre><code># ./gol
+</code></pre>
+  
+<p>Why "gol" ?, "gol" mean "Growl On Linux". (or <em>ゴルア</em>).
+  Currently, This is required.</p>
+  
+  <p>Notification should be sent with <a href="http://www.growlforwindows.com/gfw/help/gntp.aspx">GNTP</a> protocol or <a href="http://growl.info/documentation/developer/protocol.php">Growl Network Protocol</a>.
+  If you want to be show icon in notification, you need to use GNTP protocol.</p>
+</blockquote>
+
+<h2>License:</h2>
+
+<blockquote>
+  <p>Growl For Linux is BSD style license. see also COPYING.
+  This product includes software developed by the OpenSSL Project for use in the OpenSSL Toolkit (http://www.openssl.org/).</p>
+</blockquote>
+
+<h2>Author:</h2>
+
+<blockquote>
+  <p>Yasuhiro Matsumoto <a href="&#x6D;&#x61;&#105;&#x6C;&#116;&#111;:&#x6D;&#97;&#116;&#116;&#110;&#46;j&#112;&#64;&#x67;&#x6D;&#x61;&#x69;&#108;&#x2E;&#x63;&#x6F;m">&#x6D;&#97;&#116;&#116;&#110;&#46;j&#112;&#64;&#x67;&#x6D;&#x61;&#x69;&#108;&#x2E;&#x63;&#x6F;m</a></p>
+</blockquote>
+
+<h2>Screenshot:</h2>
+
+<blockquote>
+  <p><img src="https://github.com/mattn/growl-for-linux/raw/master/data/screenshot.png" alt="Working on Linux" title="Working on Linux" /></p>
+</blockquote>
+
+<h2>Display Style:</h2>
+
+<ul>
+<li>Default</li>
+</ul>
+
+<blockquote>
+  <p><img src="https://github.com/mattn/growl-for-linux/raw/master/data/display_default.png" alt="Default Style" title="Default Style" /></p>
+</blockquote>
+
+<ul>
+<li>Balloon</li>
+</ul>
+
+<blockquote>
+  <p><img src="https://github.com/mattn/growl-for-linux/raw/master/data/display_balloon.png" alt="Balloon Style" title="Balloon Style" /></p>
+</blockquote>
+
+<ul>
+<li>Nico2</li>
+</ul>
+
+<blockquote>
+  <p><img src="https://github.com/mattn/growl-for-linux/raw/master/data/display_nico2.png" alt="Nico2 Style" title="Nico2 Style" /></p>
+</blockquote>
+</div>
 </body>
 </html>
