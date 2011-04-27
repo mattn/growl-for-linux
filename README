@@ -38,6 +38,13 @@ Usage:
     Why "gol" ?, "gol" mean "Growl On Linux". (or ゴルア).
     Currently, This is required.
 
+    Notification should be sent with GNTP protocol or Growl Network Protocol.
+	See also:
+	  http://www.growlforwindows.com/gfw/help/gntp.aspx
+	  http://growl.info/documentation/developer/protocol.php
+
+    If you want to be show icon in notification, you need to use GNTP protocol.
+
 License:
 --------
 
