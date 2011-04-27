@@ -96,6 +96,8 @@ static gboolean require_password_for_lan_apps = FALSE;
 static sqlite3 *db = NULL;
 static GtkStatusIcon* status_icon = NULL;
 static GtkWidget* popup_menu = NULL;
+static GtkWidget* setting_dialog = NULL;
+static GtkWidget* about_dialog = NULL;
 static GList* display_plugins = NULL;
 static GList* subscribe_plugins = NULL;
 static DISPLAY_PLUGIN* current_display = NULL;
@@ -540,19 +542,22 @@ notification_display_changed(GtkComboBox *combobox, gpointer data) {
 
 static void
 settings_clicked(GtkWidget* widget, GdkEvent* event, gpointer user_data) {
-  GtkWidget* dialog;
   GtkWidget* notebook;
 
-  dialog = gtk_dialog_new_with_buttons(
+  if (setting_dialog) {
+	  gtk_window_present(GTK_WINDOW(setting_dialog));
+	  return;
+  }
+  setting_dialog = gtk_dialog_new_with_buttons(
       "Settings", NULL, GTK_DIALOG_MODAL,
       GTK_STOCK_CLOSE, GTK_RESPONSE_CLOSE, NULL);
   gchar* path = g_build_filename(DATADIR, "data", "icon.png", NULL);
-  gtk_window_set_icon_from_file(GTK_WINDOW(dialog), path, NULL);
+  gtk_window_set_icon_from_file(GTK_WINDOW(setting_dialog), path, NULL);
   g_free(path);
-  gtk_window_set_position(GTK_WINDOW(dialog), GTK_WIN_POS_CENTER);
+  gtk_window_set_position(GTK_WINDOW(setting_dialog), GTK_WIN_POS_CENTER);
 
   notebook = gtk_notebook_new();
-  gtk_container_add(GTK_CONTAINER(GTK_DIALOG(dialog)->vbox), notebook);
+  gtk_container_add(GTK_CONTAINER(GTK_DIALOG(setting_dialog)->vbox), notebook);
   
   {
     GtkWidget* hbox = gtk_hbox_new(FALSE, 5);
@@ -567,7 +572,7 @@ settings_clicked(GtkWidget* widget, GdkEvent* event, gpointer user_data) {
         GTK_TREE_VIEW(tree_view));
     gtk_tree_selection_set_mode(select, GTK_SELECTION_SINGLE);
     g_signal_connect(G_OBJECT(select), "changed",
-        G_CALLBACK(display_tree_selection_changed), dialog);
+        G_CALLBACK(display_tree_selection_changed), setting_dialog);
     gtk_box_pack_start(GTK_BOX(hbox), tree_view, FALSE, FALSE, 0);
     GtkTreeViewColumn* column = gtk_tree_view_column_new_with_attributes(
         "Display", gtk_cell_renderer_text_new(), "text", 0, NULL);
@@ -579,12 +584,12 @@ settings_clicked(GtkWidget* widget, GdkEvent* event, gpointer user_data) {
     GtkWidget* label = gtk_label_new("");
     gtk_label_set_line_wrap(GTK_LABEL(label), TRUE);
     gtk_label_set_line_wrap_mode(GTK_LABEL(label), PANGO_WRAP_CHAR);
-    g_object_set_data(G_OBJECT(dialog), "description", label);
+    g_object_set_data(G_OBJECT(setting_dialog), "description", label);
     GtkWidget* align = gtk_alignment_new(0, 0, 0, 0);
     gtk_container_add(GTK_CONTAINER(align), label);
     gtk_box_pack_start(GTK_BOX(vbox), align, FALSE, FALSE, 0);
     GtkWidget* image = gtk_image_new();
-    g_object_set_data(G_OBJECT(dialog), "thumbnail", image);
+    g_object_set_data(G_OBJECT(setting_dialog), "thumbnail", image);
     gtk_box_pack_start(GTK_BOX(vbox), image, TRUE, TRUE, 0);
 
     hbox = gtk_hbox_new(FALSE, 5);
@@ -619,14 +624,14 @@ settings_clicked(GtkWidget* widget, GdkEvent* event, gpointer user_data) {
 
     GtkListStore* model1 =
       (GtkListStore *) gtk_list_store_new(1, G_TYPE_STRING);
-    g_object_set_data(G_OBJECT(dialog), "model1", model1);
+    g_object_set_data(G_OBJECT(setting_dialog), "model1", model1);
     GtkWidget* tree_view = gtk_tree_view_new_with_model(GTK_TREE_MODEL(model1));
-    g_object_set_data(G_OBJECT(dialog), "tree1", tree_view);
+    g_object_set_data(G_OBJECT(setting_dialog), "tree1", tree_view);
     GtkTreeSelection* select
       = gtk_tree_view_get_selection(GTK_TREE_VIEW(tree_view));
     gtk_tree_selection_set_mode(select, GTK_SELECTION_SINGLE);
     g_signal_connect(G_OBJECT(select), "changed",
-        G_CALLBACK(application_tree_selection_changed), dialog);
+        G_CALLBACK(application_tree_selection_changed), setting_dialog);
     gtk_box_pack_start(GTK_BOX(hbox), tree_view, FALSE, FALSE, 0);
     GtkTreeViewColumn* column = gtk_tree_view_column_new_with_attributes(
         "Application", gtk_cell_renderer_text_new(), "text", 0, NULL);
@@ -635,13 +640,13 @@ settings_clicked(GtkWidget* widget, GdkEvent* event, gpointer user_data) {
 
     GtkListStore* model2 =
       (GtkListStore *) gtk_list_store_new(1, G_TYPE_STRING);
-    g_object_set_data(G_OBJECT(dialog), "model2", model2);
+    g_object_set_data(G_OBJECT(setting_dialog), "model2", model2);
     tree_view = gtk_tree_view_new_with_model(GTK_TREE_MODEL(model2));
-    g_object_set_data(G_OBJECT(dialog), "tree2", tree_view);
+    g_object_set_data(G_OBJECT(setting_dialog), "tree2", tree_view);
     select = gtk_tree_view_get_selection(GTK_TREE_VIEW(tree_view));
     gtk_tree_selection_set_mode(select, GTK_SELECTION_SINGLE);
     g_signal_connect(G_OBJECT(select), "changed",
-        G_CALLBACK(notification_tree_selection_changed), dialog);
+        G_CALLBACK(notification_tree_selection_changed), setting_dialog);
     gtk_box_pack_start(GTK_BOX(hbox), tree_view, FALSE, FALSE, 0);
     column = gtk_tree_view_column_new_with_attributes(
         "Notification", gtk_cell_renderer_text_new(), "text", 0, NULL);
@@ -661,12 +666,12 @@ settings_clicked(GtkWidget* widget, GdkEvent* event, gpointer user_data) {
     GtkWidget* label = gtk_label_new("Enable:");
     gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, FALSE, 0);
     GtkWidget* combobox = gtk_combo_box_new_text();
-    g_object_set_data(G_OBJECT(dialog), "enable", combobox);
+    g_object_set_data(G_OBJECT(setting_dialog), "enable", combobox);
     gtk_combo_box_append_text(GTK_COMBO_BOX(combobox), "Enable");
     gtk_combo_box_append_text(GTK_COMBO_BOX(combobox), "Disable");
     gtk_widget_set_sensitive(combobox, FALSE);
     g_signal_connect(G_OBJECT(combobox), "changed",
-        G_CALLBACK(notification_enable_changed), dialog);
+        G_CALLBACK(notification_enable_changed), setting_dialog);
     gtk_box_pack_start(GTK_BOX(hbox), combobox, FALSE, FALSE, 0);
 
     hbox = gtk_hbox_new(FALSE, 5);
@@ -675,10 +680,10 @@ settings_clicked(GtkWidget* widget, GdkEvent* event, gpointer user_data) {
     label = gtk_label_new("Display:");
     gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, FALSE, 0);
     combobox = gtk_combo_box_new_text();
-    g_object_set_data(G_OBJECT(dialog), "display", combobox);
+    g_object_set_data(G_OBJECT(setting_dialog), "display", combobox);
     gtk_widget_set_sensitive(combobox, FALSE);
     g_signal_connect(G_OBJECT(combobox), "changed",
-        G_CALLBACK(notification_display_changed), dialog);
+        G_CALLBACK(notification_display_changed), setting_dialog);
     gtk_box_pack_start(GTK_BOX(hbox), combobox, FALSE, FALSE, 0);
 
     const char* sql;
@@ -776,10 +781,11 @@ settings_clicked(GtkWidget* widget, GdkEvent* event, gpointer user_data) {
     }
   }
 
-  gtk_widget_set_size_request(dialog, 500, 500);
-  gtk_widget_show_all(dialog);
-  gtk_dialog_run(GTK_DIALOG(dialog));
-  gtk_widget_destroy(dialog);
+  gtk_widget_set_size_request(setting_dialog, 500, 500);
+  gtk_widget_show_all(setting_dialog);
+  gtk_dialog_run(GTK_DIALOG(setting_dialog));
+  gtk_widget_destroy(setting_dialog);
+  setting_dialog = NULL;
 }
 
 static void
@@ -788,35 +794,39 @@ about_click(GtkWidget* widget, gpointer user_data) {
   gchar* contents = NULL;
   gchar* utf8 = NULL;
   GdkPixbuf* logo = NULL;
-  GtkWidget* dialog;
-  dialog = gtk_about_dialog_new();
-  gtk_about_dialog_set_name(GTK_ABOUT_DIALOG(dialog), "Growl For Linux");
-  gtk_about_dialog_set_website(GTK_ABOUT_DIALOG(dialog),
+  if (about_dialog) {
+	  gtk_window_present(GTK_WINDOW(about_dialog));
+	  return;
+  }
+  about_dialog = gtk_about_dialog_new();
+  gtk_about_dialog_set_name(GTK_ABOUT_DIALOG(about_dialog), "Growl For Linux");
+  gtk_about_dialog_set_website(GTK_ABOUT_DIALOG(about_dialog),
 		  "https://github.com/mattn/growl-for-linux/");
-  gtk_about_dialog_set_comments(GTK_ABOUT_DIALOG(dialog),
+  gtk_about_dialog_set_comments(GTK_ABOUT_DIALOG(about_dialog),
 		  "A notification system for linux");
-  gtk_about_dialog_set_authors(GTK_ABOUT_DIALOG(dialog), authors);
-  gtk_about_dialog_set_version(GTK_ABOUT_DIALOG(dialog), PACKAGE_VERSION);
+  gtk_about_dialog_set_authors(GTK_ABOUT_DIALOG(about_dialog), authors);
+  gtk_about_dialog_set_version(GTK_ABOUT_DIALOG(about_dialog), PACKAGE_VERSION);
   if (g_file_get_contents("COPYING", &contents, NULL, NULL)) {
     utf8 = g_locale_to_utf8(contents, -1, NULL, NULL, NULL);
     g_free(contents);
     contents = NULL;
-    gtk_about_dialog_set_license(GTK_ABOUT_DIALOG(dialog), utf8);
+    gtk_about_dialog_set_license(GTK_ABOUT_DIALOG(about_dialog), utf8);
     g_free(utf8);
     utf8 = NULL;
   }
-  gtk_about_dialog_set_website(GTK_ABOUT_DIALOG(dialog),
+  gtk_about_dialog_set_website(GTK_ABOUT_DIALOG(about_dialog),
       "http://mattn.kaoriya.net/");
   gchar* path = g_build_filename(DATADIR, "data", NULL);
   gchar* fullpath = g_build_filename(path, "growl4linux.jpg", NULL);
   g_free(path);
   logo = gdk_pixbuf_new_from_file(fullpath, NULL);
   g_free(fullpath);
-  gtk_about_dialog_set_logo (GTK_ABOUT_DIALOG(dialog), logo);
+  gtk_about_dialog_set_logo (GTK_ABOUT_DIALOG(about_dialog), logo);
   g_object_unref(G_OBJECT(logo));
-  gtk_window_set_position(GTK_WINDOW(dialog), GTK_WIN_POS_CENTER);
-  gtk_dialog_run(GTK_DIALOG(dialog));
-  gtk_widget_destroy(dialog);
+  gtk_window_set_position(GTK_WINDOW(about_dialog), GTK_WIN_POS_CENTER);
+  gtk_dialog_run(GTK_DIALOG(about_dialog));
+  gtk_widget_destroy(about_dialog);
+  about_dialog = NULL;
 }
 
 static void
@@ -1222,12 +1232,19 @@ leave:
 #ifdef _WIN32
 static BOOL WINAPI
 ctrl_handler(DWORD type) {
+  if (about_dialog) gtk_dialog_response(GTK_DIALOG(about_dialog), GTK_RESPONSE_CLOSE);
+  if (setting_dialog) gtk_dialog_response(GTK_DIALOG(setting_dialog), GTK_RESPONSE_CLOSE);
+
+  SetConsoleCtrlHandler(ctrl_handler, TRUE);
   gtk_main_quit();
   return TRUE;
 }
 #else
 static void
 signal_handler(int num) {
+  if (about_dialog) gtk_dialog_response(GTK_DIALOG(about_dialog), GTK_RESPONSE_CLOSE);
+  if (setting_dialog) gtk_dialog_response(GTK_DIALOG(setting_dialog), GTK_RESPONSE_CLOSE);
+
   signal(num, signal_handler);
   gtk_main_quit();
 }
