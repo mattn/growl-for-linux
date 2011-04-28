@@ -1177,7 +1177,7 @@ gntp_recv_proc(gpointer user_data) {
         if (notification_display_name) g_free(notification_display_name);
       }
       if (n == notifications_count) {
-        ptr = "GNTP/1.0 OK\r\n\r\n";
+        ptr = "GNTP/1.0 -OK NONE\r\nResponse-Action: REGISTER\r\n\r\n";
         send(sock, ptr, strlen(ptr), 0);
       } else {
         ptr = "GNTP/1.0 -ERROR Invalid data\r\n"
@@ -1254,7 +1254,8 @@ gntp_recv_proc(gpointer user_data) {
       }
 
       if (ni->title && ni->text) {
-        ptr = "GNTP/1.0 OK\r\n\r\n";
+        ptr = g_strdup_printf(
+            "GNTP/1.0 -OK NONE\r\nResponse-Action: %s\r\n\r\n", command);
         send(sock, ptr, strlen(ptr), 0);
 
         gboolean enable = FALSE;
