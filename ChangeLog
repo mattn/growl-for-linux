@@ -1,0 +1,10 @@
+2011-04-30 mattn <mattn.jp@gmail.com>
+
+	* context menu for removing application.
+	* many fix about memory leak.
+	* fixed response in GNTP.
+	* version 0.2
+
+2011-04-24 mattn <mattn.jp@gmail.com>
+
+	* version 0.1
