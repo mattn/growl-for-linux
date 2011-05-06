@@ -119,7 +119,8 @@ read_all(int fd, char** ptr) {
   setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, (char*) &timeout, sizeof(timeout));
   int i = 0, r;
   *ptr = (char*) calloc(BUFSIZ + 1, 1);
-  while (*ptr && (r = recv(fd, *ptr + i, BUFSIZ, 0)) > 0) {
+  while (*ptr && (r = recv(fd, *ptr + i, BUFSIZ, 0)) >= 0) {
+    if (r == 0) continue;
     i += r;
     if (r > 2 && !strncmp(*ptr + i - 4, "\r\n\r\n", 4)) break;
     *ptr = realloc(*ptr, BUFSIZ + i + 1);
