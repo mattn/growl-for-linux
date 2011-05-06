@@ -1167,7 +1167,6 @@ gntp_recv_proc(gpointer user_data) {
                 application_name, notification_name);
         sqlite3_exec(db, sql, NULL, NULL, NULL);
         sqlite3_free((void*) sql);
-printf("%s,%s,%d\n", application_name, notification_name, notification_enabled);
         sql = sqlite3_mprintf(
               "insert into notification("
               "app_name, app_icon, name, icon, enable, display, sticky)"
