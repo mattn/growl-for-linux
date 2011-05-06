@@ -578,7 +578,7 @@ application_delete(GtkWidget* widget, gpointer user_data) {
     g_free(app_name);
     g_free(name);
 
-	gtk_list_store_remove(GTK_LIST_STORE(model2), &iter2);
+    gtk_list_store_remove(GTK_LIST_STORE(model2), &iter2);
   } else {
     gchar* app_name;
     gtk_tree_model_get(model1, &iter1, 0, &app_name, -1);
@@ -590,8 +590,8 @@ application_delete(GtkWidget* widget, gpointer user_data) {
     sqlite3_free((void*) sql);
     g_free(app_name);
 
-	gtk_list_store_remove(GTK_LIST_STORE(model1), &iter1);
-	gtk_list_store_clear(GTK_LIST_STORE(model2));
+    gtk_list_store_remove(GTK_LIST_STORE(model1), &iter1);
+    gtk_list_store_clear(GTK_LIST_STORE(model2));
   }
 
   GtkWidget* cbx1
@@ -1125,6 +1125,10 @@ gntp_recv_proc(gpointer user_data) {
                 break;
               }
               *ptr = '\n';
+            } else if (*ptr == '\n') {
+              *ptr = 0;
+              ptr += 2;
+              break;
             }
             ptr++;
           }
@@ -1153,6 +1157,8 @@ gntp_recv_proc(gpointer user_data) {
             if (notification_display_name) g_free(notification_display_name);
             notification_display_name = g_strdup(line);
           }
+          line = ptr - 1;
+          while (*line && isspace(*line)) *line-- = 0;
         }
 
         const char* sql;
@@ -1161,6 +1167,7 @@ gntp_recv_proc(gpointer user_data) {
                 application_name, notification_name);
         sqlite3_exec(db, sql, NULL, NULL, NULL);
         sqlite3_free((void*) sql);
+printf("%s,%s,%d\n", application_name, notification_name, notification_enabled);
         sql = sqlite3_mprintf(
               "insert into notification("
               "app_name, app_icon, name, icon, enable, display, sticky)"
@@ -1209,6 +1216,10 @@ gntp_recv_proc(gpointer user_data) {
               break;
             }
             *ptr = '\n';
+          } else if (*ptr == '\n') {
+            *ptr = 0;
+            ptr += 2;
+            break;
           }
           ptr++;
         }
@@ -1255,6 +1266,8 @@ gntp_recv_proc(gpointer user_data) {
           while(isspace(*line)) line++;
           notification_display_name = g_strdup(line);
         }
+        line = ptr - 1;
+        while (*line && isspace(*line)) *line-- = 0;
       }
 
       if (ni->title && ni->text) {
