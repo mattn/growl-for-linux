@@ -113,6 +113,10 @@ static SUBSCRIPTOR_CONTEXT sc;
 
 static long
 read_all(int fd, char** ptr) {
+  struct timeval timeout;
+  timeout.tv_sec = 1;
+  timeout.tv_usec = 0;
+  setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, (char*) &timeout, sizeof(timeout));
   int i = 0, r;
   *ptr = (char*) calloc(BUFSIZ + 1, 1);
   while (*ptr && (r = recv(fd, *ptr + i, BUFSIZ, 0)) > 0) {
@@ -959,7 +963,7 @@ gntp_recv_proc(gpointer user_data) {
     *ptr++ = 0;
 
     char* data = NULL;
-    if (!strncmp(ptr, "NONE", 4) && strchr("\n ", *(ptr+5))) {
+    if (!strncmp(ptr, "NONE", 4) && strchr("\r\n ", *(ptr+5))) {
       if (is_local_app && get_config_bool(
             "require_password_for_local_apps", FALSE)) goto leave;
       if (!is_local_app && get_config_bool(
