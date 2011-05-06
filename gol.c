@@ -1126,10 +1126,6 @@ gntp_recv_proc(gpointer user_data) {
                 break;
               }
               *ptr = '\n';
-            } else if (*ptr == '\n') {
-              *ptr = 0;
-              ptr += 2;
-              break;
             }
             ptr++;
           }
@@ -1216,10 +1212,6 @@ gntp_recv_proc(gpointer user_data) {
               break;
             }
             *ptr = '\n';
-          } else if (*ptr == '\n') {
-            *ptr = 0;
-            ptr += 2;
-            break;
           }
           ptr++;
         }
