@@ -122,7 +122,7 @@ read_all(int fd, char** ptr) {
   while (*ptr && (r = recv(fd, *ptr + i, BUFSIZ, 0)) >= 0) {
     if (r == 0) continue;
     i += r;
-    if (r > 2 && !strncmp(*ptr + i - 4, "\r\n\r\n", 4)) break;
+    if (r >= 2 && !strncmp(*ptr + i - 4, "\r\n\r\n", 4)) break;
     *ptr = realloc(*ptr, BUFSIZ + i + 1);
   }
   *(*ptr+i) = 0;
