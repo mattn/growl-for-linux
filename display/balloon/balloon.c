@@ -52,6 +52,8 @@ typedef struct {
   gint timeout;
   GtkWidget* popup;
   gint offset;
+  gboolean sticky;
+  gboolean hover;
 } DISPLAY_INFO;
 
 typedef struct {
@@ -237,11 +239,23 @@ display_clicked(GtkWidget* widget, GdkEvent* event, gpointer user_data) {
   if (di->ni->url && *di->ni->url) open_url(di->ni->url);
 }
 
+static void
+display_enter(GtkWidget* widget, GdkEventMotion* event, gpointer user_data) {
+  ((DISPLAY_INFO*) user_data)->hover = TRUE;
+}
+
+static void
+display_leave(GtkWidget* widget, GdkEventMotion* event, gpointer user_data) {
+  ((DISPLAY_INFO*) user_data)->hover = FALSE;
+}
+
 static gboolean
 display_animation_func(gpointer data) {
   DISPLAY_INFO* di = (DISPLAY_INFO*) data;
 
-  if (di->timeout-- < 0) {
+  if (!di->hover) di->timeout--;
+
+  if (di->timeout < 0) {
     gtk_widget_destroy(di->popup);
     notifications = g_list_remove(notifications, di);
     if (di->ni->title) g_free(di->ni->title);
@@ -343,9 +357,13 @@ display_show(NOTIFICATION_INFO* ni) {
 
   gtk_window_stick(GTK_WINDOW(di->popup));
 
+  GtkWidget* ebox = gtk_event_box_new();
+  gtk_event_box_set_visible_window(GTK_EVENT_BOX(ebox), FALSE);
+  gtk_container_add(GTK_CONTAINER(di->popup), ebox);
+
   vbox = gtk_vbox_new(FALSE, 5);
   gtk_container_set_border_width(GTK_CONTAINER(vbox), 18);
-  gtk_container_add(GTK_CONTAINER(di->popup), vbox);
+  gtk_container_add(GTK_CONTAINER(ebox), vbox);
 
   hbox = gtk_hbox_new(FALSE, 5);
   gtk_box_pack_start(GTK_BOX(vbox), hbox, FALSE, TRUE, 0);
@@ -401,8 +419,10 @@ display_show(NOTIFICATION_INFO* ni) {
 
   pango_font_description_free(font_desc);
 
-  gtk_widget_set_events(di->popup, GDK_BUTTON_PRESS_MASK);
-  g_signal_connect(G_OBJECT(di->popup), "button-press-event", G_CALLBACK(display_clicked), di);
+  g_signal_connect(G_OBJECT(ebox), "button-press-event", G_CALLBACK(display_clicked), di);
+  g_signal_connect(G_OBJECT(ebox), "enter-notify-event", G_CALLBACK(display_enter), di);
+  g_signal_connect(G_OBJECT(ebox), "leave-notify-event", G_CALLBACK(display_leave), di);
+
 
   di->offset = 0;
   di->timeout = 500;

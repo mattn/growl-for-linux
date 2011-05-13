@@ -49,6 +49,8 @@ typedef struct {
   GtkWidget* popup;
   gint width;
   gint height;
+  gboolean sticky;
+  gboolean hover;
 } DISPLAY_INFO;
 
 typedef struct {
@@ -234,6 +236,16 @@ display_clicked(GtkWidget* widget, GdkEvent* event, gpointer user_data) {
   if (di->ni->url && *di->ni->url) open_url(di->ni->url);
 }
 
+static void
+display_enter(GtkWidget* widget, GdkEventMotion* event, gpointer user_data) {
+  ((DISPLAY_INFO*) user_data)->hover = TRUE;
+}
+
+static void
+display_leave(GtkWidget* widget, GdkEventMotion* event, gpointer user_data) {
+  ((DISPLAY_INFO*) user_data)->hover = FALSE;
+}
+
 static gboolean
 display_animation_func(gpointer data) {
   DISPLAY_INFO* di = (DISPLAY_INFO*) data;
@@ -251,7 +263,7 @@ display_animation_func(gpointer data) {
     return FALSE;
   }
 
-  di->x -= 10;
+  if (!di->hover) di->x -= 10;
   gdk_window_move(di->popup->window, di->x, di->y);
   return TRUE;
 }
@@ -284,14 +296,19 @@ display_show(NOTIFICATION_INFO* ni) {
   gtk_window_set_decorated(GTK_WINDOW(di->popup), FALSE);
   gtk_window_set_keep_above(GTK_WINDOW(di->popup), TRUE);
 
-  gtk_window_stick(GTK_WINDOW(di->popup));
-
-  fixed = gtk_fixed_new();
   const char* colors[] = { "red", "blue", "orange" };
   gdk_color_parse(colors[rand() % 3], &color);
   gtk_widget_modify_bg(di->popup, GTK_STATE_NORMAL, &color);
+
+  gtk_window_stick(GTK_WINDOW(di->popup));
+
+  GtkWidget* ebox = gtk_event_box_new();
+  gtk_event_box_set_visible_window(GTK_EVENT_BOX(ebox), FALSE);
+  gtk_container_add(GTK_CONTAINER(di->popup), ebox);
+
+  fixed = gtk_fixed_new();
   gtk_container_set_border_width(GTK_CONTAINER(fixed), 0);
-  gtk_container_add(GTK_CONTAINER(di->popup), fixed);
+  gtk_container_add(GTK_CONTAINER(ebox), fixed);
 
   if (di->ni->icon && *di->ni->icon) {
     GdkPixbuf* pixbuf;
@@ -352,8 +369,9 @@ display_show(NOTIFICATION_INFO* ni) {
 
   pango_font_description_free(font_desc);
 
-  gtk_widget_set_events(di->popup, GDK_BUTTON_PRESS_MASK);
-  g_signal_connect(G_OBJECT(di->popup), "button-press-event", G_CALLBACK(display_clicked), di);
+  g_signal_connect(G_OBJECT(ebox), "button-press-event", G_CALLBACK(display_clicked), di);
+  g_signal_connect(G_OBJECT(ebox), "enter-notify-event", G_CALLBACK(display_enter), di);
+  g_signal_connect(G_OBJECT(ebox), "leave-notify-event", G_CALLBACK(display_leave), di);
 
   gtk_window_move(GTK_WINDOW(di->popup), di->x, di->y);
   gtk_widget_show_all(di->popup);
