@@ -32,6 +32,8 @@
 # include <netdb.h>
 # include <unistd.h>
 #endif
+#include <stddef.h>
+#include <stdbool.h>
 #include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
@@ -113,19 +115,32 @@ static SUBSCRIPTOR_CONTEXT sc;
 
 static long
 read_all(int fd, char** ptr) {
-  struct timeval timeout;
-  timeout.tv_sec = 1;
-  timeout.tv_usec = 0;
-  setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, (char*) &timeout, sizeof(timeout));
+  struct timeval timeout =
+  {
+    .tv_sec  = 1,
+    .tv_usec = 0,
+  };
   int i = 0, r;
-  *ptr = (char*) calloc(BUFSIZ + 1, 1);
-  while (*ptr && (r = recv(fd, *ptr + i, BUFSIZ, 0)) >= 0) {
+  const size_t len = BUFSIZ + 1;
+
+  setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+
+  char *buf = (char*) malloc(len);
+  if (!buf) return 0;
+
+  while ((r = recv(fd, buf + i, len - 1, 0)) >= 0) {
     if (r == 0) continue;
     i += r;
-    if (r >= 2 && !strncmp(*ptr + i - 4, "\r\n\r\n", 4)) break;
-    *ptr = realloc(*ptr, BUFSIZ + i + 1);
+    if (r >= 2 && !strncmp(buf + i - 4, "\r\n\r\n", 4)) break;
+    char * const tmp = realloc(buf, len + i);
+    if (!tmp) {
+      free(buf);
+      return 0;
+    }
+    buf = tmp;
   }
-  *(*ptr+i) = 0;
+  buf[ i ] = '\0';
+  *ptr = buf;
   return i;
 }
 
@@ -137,78 +152,84 @@ unhex(unsigned char c) {
   return 0;
 }
 
+static inline void
+exec_splite3(char *);
+
+static void
+exec_splite3(char * const sql)
+{
+  if (sql) {
+    sqlite3_exec(db, sql, NULL, NULL, NULL);
+    sqlite3_free(sql);
+  }
+}
+
 static gboolean
 get_config_bool(const char* key, gboolean def) {
-  const char* sql = sqlite3_mprintf(
+  char* const sql = sqlite3_mprintf(
       "select value from config where key = '%q'", key);
   sqlite3_stmt *stmt = NULL;
   sqlite3_prepare(db, sql, strlen(sql), &stmt, NULL);
-  gboolean ret = def;
-  if (sqlite3_step(stmt) == SQLITE_ROW) {
-    ret = (gboolean) sqlite3_column_int(stmt, 0);
-  }
+  const gboolean ret =
+    sqlite3_step(stmt) == SQLITE_ROW
+      ? (gboolean) sqlite3_column_int(stmt, 0)
+      : def;
   sqlite3_finalize(stmt);
-  sqlite3_free((void*) sql);
+  sqlite3_free(sql);
   return ret;
 }
 
 static gboolean
 get_subscriber_enabled(const char* name) {
-  const char* sql = sqlite3_mprintf(
+  char* const sql = sqlite3_mprintf(
       "select enable from subscriber where name = '%q'", name);
   sqlite3_stmt *stmt = NULL;
   sqlite3_prepare(db, sql, strlen(sql), &stmt, NULL);
-  gboolean ret = FALSE;
-  if (sqlite3_step(stmt) == SQLITE_ROW) {
-    ret = (gboolean) sqlite3_column_int(stmt, 0);
-  }
+  const gboolean ret =
+    sqlite3_step(stmt) == SQLITE_ROW
+      ? (gboolean) sqlite3_column_int(stmt, 0)
+      : FALSE;
   sqlite3_finalize(stmt);
-  sqlite3_free((void*) sql);
+  sqlite3_free(sql);
   return ret;
 }
 
 static gchar*
 get_config_string(const char* key, const char* def) {
-  const char* sql = sqlite3_mprintf(
+  char* const sql = sqlite3_mprintf(
       "select value from config where key = '%q'", key);
   sqlite3_stmt *stmt = NULL;
   sqlite3_prepare(db, sql, strlen(sql), &stmt, NULL);
-  gchar* value = NULL;
-  if (sqlite3_step(stmt) == SQLITE_ROW) {
-    value = g_strdup((char*) sqlite3_column_text(stmt, 0));
-  } else {
-    value = g_strdup(def ? def : "");
-  }
+  gchar* const value =
+    sqlite3_step(stmt) == SQLITE_ROW
+      ? g_strdup((char*) sqlite3_column_text(stmt, 0))
+      : g_strdup(def ? def : "");
   sqlite3_finalize(stmt);
-  sqlite3_free((void*) sql);
+  sqlite3_free(sql);
   return value;
 }
 
 static void
 set_config_bool(const char* key, gboolean value) {
-  const char* sql;
-  sql = sqlite3_mprintf(
-        "delete from config where key = '%q'", key);
-  sqlite3_exec(db, sql, NULL, NULL, NULL);
-  sqlite3_free((void*) sql);
-  sql = sqlite3_mprintf(
-        "insert into config(key, value) values('%q', '%q')",
-          key, value ? "1" : "0");
-  sqlite3_exec(db, sql, NULL, NULL, NULL);
-  sqlite3_free((void*) sql);
+  exec_splite3(
+    sqlite3_mprintf(
+      "delete from config where key = '%q'", key));
+
+  exec_splite3(
+    sqlite3_mprintf(
+      "insert into config(key, value) values('%q', '%q')",
+      key, value ? "1" : "0"));
 }
 
 static void
 set_config_string(const char* key, const char* value) {
-  const char* sql;
-  sql = sqlite3_mprintf(
-        "delete from config where key = '%q'", key);
-  sqlite3_exec(db, sql, NULL, NULL, NULL);
-  sqlite3_free((void*) sql);
-  sql = sqlite3_mprintf(
-        "insert into config(key, value) values('%q', '%q')", key, value);
-  sqlite3_exec(db, sql, NULL, NULL, NULL);
-  sqlite3_free((void*) sql);
+  exec_splite3(
+    sqlite3_mprintf(
+      "delete from config where key = '%q'", key));
+
+  exec_splite3(
+    sqlite3_mprintf(
+      "insert into config(key, value) values('%q', '%q')", key, value));
 }
 
 static void
@@ -218,7 +239,7 @@ my_gtk_status_icon_position_menu(
 #ifdef _WIN32
   RECT rect;
   SystemParametersInfo(SPI_GETWORKAREA, 0, &rect, 0);
-  gint h = GTK_WIDGET(menu)->requisition.height;
+  const gint h = GTK_WIDGET(menu)->requisition.height;
   if (*y + h > rect.bottom) *y -= h;
 #endif
 }
@@ -240,23 +261,23 @@ display_tree_selection_changed(GtkTreeSelection *selection, gpointer user_data) 
   DISPLAY_PLUGIN* cp = current_display;
   gchar* name;
   gtk_tree_model_get(model, &iter, 0, &name, -1);
-  int i, len = g_list_length(display_plugins);
-  for (i = 0; i < len; i++) {
-    DISPLAY_PLUGIN* dp = (DISPLAY_PLUGIN*) g_list_nth_data(display_plugins, i);
+  const size_t len = g_list_length(display_plugins);
+  for (size_t i = 0; i < len; i++) {
+    DISPLAY_PLUGIN* const dp = (DISPLAY_PLUGIN*) g_list_nth_data(display_plugins, i);
     if (!g_strcasecmp(dp->name(), name)) {
       cp = dp;
       break;
     }
   }
 
-  GtkWidget* label =
+  GtkWidget* const label =
     (GtkWidget*) g_object_get_data(G_OBJECT(user_data), "description");
   gtk_label_set_markup(GTK_LABEL(label), "");
   if (cp->description) {
     gtk_label_set_markup(GTK_LABEL(label), cp->description());
   }
 
-  GtkWidget* image =
+  GtkWidget* const image =
     (GtkWidget*) g_object_get_data(G_OBJECT(user_data), "thumbnail");
   gtk_image_clear(GTK_IMAGE(image));
   if (cp->thumbnail) {
@@ -282,7 +303,7 @@ application_tree_selection_changed(GtkTreeSelection *selection, gpointer user_da
   GtkListStore* model2 =
     (GtkListStore*) g_object_get_data(G_OBJECT(user_data), "model2");
   gtk_list_store_clear(model2);
-  const char* sql = sqlite3_mprintf(
+  char* const sql = sqlite3_mprintf(
       "select distinct name from notification"
       " where app_name = '%q' order by name", app_name);
   sqlite3_stmt *stmt = NULL;
@@ -294,7 +315,7 @@ application_tree_selection_changed(GtkTreeSelection *selection, gpointer user_da
         sqlite3_column_text(stmt, 0), -1);
   }
   sqlite3_finalize(stmt);
-  sqlite3_free((void*) sql);
+  sqlite3_free(sql);
 
   g_free(app_name);
 
@@ -306,24 +327,24 @@ application_tree_selection_changed(GtkTreeSelection *selection, gpointer user_da
 
 static void
 set_as_default_clicked(GtkWidget* widget, gpointer user_data) {
-  GtkTreeSelection* selection = (GtkTreeSelection*) user_data;
+  GtkTreeSelection* const selection = (GtkTreeSelection*) user_data;
   GtkTreeIter iter;
   GtkTreeModel* model;
-  if (gtk_tree_selection_get_selected(selection, &model, &iter)) {
-    gchar* name;
-    gtk_tree_model_get(model, &iter, 0, &name, -1);
-    int i, len = g_list_length(display_plugins);
-    for (i = 0; i < len; i++) {
-      DISPLAY_PLUGIN* dp =
-        (DISPLAY_PLUGIN*) g_list_nth_data(display_plugins, i);
-      if (!g_strcasecmp(dp->name(), name)) {
-        current_display = dp;
-        set_config_string("default_display", name);
-        break;
-      }
+  if (!gtk_tree_selection_get_selected(selection, &model, &iter)) return;
+
+  gchar* name;
+  gtk_tree_model_get(model, &iter, 0, &name, -1);
+  const size_t len = g_list_length(display_plugins);
+  for (size_t i = 0; i < len; i++) {
+    DISPLAY_PLUGIN* const dp =
+      (DISPLAY_PLUGIN*) g_list_nth_data(display_plugins, i);
+    if (!g_strcasecmp(dp->name(), name)) {
+      current_display = dp;
+      set_config_string("default_display", name);
+      break;
     }
-    g_free(name);
   }
+  g_free(name);
 }
 
 static void
@@ -331,26 +352,26 @@ preview_clicked(GtkWidget* widget, gpointer user_data) {
   GtkTreeSelection* selection = (GtkTreeSelection*) user_data;
   GtkTreeIter iter;
   GtkTreeModel* model;
-  if (gtk_tree_selection_get_selected(selection, &model, &iter)) {
-    gchar* name;
-    gtk_tree_model_get(model, &iter, 0, &name, -1);
-    int i, len = g_list_length(display_plugins);
-    for (i = 0; i < len; i++) {
-      DISPLAY_PLUGIN* dp =
-        (DISPLAY_PLUGIN*) g_list_nth_data(display_plugins, i);
-      if (!g_strcasecmp(dp->name(), name)) {
-        NOTIFICATION_INFO* ni = g_new0(NOTIFICATION_INFO, 1);
-        ni->title = g_strdup("Preview Display");
-        ni->text = g_strdup_printf(
-            "This is a preview of the '%s' display.", dp->name());
-        ni->icon = g_build_filename(DATADIR, "data", "mattn.png", NULL);
-        ni->local = TRUE;
-        g_idle_add((GSourceFunc) dp->show, ni);
-        break;
-      }
+  if (!gtk_tree_selection_get_selected(selection, &model, &iter)) return;
+
+  gchar* name;
+  gtk_tree_model_get(model, &iter, 0, &name, -1);
+  const size_t len = g_list_length(display_plugins);
+  for (size_t i = 0; i < len; i++) {
+    DISPLAY_PLUGIN* const dp =
+      (DISPLAY_PLUGIN*) g_list_nth_data(display_plugins, i);
+    if (!g_strcasecmp(dp->name(), name)) {
+      NOTIFICATION_INFO* ni = g_new0(NOTIFICATION_INFO, 1);
+      ni->title = g_strdup("Preview Display");
+      ni->text = g_strdup_printf(
+          "This is a preview of the '%s' display.", dp->name());
+      ni->icon = g_build_filename(DATADIR, "data", "mattn.png", NULL);
+      ni->local = TRUE;
+      g_idle_add((GSourceFunc) dp->show, ni);
+      break;
     }
-    g_free(name);
   }
+  g_free(name);
 }
 
 static gboolean
@@ -394,20 +415,18 @@ subscriber_enable_toggled(
   enable ^= 1;
   gtk_list_store_set(GTK_LIST_STORE(model), &iter, 0, enable, -1);
 
-  const char* sql;
-  sql = sqlite3_mprintf(
-        "delete from subscriber where name = '%q'", name);
-  sqlite3_exec(db, sql, NULL, NULL, NULL);
-  sqlite3_free((void*) sql);
-  sql = sqlite3_mprintf(
-        "insert into subscriber(name, enable) values('%q', %d)",
-          name, enable ? 1 : 0);
-  sqlite3_exec(db, sql, NULL, NULL, NULL);
-  sqlite3_free((void*) sql);
+  exec_splite3(
+    sqlite3_mprintf(
+      "delete from subscriber where name = '%q'", name));
 
-  int i, len = g_list_length(subscribe_plugins);
-  for (i = 0; i < len; i++) {
-    SUBSCRIBE_PLUGIN* sp =
+  exec_splite3(
+    sqlite3_mprintf(
+      "insert into subscriber(name, enable) values('%q', %d)",
+      name, enable ? 1 : 0));
+
+  const size_t len = g_list_length(subscribe_plugins);
+  for (size_t i = 0; i < len; i++) {
+    SUBSCRIBE_PLUGIN* const sp =
       (SUBSCRIBE_PLUGIN*) g_list_nth_data(subscribe_plugins, i);
     if (!g_strcasecmp(sp->name(), name)) {
       enable ? sp->start() : sp->stop();
@@ -416,24 +435,23 @@ subscriber_enable_toggled(
   }
 
   g_free(name);
-
   gtk_tree_path_free(path);
 }
 
 static void
 notification_tree_selection_changed(GtkTreeSelection *selection, gpointer user_data) {
   GtkTreeIter iter1;
-  GtkTreeIter iter2;
   GtkWidget* tree1 = g_object_get_data(G_OBJECT(user_data), "tree1");
-  GtkWidget* tree2 = g_object_get_data(G_OBJECT(user_data), "tree2");
   GtkTreeSelection* selection1
     = gtk_tree_view_get_selection(GTK_TREE_VIEW(tree1));
+  GtkTreeModel* model1;
+  if (!gtk_tree_selection_get_selected(selection1, &model1, &iter1)) return;
+
+  GtkTreeIter iter2;
+  GtkWidget* tree2 = g_object_get_data(G_OBJECT(user_data), "tree2");
   GtkTreeSelection* selection2
     = gtk_tree_view_get_selection(GTK_TREE_VIEW(tree2));
-  GtkTreeModel* model1;
   GtkTreeModel* model2;
-
-  if (!gtk_tree_selection_get_selected(selection1, &model1, &iter1)) return;
   if (!gtk_tree_selection_get_selected(selection2, &model2, &iter2)) return;
 
   gchar* app_name;
@@ -450,7 +468,7 @@ notification_tree_selection_changed(GtkTreeSelection *selection, gpointer user_d
   gtk_widget_set_sensitive(cbx2, TRUE);
   gtk_combo_box_set_active(GTK_COMBO_BOX(cbx2), -1);
 
-  const char* sql = sqlite3_mprintf(
+  char* const sql = sqlite3_mprintf(
       "select enable, display from notification"
       " where app_name = '%q' and name = '%q'", app_name, name);
   sqlite3_stmt *stmt = NULL;
@@ -459,9 +477,9 @@ notification_tree_selection_changed(GtkTreeSelection *selection, gpointer user_d
     gtk_combo_box_set_active(GTK_COMBO_BOX(cbx1),
         sqlite3_column_int(stmt, 0) != 0 ? 0 : 1);
     char* display = (char*) sqlite3_column_text(stmt, 1);
-    int i, len = g_list_length(display_plugins);
-    for (i = 0; i < len; i++) {
-      DISPLAY_PLUGIN* dp
+    const size_t len = g_list_length(display_plugins);
+    for (size_t i = 0; i < len; i++) {
+      DISPLAY_PLUGIN* const dp
         = (DISPLAY_PLUGIN*) g_list_nth_data(display_plugins, i);
       if (!g_strcasecmp(dp->name(), display)) {
         gtk_combo_box_set_active(GTK_COMBO_BOX(cbx2), i);
@@ -470,7 +488,7 @@ notification_tree_selection_changed(GtkTreeSelection *selection, gpointer user_d
     }
   }
   sqlite3_finalize(stmt);
-  sqlite3_free((void*) sql);
+  sqlite3_free(sql);
 
   g_free(app_name);
   g_free(name);
@@ -479,17 +497,17 @@ notification_tree_selection_changed(GtkTreeSelection *selection, gpointer user_d
 static void
 notification_enable_changed(GtkComboBox *combobox, gpointer user_data) {
   GtkTreeIter iter1;
-  GtkTreeIter iter2;
   GtkWidget* tree1 = g_object_get_data(G_OBJECT(user_data), "tree1");
-  GtkWidget* tree2 = g_object_get_data(G_OBJECT(user_data), "tree2");
   GtkTreeSelection* selection1 =
     gtk_tree_view_get_selection(GTK_TREE_VIEW(tree1));
+  GtkTreeModel* model1;
+  if (!gtk_tree_selection_get_selected(selection1, &model1, &iter1)) return;
+
+  GtkTreeIter iter2;
+  GtkWidget* tree2 = g_object_get_data(G_OBJECT(user_data), "tree2");
   GtkTreeSelection* selection2 =
     gtk_tree_view_get_selection(GTK_TREE_VIEW(tree2));
-  GtkTreeModel* model1;
   GtkTreeModel* model2;
-
-  if (!gtk_tree_selection_get_selected(selection1, &model1, &iter1)) return;
   if (!gtk_tree_selection_get_selected(selection2, &model2, &iter2)) return;
 
   gchar* app_name;
@@ -499,12 +517,12 @@ notification_enable_changed(GtkComboBox *combobox, gpointer user_data) {
 
   gint enable = gtk_combo_box_get_active(combobox) == 0 ? 1 : 0;
 
-  const char* sql = sqlite3_mprintf(
+  char* const sql = sqlite3_mprintf(
         "update notification set enable = %d"
         " where app_name = '%q' and name = '%q'",
         enable, app_name, name);
   sqlite3_exec(db, sql, NULL, NULL, NULL);
-  sqlite3_free((void*) sql);
+  sqlite3_free(sql);
 
   g_free(app_name);
   g_free(name);
@@ -513,17 +531,17 @@ notification_enable_changed(GtkComboBox *combobox, gpointer user_data) {
 static void
 notification_display_changed(GtkComboBox *combobox, gpointer user_data) {
   GtkTreeIter iter1;
-  GtkTreeIter iter2;
   GtkWidget* tree1 = g_object_get_data(G_OBJECT(user_data), "tree1");
-  GtkWidget* tree2 = g_object_get_data(G_OBJECT(user_data), "tree2");
   GtkTreeSelection* selection1 =
     gtk_tree_view_get_selection(GTK_TREE_VIEW(tree1));
+  GtkTreeModel* model1;
+  if (!gtk_tree_selection_get_selected(selection1, &model1, &iter1)) return;
+
+  GtkTreeIter iter2;
+  GtkWidget* tree2 = g_object_get_data(G_OBJECT(user_data), "tree2");
   GtkTreeSelection* selection2 =
     gtk_tree_view_get_selection(GTK_TREE_VIEW(tree2));
-  GtkTreeModel* model1;
   GtkTreeModel* model2;
-
-  if (!gtk_tree_selection_get_selected(selection1, &model1, &iter1)) return;
   if (!gtk_tree_selection_get_selected(selection2, &model2, &iter2)) return;
 
   gchar* app_name;
@@ -531,14 +549,13 @@ notification_display_changed(GtkComboBox *combobox, gpointer user_data) {
   gtk_tree_model_get(model1, &iter1, 0, &app_name, -1);
   gtk_tree_model_get(model2, &iter2, 0, &name, -1);
 
-  gchar* display = gtk_combo_box_get_active_text(combobox);
+  gchar* const display = gtk_combo_box_get_active_text(combobox);
 
-  const char* sql = sqlite3_mprintf(
-        "update notification set display = '%q'"
-        " where app_name = '%q' and name = '%q'",
-        display, app_name, name);
-  sqlite3_exec(db, sql, NULL, NULL, NULL);
-  sqlite3_free((void*) sql);
+  exec_splite3(
+    sqlite3_mprintf(
+      "update notification set display = '%q'"
+      " where app_name = '%q' and name = '%q'",
+      display, app_name, name));
 
   g_free(display);
   g_free(app_name);
@@ -570,12 +587,10 @@ application_delete(GtkWidget* widget, gpointer user_data) {
     gchar* name;
     gtk_tree_model_get(model1, &iter1, 0, &app_name, -1);
     gtk_tree_model_get(model2, &iter2, 0, &name, -1);
-    const char* sql;
-    sql = sqlite3_mprintf(
-          "delete from notification where app_name = '%q' and name = '%q'",
-            app_name, name);
-    sqlite3_exec(db, sql, NULL, NULL, NULL);
-    sqlite3_free((void*) sql);
+    exec_splite3(
+      sqlite3_mprintf(
+        "delete from notification where app_name = '%q' and name = '%q'",
+        app_name, name));
     g_free(app_name);
     g_free(name);
 
@@ -583,12 +598,10 @@ application_delete(GtkWidget* widget, gpointer user_data) {
   } else {
     gchar* app_name;
     gtk_tree_model_get(model1, &iter1, 0, &app_name, -1);
-    const char* sql;
-    sql = sqlite3_mprintf(
-          "delete from notification where app_name = '%q'",
-            app_name);
-    sqlite3_exec(db, sql, NULL, NULL, NULL);
-    sqlite3_free((void*) sql);
+    exec_splite3(
+      sqlite3_mprintf(
+        "delete from notification where app_name = '%q'",
+        app_name));
     g_free(app_name);
 
     gtk_list_store_remove(GTK_LIST_STORE(model1), &iter1);
@@ -608,7 +621,7 @@ application_delete(GtkWidget* widget, gpointer user_data) {
 static gboolean
 tree_view_button_pressed(GtkWidget* widget, GdkEventButton* event, gpointer user_data) {
   if (event->type != GDK_BUTTON_PRESS || event->button != 3) return FALSE;
-  
+
   GtkTreeSelection* selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(widget));
   GtkTreeIter iter;
   GtkTreeModel* model;
@@ -646,7 +659,7 @@ settings_clicked(GtkWidget* widget, GdkEvent* event, gpointer user_data) {
 
   notebook = gtk_notebook_new();
   gtk_container_add(GTK_CONTAINER(GTK_DIALOG(setting_dialog)->vbox), notebook);
-  
+
   {
     GtkWidget* hbox = gtk_hbox_new(FALSE, 5);
     gtk_container_set_border_width(GTK_CONTAINER(hbox), 10);
@@ -890,14 +903,16 @@ settings_clicked(GtkWidget* widget, GdkEvent* event, gpointer user_data) {
 
 static void
 about_click(GtkWidget* widget, gpointer user_data) {
-  const gchar* authors[2] = {"Yasuhiro Matsumoto <mattn.jp@gmail.com>", NULL};
-  gchar* contents = NULL;
-  gchar* utf8 = NULL;
-  GdkPixbuf* logo = NULL;
   if (about_dialog) {
       gtk_window_present(GTK_WINDOW(about_dialog));
       return;
   }
+
+  const gchar* authors[2] = {"Yasuhiro Matsumoto <mattn.jp@gmail.com>", NULL};
+  gchar* contents = NULL;
+  gchar* utf8 = NULL;
+  GdkPixbuf* logo = NULL;
+
   about_dialog = gtk_about_dialog_new();
   gtk_about_dialog_set_name(GTK_ABOUT_DIALOG(about_dialog), "Growl For Linux");
   gtk_about_dialog_set_website(GTK_ABOUT_DIALOG(about_dialog),
@@ -937,28 +952,27 @@ exit_clicked(GtkWidget* widget, GdkEvent* event, gpointer user_data) {
 static gpointer
 gntp_recv_proc(gpointer user_data) {
   int sock = (int) user_data;
-  int is_local_app = FALSE;
+  bool is_local_app = false;
 
   struct sockaddr_in client;
-  int client_len = sizeof(client);
+  socklen_t client_len = sizeof(client);
   memset(&client, 0, sizeof(client));
-  if (!getsockname(sock, (struct sockaddr *) &client,
-        (socklen_t *) &client_len)) {
-    char* addr = inet_ntoa(((struct sockaddr_in *)(void*)&client)->sin_addr);
+  if (!getsockname(sock, (struct sockaddr *) &client, &client_len)) {
+    const char* addr = inet_ntoa(((struct sockaddr_in *)(void*)&client)->sin_addr);
     if (addr && !strcmp(addr, "127.0.0.1")) {
-      is_local_app = TRUE;
+      is_local_app = true;
     }
   }
 
-  char* ptr;
+  char* ptr = "";
   int r = read_all(sock, &ptr);
-  char* top = ptr;
+  char* const top = ptr;
   if (!strncmp(ptr, "GNTP/1.0 ", 9)) {
     ptr += 9;
 
-    char* command = ptr;
-    if (!strncmp(ptr, "REGISTER ", 9)) ptr += 8;
-    else if (!strncmp(ptr, "NOTIFY ", 7)) ptr += 6;
+    const char* const command = ptr;
+    if (!strncmp(command, "REGISTER ", 9)) ptr += 8;
+    else if (!strncmp(command, "NOTIFY ", 7)) ptr += 6;
     else goto leave;
 
     *ptr++ = 0;
@@ -972,7 +986,7 @@ gntp_recv_proc(gpointer user_data) {
       if (!(ptr = strstr(ptr, "\r\n"))) goto leave;
       *ptr = 0;
       ptr += 2;
-      data = (char*) calloc(r-(ptr-top)-4+1, 1);
+      data = (char*) malloc(r-(ptr-top)-4+1);
       if (!data) goto leave;
       memcpy(data, ptr, r-(ptr-top)-4);
     } else {
@@ -980,11 +994,11 @@ gntp_recv_proc(gpointer user_data) {
           strncmp(ptr, "DES:", 4) &&
           strncmp(ptr, "3DES:", 5)) goto leave;
 
-      char* crypt_algorythm = ptr;
-      while (*ptr != ':') ptr++;
+      const char* const crypt_algorythm = ptr;
+      if (!(ptr = strchr(ptr, ':'))) goto leave;
       *ptr++ = 0;
-      char* iv;
-      iv = ptr;
+
+      char* const iv = ptr;
       if (!(ptr = strchr(ptr, ' '))) goto leave;
       *ptr++ = 0;
 
@@ -992,35 +1006,31 @@ gntp_recv_proc(gpointer user_data) {
           strncmp(ptr, "SHA1:", 5) &&
           strncmp(ptr, "SHA256:", 7)) goto leave;
 
-      char* hash_algorythm = ptr;
-      while (*ptr != ':') ptr++;
+      const char* const hash_algorythm = ptr;
+      if (!(ptr = strchr(ptr, ':'))) goto leave;
       *ptr++ = 0;
-      char* key = ptr;
+
+      char* const key = ptr;
       if (!(ptr = strchr(ptr, '.'))) goto leave;
       *ptr++ = 0;
-      char* salt = ptr;
+
+      char* const salt = ptr;
 
       if (!(ptr = strstr(ptr, "\r\n"))) goto leave;
       *ptr = 0;
       ptr += 2;
 
-      int n, keylen, saltlen, ivlen;
-
-      char hex[3];
-      hex[2] = 0;
-      saltlen = strlen(salt) / 2;
-      for (n = 0; n < saltlen; n++)
+      const size_t saltlen = strlen(salt) / 2;
+      for (size_t n = 0; n < saltlen; n++)
         salt[n] = unhex(salt[n * 2]) * 16 + unhex(salt[n * 2 + 1]);
-      keylen = strlen(key) / 2;
-      for (n = 0; n < keylen; n++)
+      const size_t keylen = strlen(key) / 2;
+      for (size_t n = 0; n < keylen; n++)
         key[n] = unhex(key[n * 2]) * 16 + unhex(key[n * 2 + 1]);
-      ivlen = strlen(iv) / 2;
-      for (n = 0; n < ivlen; n++)
+      const size_t ivlen = strlen(iv) / 2;
+      for (size_t n = 0; n < ivlen; n++)
         iv[n] = unhex(iv[n * 2]) * 16 + unhex(iv[n * 2 + 1]);
 
       char digest[32] = {0};
-      memset(digest, 0, sizeof(digest));
-
       if (!strcmp(hash_algorythm, "MD5")) {
         MD5_CTX ctx;
         MD5_Init(&ctx);
@@ -1028,14 +1038,14 @@ gntp_recv_proc(gpointer user_data) {
         MD5_Update(&ctx, salt, saltlen);
         MD5_Final((unsigned char*) digest, &ctx);
       }
-      if (!strcmp(hash_algorythm, "SHA1")) {
+      else if (!strcmp(hash_algorythm, "SHA1")) {
         SHA_CTX ctx;
         SHA1_Init(&ctx);
         SHA1_Update(&ctx, password, strlen(password));
         SHA1_Update(&ctx, salt, saltlen);
         SHA1_Final((unsigned char*) digest, &ctx);
       }
-      if (!strcmp(hash_algorythm, "SHA256")) {
+      else if (!strcmp(hash_algorythm, "SHA256")) {
         SHA256_CTX ctx;
         SHA256_Init(&ctx);
         SHA256_Update(&ctx, password, strlen(password));
@@ -1043,7 +1053,7 @@ gntp_recv_proc(gpointer user_data) {
         SHA256_Final((unsigned char*) digest, &ctx);
       }
 
-      data = (char*) calloc(r, 1);
+      data = (char*) malloc(r);
       if (!data) goto leave;
       if (!strcmp(crypt_algorythm, "AES")) {
         AES_KEY aeskey;
@@ -1051,13 +1061,13 @@ gntp_recv_proc(gpointer user_data) {
         AES_cbc_encrypt((unsigned char*) ptr, (unsigned char*) data,
             r-(ptr-top)-6, &aeskey, (unsigned char*) iv, AES_DECRYPT);
       }
-      if (!strcmp(crypt_algorythm, "DES")) {
+      else if (!strcmp(crypt_algorythm, "DES")) {
         des_key_schedule schedule;
         DES_set_key_unchecked((const_DES_cblock*) &digest, &schedule);
         DES_ncbc_encrypt((unsigned char*) ptr, (unsigned char*) data,
             r-(ptr-top)-6, &schedule, (const_DES_cblock*) &iv, DES_DECRYPT);
       }
-      if (!strcmp(crypt_algorythm, "3DES")) {
+      else if (!strcmp(crypt_algorythm, "3DES")) {
         char key1[8], key2[8], key3[8];
         memcpy(key1, digest+ 0, 8);
         memcpy(key2, digest+ 8, 8);
@@ -1223,37 +1233,37 @@ gntp_recv_proc(gpointer user_data) {
           if (application_name) g_free(application_name);
           application_name = g_strdup(line);
         }
-        if (!strncmp(line, "Notification-Name:", 18)) {
+        else if (!strncmp(line, "Notification-Name:", 18)) {
           line += 19;
           while(isspace(*line)) line++;
           if (notification_name) g_free(notification_name);
           notification_name = g_strdup(line);
         }
-        if (!strncmp(line, "Notification-Title:", 19)) {
+        else if (!strncmp(line, "Notification-Title:", 19)) {
           line += 20;
           while(isspace(*line)) line++;
           if (ni->title) g_free(ni->title);
           ni->title = g_strdup(line);
         }
-        if (!strncmp(line, "Notification-Text:", 18)) {
+        else if (!strncmp(line, "Notification-Text:", 18)) {
           line += 19;
           while(isspace(*line)) line++;
           if (ni->text) g_free(ni->text);
           ni->text = g_strdup(line);
         }
-        if (!strncmp(line, "Notification-Icon:", 18)) {
+        else if (!strncmp(line, "Notification-Icon:", 18)) {
           line += 19;
           while(isspace(*line)) line++;
           if (ni->icon) g_free(ni->icon);
           ni->icon = g_strdup(line);
         }
-        if (!strncmp(line, "Notification-Callback-Target:", 29)) {
+        else if (!strncmp(line, "Notification-Callback-Target:", 29)) {
           line += 30;
           while(isspace(*line)) line++;
           if (ni->url) g_free(ni->url);
           ni->url = g_strdup(line);
         }
-        if (!strncmp(line, "Notification-Display-Name:", 26)) {
+        else if (!strncmp(line, "Notification-Display-Name:", 26)) {
           line += 27;
           while(isspace(*line)) line++;
           notification_display_name = g_strdup(line);
@@ -1567,8 +1577,8 @@ load_display_plugins() {
 
 static void
 unload_display_plugins() {
-  int i, len = g_list_length(display_plugins);
-  for (i = 0; i < len; i++) {
+  const size_t len = g_list_length(display_plugins);
+  for (size_t i = 0; i < len; i++) {
     DISPLAY_PLUGIN* dp = (DISPLAY_PLUGIN*) g_list_nth_data(display_plugins, i);
     if (dp->term) dp->term();
     g_module_close(dp->handle);
@@ -1631,8 +1641,8 @@ load_subscribe_plugins() {
 
 static void
 unload_subscribe_plugins() {
-  int i, len = g_list_length(subscribe_plugins);
-  for (i = 0; i < len; i++) {
+  const size_t len = g_list_length(subscribe_plugins);
+  for (size_t i = 0; i < len; i++) {
     SUBSCRIBE_PLUGIN* sp =
       (SUBSCRIBE_PLUGIN*) g_list_nth_data(subscribe_plugins, i);
     if (sp->term) sp->term();
@@ -1648,10 +1658,9 @@ gntp_accepted(GIOChannel* source, GIOCondition condition, gpointer user_data) {
   int fd = g_io_channel_unix_get_fd(source);
   int sock;
   struct sockaddr_in client;
-  int client_len = sizeof(client);
+  socklen_t client_len = sizeof(client);
   memset(&client, 0, sizeof(client));
-  if ((sock = accept(fd, (struct sockaddr *) &client,
-          (socklen_t *) &client_len)) < 0) {
+  if ((sock = accept(fd, (struct sockaddr *) &client, &client_len)) < 0) {
     perror("accept");
     return TRUE;
   }
@@ -1686,8 +1695,7 @@ static gboolean
 udp_recv_proc(GIOChannel* source, GIOCondition condition, gpointer user_data) {
   int is_local_app = FALSE;
   int fd = g_io_channel_unix_get_fd(source);
-  char buf[BUFSIZ];
-  memset(buf, 0, sizeof(buf));
+  char buf[BUFSIZ] = {0};
 
   ssize_t len = recvfrom(fd, (char*) buf, sizeof(buf), 0, NULL, NULL);
   if (len > 0) {
@@ -1704,21 +1712,19 @@ udp_recv_proc(GIOChannel* source, GIOCondition condition, gpointer user_data) {
           MD5_Update(&ctx, buf, len - sizeof(digest));
           MD5_Update(&ctx, (char*) password, strlen(password));
           MD5_Final((unsigned char*) digest, &ctx);
-          int n;
-          for (n = 0; n < sizeof(digest); n++) {
+          for (size_t n = 0; n < sizeof(digest); n++) {
             if (digest[n] != buf[len-sizeof(digest)+n])
               return TRUE;
           }
-        } else
-        if (packet->type == 3) {
+        }
+        else if (packet->type == 3) {
           char digest[SHA256_DIGEST_LENGTH] = {0};
           SHA256_CTX ctx;
           SHA256_Init(&ctx);
           SHA256_Update(&ctx, buf, len - sizeof(digest));
           SHA256_Update(&ctx, password, strlen(password));
           SHA256_Final((unsigned char*) digest, &ctx);
-          int n;
-          for (n = 0; n < sizeof(digest); n++) {
+          for (size_t n = 0; n < sizeof(digest); n++) {
             if (digest[n] != buf[len-sizeof(digest)+n])
               return TRUE;
           }
@@ -1754,11 +1760,12 @@ create_udp_server() {
     return NULL;
   }
 
-  struct sockaddr_in server_addr;
-  memset((char *) &server_addr, 0, sizeof(server_addr));
-  server_addr.sin_family = AF_INET;
-  server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
-  server_addr.sin_port = htons(9887);
+  struct sockaddr_in server_addr =
+  {
+    .sin_family      = AF_INET,
+    .sin_addr.s_addr = htonl(INADDR_ANY),
+    .sin_port        = htons(9887),
+  };
 
   if (bind(fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
     perror("bind");
@@ -1796,11 +1803,12 @@ create_gntp_server() {
     return NULL;
   }
 
-  struct sockaddr_in server_addr;
-  memset((char *) &server_addr, 0, sizeof(server_addr));
-  server_addr.sin_family = AF_INET;
-  server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
-  server_addr.sin_port = htons(23053);
+  struct sockaddr_in server_addr =
+  {
+    .sin_family      = AF_INET,
+    .sin_addr.s_addr = htonl(INADDR_ANY),
+    .sin_port        = htons(23053),
+  };
 
   if (bind(fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
     perror("bind");
@@ -1891,3 +1899,4 @@ leave:
 }
 
 // vim:set et sw=2 ts=2 ai:
+
