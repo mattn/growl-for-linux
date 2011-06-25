@@ -72,6 +72,8 @@ typedef int sockopt_t;
 # endif
 #endif
 
+#define GOL_PP_JOIN( _left, _right ) _left ## _right
+
 typedef struct {
   void* handle;
   gboolean (*init)();
@@ -1093,7 +1095,7 @@ gntp_recv_proc(gpointer user_data) {
     if (!strcmp(command, "REGISTER")) {
       char* application_name = NULL;
       char* application_icon = NULL;
-      int notifications_count = 0;
+      long notifications_count = 0;
       while (*ptr) {
         char* line = ptr;
         while (*ptr) {
@@ -1115,13 +1117,13 @@ gntp_recv_proc(gpointer user_data) {
           if (application_name) g_free(application_name);
           application_name = g_strdup(line);
         }
-        if (!strncmp(line, "Application-Icon:", 17)) {
+        else if (!strncmp(line, "Application-Icon:", 17)) {
           line += 18;
           while(isspace(*line)) line++;
           if (application_icon) g_free(application_icon);
           application_icon = g_strdup(line);
         }
-        if (!strncmp(line, "Notifications-Count:", 20)) {
+        else if (!strncmp(line, "Notifications-Count:", 20)) {
           line += 21;
           while(isspace(*line)) line++;
           notifications_count = atol(line);
@@ -1154,18 +1156,18 @@ gntp_recv_proc(gpointer user_data) {
             if (notification_name) g_free(notification_name);
             notification_name = g_strdup(line);
           }
-          if (!strncmp(line, "Notification-Icon:", 18)) {
+          else if (!strncmp(line, "Notification-Icon:", 18)) {
             line += 19;
             while(isspace(*line)) line++;
             if (notification_icon) g_free(notification_icon);
             notification_icon = g_strdup(line);
           }
-          if (!strncmp(line, "Notification-Enabled:", 21)) {
+          else if (!strncmp(line, "Notification-Enabled:", 21)) {
             line += 22;
             while(isspace(*line)) line++;
             notification_enabled = strcasecmp(line, "true") == 0;
           }
-          if (!strncmp(line, "Notification-Display-Name:", 26)) {
+          else if (!strncmp(line, "Notification-Display-Name:", 26)) {
             line += 27;
             while(isspace(*line)) line++;
             if (notification_display_name) g_free(notification_display_name);
@@ -1175,39 +1177,34 @@ gntp_recv_proc(gpointer user_data) {
           while (*line && isspace(*line)) *line-- = 0;
         }
 
-        const char* sql;
-        sql = sqlite3_mprintf(
-              "delete from notification where app_name = '%q' and name = '%q'",
-                application_name, notification_name);
-        sqlite3_exec(db, sql, NULL, NULL, NULL);
-        sqlite3_free((void*) sql);
-        sql = sqlite3_mprintf(
-              "insert into notification("
-              "app_name, app_icon, name, icon, enable, display, sticky)"
-              " values('%q', '%q', '%q', '%q', %d, '%q', %d)",
-                application_name,
-                application_icon ? application_icon : "",
-                notification_name,
-                notification_icon ? notification_icon : "",
-                notification_enabled,
-                notification_display_name ?
-                  notification_display_name : "Default",
-                FALSE);
-        sqlite3_exec(db, sql, NULL, NULL, NULL);
-        sqlite3_free((void*) sql);
+        exec_splite3(
+          sqlite3_mprintf(
+            "delete from notification where app_name = '%q' and name = '%q'",
+            application_name, notification_name));
+
+        exec_splite3(
+          sqlite3_mprintf(
+            "insert into notification("
+            "app_name, app_icon, name, icon, enable, display, sticky)"
+            " values('%q', '%q', '%q', '%q', %d, '%q', %d)",
+            application_name,
+            application_icon ? application_icon : "",
+            notification_name,
+            notification_icon ? notification_icon : "",
+            notification_enabled,
+            notification_display_name ?
+              notification_display_name : "Default",
+            FALSE));
 
         if (notification_name) g_free(notification_name);
         if (notification_icon) g_free(notification_icon);
         if (notification_display_name) g_free(notification_display_name);
       }
-      if (n == notifications_count) {
-        ptr = "GNTP/1.0 -OK NONE\r\nResponse-Action: REGISTER\r\n\r\n";
-        send(sock, ptr, strlen(ptr), 0);
-      } else {
-        ptr = "GNTP/1.0 -ERROR Invalid data\r\n"
+      ptr = n == notifications_count
+        ? "GNTP/1.0 -OK NONE\r\nResponse-Action: REGISTER\r\n\r\n"
+        : "GNTP/1.0 -ERROR Invalid data\r\n"
             "Error-Description: Invalid data\r\n\r\n";
-        send(sock, ptr, strlen(ptr), 0);
-      }
+      send(sock, ptr, strlen(ptr), 0);
       if (application_name) g_free(application_name);
       if (application_icon) g_free(application_icon);
     } else {
@@ -1285,7 +1282,7 @@ gntp_recv_proc(gpointer user_data) {
         send(sock, ptr, strlen(ptr), 0);
 
         gboolean enable = FALSE;
-        const char* sql = sqlite3_mprintf(
+        char* const sql = sqlite3_mprintf(
             "select enable, display from notification"
             " where app_name = '%q' and name = '%q'",
             application_name, notification_name);
@@ -1298,13 +1295,13 @@ gntp_recv_proc(gpointer user_data) {
                 g_strdup((char*) sqlite3_column_text(stmt, 1));
         }
         sqlite3_finalize(stmt);
-        sqlite3_free((void*) sql);
+        sqlite3_free(sql);
 
         if (enable) {
           DISPLAY_PLUGIN* cp = current_display;
           if (notification_display_name) {
-            int i, len = g_list_length(display_plugins);
-            for (i = 0; i < len; i++) {
+            const size_t len = g_list_length(display_plugins);
+            for (size_t i = 0; i < len; i++) {
               DISPLAY_PLUGIN* dp =
                 (DISPLAY_PLUGIN*) g_list_nth_data(display_plugins, i);
               if (!g_strcasecmp(dp->name(), notification_display_name)) {
@@ -1478,7 +1475,7 @@ load_config() {
 
   gchar* version = get_config_string("version", "");
   if (strcmp(version, PACKAGE_VERSION)) {
-    char* sqls[] = {
+    const char* sqls[] = {
       "drop table _notification",
       "drop table _subscriber",
       "alter table notification rename to _notification",
@@ -1501,10 +1498,8 @@ load_config() {
       "drop table _subscriber",
       NULL
     };
-    char** sql = sqls;
-    while (*sql) {
+    for (const char* const* sql = sqls; sql; ++sql) {
       sqlite3_exec(db, *sql, NULL, NULL, NULL);
-      sql++;
     }
     set_config_string("version", PACKAGE_VERSION);
   }
@@ -1527,10 +1522,9 @@ unload_config() {
 
 static gboolean
 load_display_plugins() {
-  GDir *dir;
   const gchar *filename;
   gchar* path = g_build_filename(LIBDIR, "display", NULL);
-  dir = g_dir_open(path, 0, NULL);
+  GDir* dir = g_dir_open(path, 0, NULL);
   if (!dir) {
     perror("open");
     g_critical("Display plugin directory isn't found: %s", path);
@@ -1602,10 +1596,9 @@ subscribe_show(NOTIFICATION_INFO* ni) {
 
 static gboolean
 load_subscribe_plugins() {
-  GDir *dir;
   const gchar *filename;
   gchar* path = g_build_filename(LIBDIR, "subscribe", NULL);
-  dir = g_dir_open(path, 0, NULL);
+  GDir* dir = g_dir_open(path, 0, NULL);
   if (!dir) {
     g_warning("Subscribe plugin directory isn't found: %s", path);
     return TRUE;
@@ -1704,7 +1697,7 @@ udp_recv_proc(GIOChannel* source, GIOCondition condition, gpointer user_data) {
   int fd = g_io_channel_unix_get_fd(source);
   char buf[BUFSIZ] = {0};
 
-  ssize_t len = recvfrom(fd, (char*) buf, sizeof(buf), 0, NULL, NULL);
+  const ssize_t len = recvfrom(fd, buf, sizeof(buf), 0, NULL, NULL);
   if (len > 0) {
     if (buf[0] == 1) {
       if (buf[1] == 0 || buf[1] == 2 || buf[1] == 4) {
@@ -1712,33 +1705,29 @@ udp_recv_proc(GIOChannel* source, GIOCondition condition, gpointer user_data) {
       } else
       if (buf[1] == 1 || buf[1] == 3 || buf[1] == 5) {
         GROWL_NOTIFY_PACKET* packet = (GROWL_NOTIFY_PACKET*) &buf[0];
+#define HASH_DIGEST_CHECK(_hash_algorithm, _password, _data, _datalen) \
+{ \
+  unsigned char digest[GOL_PP_JOIN(_hash_algorithm, _DIGEST_LENGTH)] = {0}; \
+  const size_t datalen = _datalen - sizeof(digest);\
+  GOL_PP_JOIN(_hash_algorithm, _CTX) ctx;\
+  GOL_PP_JOIN(_hash_algorithm, _Init)(&ctx);\
+  GOL_PP_JOIN(_hash_algorithm, _Update)(&ctx, _data, datalen);\
+  GOL_PP_JOIN(_hash_algorithm, _Update)(&ctx, _password, strlen(_password));\
+  GOL_PP_JOIN(_hash_algorithm, _Final)(digest, &ctx);\
+  if (memcmp(digest, _data + datalen, sizeof(digest))) {\
+    return TRUE;\
+  }\
+}
         if (packet->type == 1) {
-          char digest[MD5_DIGEST_LENGTH] = {0};
-          MD5_CTX ctx;
-          MD5_Init(&ctx);
-          MD5_Update(&ctx, buf, len - sizeof(digest));
-          MD5_Update(&ctx, (char*) password, strlen(password));
-          MD5_Final((unsigned char*) digest, &ctx);
-          for (size_t n = 0; n < sizeof(digest); n++) {
-            if (digest[n] != buf[len-sizeof(digest)+n])
-              return TRUE;
-          }
+          HASH_DIGEST_CHECK( MD5, password, buf, len );
         }
         else if (packet->type == 3) {
-          char digest[SHA256_DIGEST_LENGTH] = {0};
-          SHA256_CTX ctx;
-          SHA256_Init(&ctx);
-          SHA256_Update(&ctx, buf, len - sizeof(digest));
-          SHA256_Update(&ctx, password, strlen(password));
-          SHA256_Final((unsigned char*) digest, &ctx);
-          for (size_t n = 0; n < sizeof(digest); n++) {
-            if (digest[n] != buf[len-sizeof(digest)+n])
-              return TRUE;
-          }
+          HASH_DIGEST_CHECK( SHA256, password, buf, len );
         } else {
           if (is_local_app && require_password_for_local_apps) goto leave;
           if (!is_local_app && require_password_for_lan_apps) goto leave;
         }
+#undef HASH_DIGEST_CHECK
         NOTIFICATION_INFO* ni = g_new0(NOTIFICATION_INFO, 1);
         ni->title = g_strndup(
             &buf[sizeof(GROWL_NOTIFY_PACKET)
@@ -1796,14 +1785,12 @@ create_gntp_server() {
     return NULL;
   }
 
-  sockopt_t sockopt;
-  sockopt = 1;
+  const sockopt_t sockopt = 1;
   if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR,
         &sockopt, sizeof(sockopt)) == -1) {
     perror("setsockopt");
     return NULL;
   }
-  sockopt = 1;
   if (setsockopt(fd, IPPROTO_TCP, TCP_NODELAY,
         &sockopt, sizeof(sockopt)) == -1) {
     perror("setsockopt");
