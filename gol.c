@@ -116,6 +116,13 @@ static SUBSCRIPTOR_CONTEXT sc;
 # define DATADIR exepath
 #endif
 
+static const char*
+skipsp(const char* str)
+{
+  for (; isspace(*str); ++str);
+  return str;
+}
+
 static long
 read_all(int fd, char** ptr) {
   struct timeval timeout =
@@ -956,6 +963,39 @@ exit_clicked(GtkWidget* widget, GdkEvent* event, gpointer user_data) {
   gtk_main_quit();
 }
 
+static char*
+crlf_to_term_or_null(char* str) {
+  str = strstr(str, "\r\n");
+  if (str) {
+    memcpy(str, "\0", 2);
+    str += 2;
+  }
+  return str;
+}
+
+static char*
+crlf_to_term_and_skip(char* const str) {
+  char* tmp = crlf_to_term_or_null(str);
+  if (!tmp) {
+    tmp = str + strlen(str) + 1;
+  }
+  return tmp;
+}
+
+static char*
+cr_to_lf(char* const str) {
+  for (char* itr = str; (itr = strchr(itr, '\r')); *itr++ = '\n');
+  return str;
+}
+
+static void
+str_swap(char ** restrict _left, char ** restrict _right)
+{
+    char *tmp = *_left;
+    *_left    = *_right;
+    *_right   = tmp;
+}
+
 static gpointer
 gntp_recv_proc(gpointer user_data) {
   int sock = (int) user_data;
@@ -990,9 +1030,7 @@ gntp_recv_proc(gpointer user_data) {
             "require_password_for_local_apps", FALSE)) goto leave;
       if (!is_local_app && get_config_bool(
             "require_password_for_lan_apps", FALSE)) goto leave;
-      if (!(ptr = strstr(ptr, "\r\n"))) goto leave;
-      *ptr = 0;
-      ptr += 2;
+      if (!(ptr = crlf_to_term_or_null(ptr))) goto leave;
       const size_t datalen = r - (ptr-top) - 4;
       data = (char*) malloc(datalen+1);
       if (!data) goto leave;
@@ -1025,9 +1063,7 @@ gntp_recv_proc(gpointer user_data) {
 
       char* const salt = ptr;
 
-      if (!(ptr = strstr(ptr, "\r\n"))) goto leave;
-      *ptr = 0;
-      ptr += 2;
+      if (!(ptr = crlf_to_term_or_null(ptr))) goto leave;
 
       const size_t saltlen = strlen(salt) / 2;
       for (size_t n = 0; n < saltlen; n++)
@@ -1039,34 +1075,34 @@ gntp_recv_proc(gpointer user_data) {
       for (size_t n = 0; n < ivlen; n++)
         iv[n] = unhex(iv[n * 2]) * 16 + unhex(iv[n * 2 + 1]);
 
-      char digest[32] = {0};
+      unsigned char digest[32] = {0};
       if (!strcmp(hash_algorythm, "MD5")) {
         MD5_CTX ctx;
         MD5_Init(&ctx);
         MD5_Update(&ctx, password, strlen(password));
         MD5_Update(&ctx, salt, saltlen);
-        MD5_Final((unsigned char*) digest, &ctx);
+        MD5_Final(digest, &ctx);
       }
       else if (!strcmp(hash_algorythm, "SHA1")) {
         SHA_CTX ctx;
         SHA1_Init(&ctx);
         SHA1_Update(&ctx, password, strlen(password));
         SHA1_Update(&ctx, salt, saltlen);
-        SHA1_Final((unsigned char*) digest, &ctx);
+        SHA1_Final(digest, &ctx);
       }
       else if (!strcmp(hash_algorythm, "SHA256")) {
         SHA256_CTX ctx;
         SHA256_Init(&ctx);
         SHA256_Update(&ctx, password, strlen(password));
         SHA256_Update(&ctx, salt, saltlen);
-        SHA256_Final((unsigned char*) digest, &ctx);
+        SHA256_Final(digest, &ctx);
       }
 
       data = (char*) calloc(r, 1);
       if (!data) goto leave;
       if (!strcmp(crypt_algorythm, "AES")) {
         AES_KEY aeskey;
-        AES_set_decrypt_key((unsigned char*) digest, 24 * 8, &aeskey);
+        AES_set_decrypt_key(digest, 24 * 8, &aeskey);
         AES_cbc_encrypt((unsigned char*) ptr, (unsigned char*) data,
             r-(ptr-top)-6, &aeskey, (unsigned char*) iv, AES_DECRYPT);
       }
@@ -1077,14 +1113,10 @@ gntp_recv_proc(gpointer user_data) {
             r-(ptr-top)-6, &schedule, (const_DES_cblock*) &iv, DES_DECRYPT);
       }
       else if (!strcmp(crypt_algorythm, "3DES")) {
-        char key1[8], key2[8], key3[8];
-        memcpy(key1, digest+ 0, 8);
-        memcpy(key2, digest+ 8, 8);
-        memcpy(key3, digest+16, 8);
         des_key_schedule schedule1, schedule2, schedule3;
-        DES_set_key_unchecked((const_DES_cblock*) &key1, &schedule1);
-        DES_set_key_unchecked((const_DES_cblock*) &key2, &schedule2);
-        DES_set_key_unchecked((const_DES_cblock*) &key3, &schedule3);
+        DES_set_key_unchecked((const_DES_cblock*) (digest+ 0), &schedule1);
+        DES_set_key_unchecked((const_DES_cblock*) (digest+ 8), &schedule2);
+        DES_set_key_unchecked((const_DES_cblock*) (digest+16), &schedule3);
         des_ede3_cbc_encrypt((unsigned char*) ptr, (unsigned char*) data,
             r-(ptr-top)-6, schedule1, schedule2, schedule3,
             (const_DES_cblock*) &iv, DES_DECRYPT);
@@ -1097,37 +1129,26 @@ gntp_recv_proc(gpointer user_data) {
       char* application_icon = NULL;
       long notifications_count = 0;
       while (*ptr) {
-        char* line = ptr;
-        while (*ptr) {
-          if (*ptr == '\r') {
-            if (*(ptr+1) == '\n') {
-              *ptr = 0;
-              ptr += 2;
-              break;
-            }
-            *ptr = '\n';
-          }
-          ptr++;
-        }
-        if (strlen(line) == 0) break;
+        char* const next_keyvalue = crlf_to_term_and_skip(ptr);
+        if (*ptr == '\0') break;
+        cr_to_lf(ptr);
 
-        if (!strncmp(line, "Application-Name:", 17)) {
-          line += 18;
-          while(isspace(*line)) line++;
-          if (application_name) g_free(application_name);
-          application_name = g_strdup(line);
+        const char* const colon = strchr(ptr, ':');
+        if (colon)
+        {
+          char* value = g_strdup(skipsp(colon + 1));
+          if (!strncmp(ptr, "Application-Name:", 17)) {
+            str_swap(&value, &application_name);
+          }
+          else if (!strncmp(ptr, "Application-Icon:", 17)) {
+            str_swap(&value, &application_icon);
+          }
+          else if (!strncmp(ptr, "Notifications-Count:", 20)) {
+            notifications_count = atol(value);
+          }
+          g_free(value);
         }
-        else if (!strncmp(line, "Application-Icon:", 17)) {
-          line += 18;
-          while(isspace(*line)) line++;
-          if (application_icon) g_free(application_icon);
-          application_icon = g_strdup(line);
-        }
-        else if (!strncmp(line, "Notifications-Count:", 20)) {
-          line += 21;
-          while(isspace(*line)) line++;
-          notifications_count = atol(line);
-        }
+        ptr = next_keyvalue;
       }
       int n;
       for (n = 0; n < notifications_count; n++) {
@@ -1136,45 +1157,32 @@ gntp_recv_proc(gpointer user_data) {
         gboolean notification_enabled = FALSE;
         char* notification_display_name = NULL;
         while (*ptr) {
-          char* line = ptr;
-          while (*ptr) {
-            if (*ptr == '\r') {
-              if (*(ptr+1) == '\n') {
-                *ptr = 0;
-                ptr += 2;
-                break;
-              }
-              *ptr = '\n';
-            }
-            ptr++;
-          }
-          if (strlen(line) == 0) break;
+          char* const next_keyvalue = crlf_to_term_and_skip(ptr);
+          if (*ptr == '\0') break;
+          cr_to_lf(ptr);
 
-          if (!strncmp(line, "Notification-Name:", 18)) {
-            line += 19;
-            while(isspace(*line)) line++;
-            if (notification_name) g_free(notification_name);
-            notification_name = g_strdup(line);
+          const char* const colon = strchr(ptr, ':');
+          if (colon)
+          {
+            char* value = g_strdup(skipsp(colon + 1));
+            if (!strncmp(ptr, "Notification-Name:", 18)) {
+              str_swap(&value, &notification_name);
+            }
+            else if (!strncmp(ptr, "Notification-Icon:", 18)) {
+              str_swap(&value, &notification_icon);
+            }
+            else if (!strncmp(ptr, "Notification-Enabled:", 21)) {
+              notification_enabled = strcasecmp(value, "true") == 0;
+            }
+            else if (!strncmp(ptr, "Notification-Display-Name:", 26)) {
+              str_swap(&value, &notification_display_name);
+            }
+            g_free(value);
           }
-          else if (!strncmp(line, "Notification-Icon:", 18)) {
-            line += 19;
-            while(isspace(*line)) line++;
-            if (notification_icon) g_free(notification_icon);
-            notification_icon = g_strdup(line);
-          }
-          else if (!strncmp(line, "Notification-Enabled:", 21)) {
-            line += 22;
-            while(isspace(*line)) line++;
-            notification_enabled = strcasecmp(line, "true") == 0;
-          }
-          else if (!strncmp(line, "Notification-Display-Name:", 26)) {
-            line += 27;
-            while(isspace(*line)) line++;
-            if (notification_display_name) g_free(notification_display_name);
-            notification_display_name = g_strdup(line);
-          }
-          line = ptr - 1;
-          while (*line && isspace(*line)) *line-- = 0;
+
+          char* line = next_keyvalue - 1;
+          while (isspace(*line)) *line-- = '\0';
+          ptr = next_keyvalue;
         }
 
         exec_splite3(
@@ -1217,63 +1225,41 @@ gntp_recv_proc(gpointer user_data) {
       char* notification_name = NULL;
       char* notification_display_name = NULL;
       while (*ptr) {
-        char* line = ptr;
-        while (*ptr) {
-          if (*ptr == '\r') {
-            if (*(ptr+1) == '\n') {
-              *ptr = 0;
-              ptr += 2;
-              break;
-            }
-            *ptr = '\n';
-          }
-          ptr++;
-        }
-        if (strlen(line) == 0) break;
+        char* const next_keyvalue = crlf_to_term_and_skip(ptr);
+        if (*ptr == '\0') break;
+        cr_to_lf(ptr);
 
-        if (!strncmp(line, "Application-Name:", 17)) {
-          line += 18;
-          while(isspace(*line)) line++;
-          if (application_name) g_free(application_name);
-          application_name = g_strdup(line);
+        const char* const colon = strchr(ptr, ':');
+        if (colon)
+        {
+          char* value = g_strdup(skipsp(colon + 1));
+          if (!strncmp(ptr, "Application-Name:", 17)) {
+            str_swap(&value, &application_name);
+          }
+          else if (!strncmp(ptr, "Notification-Name:", 18)) {
+            str_swap(&value, &notification_name);
+          }
+          else if (!strncmp(ptr, "Notification-Title:", 19)) {
+            str_swap(&value, &ni->title);
+          }
+          else if (!strncmp(ptr, "Notification-Text:", 18)) {
+            str_swap(&value, &ni->text);
+          }
+          else if (!strncmp(ptr, "Notification-Icon:", 18)) {
+            str_swap(&value, &ni->icon);
+          }
+          else if (!strncmp(ptr, "Notification-Callback-Target:", 29)) {
+            str_swap(&value, &ni->url);
+          }
+          else if (!strncmp(ptr, "Notification-Display-Name:", 26)) {
+            str_swap(&value, &notification_display_name);
+          }
+          g_free(value);
         }
-        else if (!strncmp(line, "Notification-Name:", 18)) {
-          line += 19;
-          while(isspace(*line)) line++;
-          if (notification_name) g_free(notification_name);
-          notification_name = g_strdup(line);
-        }
-        else if (!strncmp(line, "Notification-Title:", 19)) {
-          line += 20;
-          while(isspace(*line)) line++;
-          if (ni->title) g_free(ni->title);
-          ni->title = g_strdup(line);
-        }
-        else if (!strncmp(line, "Notification-Text:", 18)) {
-          line += 19;
-          while(isspace(*line)) line++;
-          if (ni->text) g_free(ni->text);
-          ni->text = g_strdup(line);
-        }
-        else if (!strncmp(line, "Notification-Icon:", 18)) {
-          line += 19;
-          while(isspace(*line)) line++;
-          if (ni->icon) g_free(ni->icon);
-          ni->icon = g_strdup(line);
-        }
-        else if (!strncmp(line, "Notification-Callback-Target:", 29)) {
-          line += 30;
-          while(isspace(*line)) line++;
-          if (ni->url) g_free(ni->url);
-          ni->url = g_strdup(line);
-        }
-        else if (!strncmp(line, "Notification-Display-Name:", 26)) {
-          line += 27;
-          while(isspace(*line)) line++;
-          notification_display_name = g_strdup(line);
-        }
-        line = ptr - 1;
+
+        char* line = next_keyvalue - 1;
         while (*line && isspace(*line)) *line-- = 0;
+        ptr = next_keyvalue;
       }
 
       if (ni->title && ni->text) {
