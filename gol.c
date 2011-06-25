@@ -35,6 +35,7 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include <ctype.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <memory.h>
@@ -126,14 +127,18 @@ read_all(int fd, char** ptr) {
   setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
 
   char *buf = (char*) malloc(len);
-  if (!buf) return 0;
+  if (!buf) {
+    perror("malloc");
+    return 0;
+  }
 
   while ((r = recv(fd, buf + i, len - 1, 0)) >= 0) {
     if (r == 0) continue;
     i += r;
-    if (r >= 2 && !strncmp(buf + i - 4, "\r\n\r\n", 4)) break;
+    if (r >= 4 && !strncmp(buf + i - 4, "\r\n\r\n", 4)) break;
     char * const tmp = realloc(buf, len + i);
     if (!tmp) {
+      perror("realloc");
       free(buf);
       return 0;
     }
@@ -986,9 +991,11 @@ gntp_recv_proc(gpointer user_data) {
       if (!(ptr = strstr(ptr, "\r\n"))) goto leave;
       *ptr = 0;
       ptr += 2;
-      data = (char*) malloc(r-(ptr-top)-4+1);
+      const size_t datalen = r - (ptr-top) - 4;
+      data = (char*) malloc(datalen+1);
       if (!data) goto leave;
-      memcpy(data, ptr, r-(ptr-top)-4);
+      memcpy(data, ptr, datalen);
+      data[datalen] = '\0';
     } else {
       if (strncmp(ptr, "AES:", 4) &&
           strncmp(ptr, "DES:", 4) &&
@@ -1053,7 +1060,7 @@ gntp_recv_proc(gpointer user_data) {
         SHA256_Final((unsigned char*) digest, &ctx);
       }
 
-      data = (char*) malloc(r);
+      data = (char*) calloc(r, 1);
       if (!data) goto leave;
       if (!strcmp(crypt_algorythm, "AES")) {
         AES_KEY aeskey;
