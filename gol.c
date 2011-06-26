@@ -123,47 +123,59 @@ skipsp(const char* str)
   return str;
 }
 
-static long
+static void*
+safely_realloc(void* ptr, const size_t newsize)
+{
+  void* const tmp = realloc(ptr, newsize);
+  if (!tmp) {
+    perror("realloc");
+    free(ptr);
+    return NULL;
+  }
+  return tmp;
+}
+
+static size_t
 read_all(int fd, char** ptr) {
-  struct timeval timeout =
+  const struct timeval timeout =
   {
     .tv_sec  = 1,
     .tv_usec = 0,
   };
-  int i = 0, r;
-  const size_t len = BUFSIZ + 1;
 
   setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
 
-  char *buf = (char*) malloc(len);
+  const size_t len = BUFSIZ;
+  size_t bufferlen = len;
+  char* buf = (char*) malloc(bufferlen + 1);
   if (!buf) {
     perror("malloc");
     return 0;
   }
 
-  while ((r = recv(fd, buf + i, len - 1, 0)) >= 0) {
+  char* end = buf;
+  ptrdiff_t datalen = 0;
+  for (ssize_t r; (r = recv(fd, end, bufferlen - datalen, 0)) >= 0; ) {
     if (r == 0) continue;
-    i += r;
-    if (r >= 4 && !strncmp(buf + i - 4, "\r\n\r\n", 4)) break;
-    char * const tmp = realloc(buf, len + i);
-    if (!tmp) {
-      perror("realloc");
-      free(buf);
-      return 0;
-    }
-    buf = tmp;
+    *(end += r) = '\0';
+    datalen += r;
+    if (r >= 4 && !strncmp(end - 4, "\r\n\r\n", 4)) break;
+
+    bufferlen += len;
+    buf = (char*) safely_realloc(buf, bufferlen + 1);
+    if (!buf) return 0;
+    end = buf + datalen;
   }
-  buf[ i ] = '\0';
   *ptr = buf;
-  return i;
+  return (ptrdiff_t) (end - buf);
 }
 
 unsigned int
 unhex(unsigned char c) {
-  if('0' <= c && c <= '9') return (c - '0');
-  if('a' <= c && c <= 'f') return (0x0a + c - 'a');
-  if('A' <= c && c <= 'F') return (0x0a + c - 'A');
-  return 0;
+  if (!isxdigit(c)) return 0;
+  const char str[] = {c, '\0'};
+  char* _unused_endptr;
+  return strtol(str, &_unused_endptr, 16);
 }
 
 static inline void
@@ -1012,7 +1024,7 @@ gntp_recv_proc(gpointer user_data) {
   }
 
   char* ptr = "";
-  int r = read_all(sock, &ptr);
+  const size_t r = read_all(sock, &ptr);
   char* const top = ptr;
   if (!strncmp(ptr, "GNTP/1.0 ", 9)) {
     ptr += 9;
