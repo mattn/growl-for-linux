@@ -72,7 +72,15 @@ typedef int sockopt_t;
 # endif
 #endif
 
-#define GOL_PP_JOIN( _left, _right ) _left ## _right
+#define GOL_PP_JOIN(_left, _right) _left ## _right
+
+#define GNTP_OK_STRING_LITERAL(_version, _action)   \
+  "GNTP/" _version " -OK NONE\r\n"                  \
+  "Response-Action: " _action "\r\n\r\n"            \
+
+#define GNTP_ERROR_STRING_LITERAL(_version, _message, _desc)  \
+  "GNTP/" _version " -ERROR " _message "\r\n"                 \
+  "Error-Description: " _desc "\r\n\r\n"                      \
 
 typedef struct {
   void* handle;
@@ -1221,9 +1229,8 @@ gntp_recv_proc(gpointer user_data) {
         if (notification_display_name) g_free(notification_display_name);
       }
       ptr = n == notifications_count
-        ? "GNTP/1.0 -OK NONE\r\nResponse-Action: REGISTER\r\n\r\n"
-        : "GNTP/1.0 -ERROR Invalid data\r\n"
-            "Error-Description: Invalid data\r\n\r\n";
+        ? GNTP_OK_STRING_LITERAL("1.0", "REGISTER")
+        : GNTP_ERROR_STRING_LITERAL("1.0", "Invalid data", "Invalid data");
       send(sock, ptr, strlen(ptr), 0);
       if (application_name) g_free(application_name);
       if (application_icon) g_free(application_icon);
@@ -1275,8 +1282,7 @@ gntp_recv_proc(gpointer user_data) {
       }
 
       if (ni->title && ni->text) {
-        ptr = g_strdup_printf(
-            "GNTP/1.0 -OK NONE\r\nResponse-Action: %s\r\n\r\n", command);
+        ptr = g_strdup_printf(GNTP_OK_STRING_LITERAL("1.0", "%s"), command);
         send(sock, ptr, strlen(ptr), 0);
 
         gboolean enable = FALSE;
@@ -1311,8 +1317,7 @@ gntp_recv_proc(gpointer user_data) {
           g_idle_add((GSourceFunc) cp->show, ni); // call once
         }
       } else {
-        ptr = "GNTP/1.0 -ERROR Invalid data\r\n"
-            "Error-Description: Invalid data\r\n\r\n";
+        ptr = GNTP_ERROR_STRING_LITERAL("1.0", "Invalid data", "Invalid data");
         send(sock, ptr, strlen(ptr), 0);
 
         if (ni->title) g_free(ni->title);
@@ -1327,8 +1332,7 @@ gntp_recv_proc(gpointer user_data) {
     }
     free(data);
   } else {
-    ptr = "GNTP/1.0 -ERROR Invalid command\r\n"
-        "Error-Description: Invalid command\r\n\r\n";
+    ptr = GNTP_ERROR_STRING_LITERAL("1.0", "Invalid command", "Invalid command");
     send(sock, ptr, strlen(ptr), 0);
   }
   free(top);
@@ -1337,8 +1341,7 @@ gntp_recv_proc(gpointer user_data) {
   return NULL;
 
 leave:
-  ptr = "GNTP/1.0 -ERROR Invalid request\r\n"
-      "Error-Description: Invalid request\r\n\r\n";
+  ptr = GNTP_ERROR_STRING_LITERAL("1.0", "Invalid request", "Invalid request");
   send(sock, ptr, strlen(ptr), 0);
   free(top);
   shutdown(sock, SD_BOTH);
