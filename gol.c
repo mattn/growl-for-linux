@@ -646,6 +646,42 @@ tree_view_button_pressed(GtkWidget* widget, GdkEventButton* event, gpointer user
   return TRUE;
 }
 
+typedef gboolean button_pressed_callback_t(GtkWidget*, GdkEventButton*, gpointer);
+typedef void changed_callback_t(GtkTreeSelection*, gpointer);
+
+static GtkListStore*
+vertical_list_new(const char* const model_name, const char* const tree_name,
+    button_pressed_callback_t* const button_pressed_callback,
+    GtkWidget* const contextmenu, changed_callback_t* const changed_callback,
+    const GtkWidget* const hbox, const char* const column_attribute_name)
+{
+  GtkListStore* const model =
+    (GtkListStore *) gtk_list_store_new(1, G_TYPE_STRING);
+  g_object_set_data(G_OBJECT(setting_dialog), model_name, model);
+
+  GtkWidget* const tree_view =
+    gtk_tree_view_new_with_model(GTK_TREE_MODEL(model));
+  g_object_set_data(G_OBJECT(setting_dialog), tree_name, tree_view);
+  g_signal_connect(G_OBJECT(tree_view), "button-press-event",
+      G_CALLBACK(button_pressed_callback), contextmenu);
+
+  GtkTreeSelection* const select =
+    gtk_tree_view_get_selection(GTK_TREE_VIEW(tree_view));
+  gtk_tree_selection_set_mode(select, GTK_SELECTION_SINGLE);
+  g_signal_connect(G_OBJECT(select), "changed",
+      G_CALLBACK(changed_callback), setting_dialog);
+
+  gtk_box_pack_start(GTK_BOX(hbox), tree_view, FALSE, FALSE, 0);
+
+  GtkTreeViewColumn* const column =
+    gtk_tree_view_column_new_with_attributes(
+        column_attribute_name, gtk_cell_renderer_text_new(), "text", 0, NULL);
+  gtk_tree_view_column_set_min_width(GTK_TREE_VIEW_COLUMN(column), 80);
+  gtk_tree_view_append_column(GTK_TREE_VIEW(tree_view), column);
+
+  return model;
+}
+
 static void
 settings_clicked(GtkWidget* widget, GdkEvent* event, gpointer user_data) {
   if (setting_dialog) {
@@ -711,11 +747,11 @@ settings_clicked(GtkWidget* widget, GdkEvent* event, gpointer user_data) {
         G_CALLBACK(preview_clicked), select);
     gtk_box_pack_end(GTK_BOX(hbox), button, FALSE, FALSE, 0);
 
-    int i, len = g_list_length(display_plugins);
-    for (i = 0; i < len; i++) {
+    const size_t len = g_list_length(display_plugins);
+    for (size_t i = 0; i < len; i++) {
       GtkTreeIter iter;
       gtk_list_store_append(GTK_LIST_STORE(model), &iter);
-      DISPLAY_PLUGIN* dp =
+      DISPLAY_PLUGIN* const dp =
         (DISPLAY_PLUGIN*) g_list_nth_data(display_plugins, i);
       gtk_list_store_set(GTK_LIST_STORE(model), &iter, 0, dp->name(), -1);
       if (dp == current_display)
@@ -725,106 +761,83 @@ settings_clicked(GtkWidget* widget, GdkEvent* event, gpointer user_data) {
 
   {
     contextmenu = gtk_menu_new();
-    GtkWidget* menu_item;
-    menu_item = gtk_image_menu_item_new_from_stock(GTK_STOCK_DELETE, NULL);
+    GtkWidget* const menu_item = gtk_image_menu_item_new_from_stock(GTK_STOCK_DELETE, NULL);
     g_signal_connect(G_OBJECT(menu_item), "activate",
         G_CALLBACK(application_delete), setting_dialog);
     gtk_menu_shell_append(GTK_MENU_SHELL(contextmenu), menu_item);
 
-    GtkWidget* hbox = gtk_hbox_new(FALSE, 5);
+    GtkWidget* const hbox = gtk_hbox_new(FALSE, 5);
     gtk_container_set_border_width(GTK_CONTAINER(hbox), 10);
     gtk_notebook_append_page(GTK_NOTEBOOK(notebook),
         hbox, gtk_label_new("Application"));
 
-    GtkListStore* model1 =
-      (GtkListStore *) gtk_list_store_new(1, G_TYPE_STRING);
-    g_object_set_data(G_OBJECT(setting_dialog), "model1", model1);
-    GtkWidget* tree_view = gtk_tree_view_new_with_model(GTK_TREE_MODEL(model1));
-    g_object_set_data(G_OBJECT(setting_dialog), "tree1", tree_view);
-    GtkTreeSelection* select
-      = gtk_tree_view_get_selection(GTK_TREE_VIEW(tree_view));
-    gtk_tree_selection_set_mode(select, GTK_SELECTION_SINGLE);
-    g_signal_connect(G_OBJECT(select), "changed",
-        G_CALLBACK(application_tree_selection_changed), setting_dialog);
-    g_signal_connect(G_OBJECT(tree_view), "button-press-event",
-        G_CALLBACK(tree_view_button_pressed), contextmenu);
-    gtk_box_pack_start(GTK_BOX(hbox), tree_view, FALSE, FALSE, 0);
-    GtkTreeViewColumn* column = gtk_tree_view_column_new_with_attributes(
-        "Application", gtk_cell_renderer_text_new(), "text", 0, NULL);
-    gtk_tree_view_column_set_min_width(GTK_TREE_VIEW_COLUMN(column), 80);
-    gtk_tree_view_append_column(GTK_TREE_VIEW(tree_view), column);
+    GtkListStore* const model1 =
+      vertical_list_new("model1", "tree1",
+        tree_view_button_pressed, contextmenu,
+        application_tree_selection_changed, hbox, "Application");
 
-    GtkListStore* model2 =
-      (GtkListStore *) gtk_list_store_new(1, G_TYPE_STRING);
-    g_object_set_data(G_OBJECT(setting_dialog), "model2", model2);
-    tree_view = gtk_tree_view_new_with_model(GTK_TREE_MODEL(model2));
-    g_object_set_data(G_OBJECT(setting_dialog), "tree2", tree_view);
-    select = gtk_tree_view_get_selection(GTK_TREE_VIEW(tree_view));
-    gtk_tree_selection_set_mode(select, GTK_SELECTION_SINGLE);
-    g_signal_connect(G_OBJECT(select), "changed",
-        G_CALLBACK(notification_tree_selection_changed), setting_dialog);
-    g_signal_connect(G_OBJECT(tree_view), "button-press-event",
-        G_CALLBACK(tree_view_button_pressed), contextmenu);
-    gtk_box_pack_start(GTK_BOX(hbox), tree_view, FALSE, FALSE, 0);
-    column = gtk_tree_view_column_new_with_attributes(
-        "Notification", gtk_cell_renderer_text_new(), "text", 0, NULL);
-    gtk_tree_view_column_set_min_width(GTK_TREE_VIEW_COLUMN(column), 80);
-    gtk_tree_view_append_column(GTK_TREE_VIEW(tree_view), column);
+    vertical_list_new("model2", "tree2",
+      tree_view_button_pressed, contextmenu,
+      notification_tree_selection_changed, hbox, "Notification");
 
-    GtkWidget* frame = gtk_frame_new("Setting");
+    GtkWidget* const frame = gtk_frame_new("Setting");
     gtk_box_pack_start(GTK_BOX(hbox), frame, TRUE, TRUE, 0);
 
-    GtkWidget* vbox = gtk_vbox_new(FALSE, 5);
+    GtkWidget* const vbox = gtk_vbox_new(FALSE, 5);
     gtk_container_set_border_width(GTK_CONTAINER(vbox), 10);
     gtk_container_add(GTK_CONTAINER(frame), vbox);
 
-    hbox = gtk_hbox_new(FALSE, 5);
-    gtk_box_pack_start(GTK_BOX(vbox), hbox, FALSE, FALSE, 0);
+    {
+      GtkWidget* const hbox = gtk_hbox_new(FALSE, 5);
+      gtk_box_pack_start(GTK_BOX(vbox), hbox, FALSE, FALSE, 0);
 
-    GtkWidget* label = gtk_label_new("Enable:");
-    gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, FALSE, 0);
-    GtkWidget* combobox = gtk_combo_box_new_text();
-    g_object_set_data(G_OBJECT(setting_dialog), "enable", combobox);
-    gtk_combo_box_append_text(GTK_COMBO_BOX(combobox), "Enable");
-    gtk_combo_box_append_text(GTK_COMBO_BOX(combobox), "Disable");
-    gtk_widget_set_sensitive(combobox, FALSE);
-    g_signal_connect(G_OBJECT(combobox), "changed",
-        G_CALLBACK(notification_enable_changed), setting_dialog);
-    gtk_box_pack_start(GTK_BOX(hbox), combobox, FALSE, FALSE, 0);
-
-    hbox = gtk_hbox_new(FALSE, 5);
-    gtk_box_pack_start(GTK_BOX(vbox), hbox, FALSE, FALSE, 0);
-
-    label = gtk_label_new("Display:");
-    gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, FALSE, 0);
-    combobox = gtk_combo_box_new_text();
-    g_object_set_data(G_OBJECT(setting_dialog), "display", combobox);
-    gtk_widget_set_sensitive(combobox, FALSE);
-    g_signal_connect(G_OBJECT(combobox), "changed",
-        G_CALLBACK(notification_display_changed), setting_dialog);
-    gtk_box_pack_start(GTK_BOX(hbox), combobox, FALSE, FALSE, 0);
-
-    const char* sql;
-    sqlite3_stmt *stmt = NULL;
-
-    sql = "select distinct app_name from notification order by app_name";
-    sqlite3_prepare(db, sql, strlen(sql), &stmt, NULL);
-    while (sqlite3_step(stmt) == SQLITE_ROW) {
-      GtkTreeIter iter;
-      gtk_list_store_append(GTK_LIST_STORE(model1), &iter);
-      gtk_list_store_set(GTK_LIST_STORE(model1), &iter, 0,
-          sqlite3_column_text(stmt, 0), -1);
+      GtkWidget* const label = gtk_label_new("Enable:");
+      gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, FALSE, 0);
+      GtkWidget* const combobox = gtk_combo_box_new_text();
+      g_object_set_data(G_OBJECT(setting_dialog), "enable", combobox);
+      gtk_combo_box_append_text(GTK_COMBO_BOX(combobox), "Enable");
+      gtk_combo_box_append_text(GTK_COMBO_BOX(combobox), "Disable");
+      gtk_widget_set_sensitive(combobox, FALSE);
+      g_signal_connect(G_OBJECT(combobox), "changed",
+          G_CALLBACK(notification_enable_changed), setting_dialog);
+      gtk_box_pack_start(GTK_BOX(hbox), combobox, FALSE, FALSE, 0);
     }
-    sqlite3_finalize(stmt);
 
-    int i, len = g_list_length(display_plugins);
-    for (i = 0; i < len; i++) {
-      DISPLAY_PLUGIN* dp =
-        (DISPLAY_PLUGIN*) g_list_nth_data(display_plugins, i);
-      gtk_combo_box_append_text(GTK_COMBO_BOX(combobox), dp->name());
+    {
+      GtkWidget* const hbox = gtk_hbox_new(FALSE, 5);
+      gtk_box_pack_start(GTK_BOX(vbox), hbox, FALSE, FALSE, 0);
+
+      GtkWidget* const label = gtk_label_new("Display:");
+      gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, FALSE, 0);
+      GtkWidget* const combobox = gtk_combo_box_new_text();
+      g_object_set_data(G_OBJECT(setting_dialog), "display", combobox);
+      gtk_widget_set_sensitive(combobox, FALSE);
+      g_signal_connect(G_OBJECT(combobox), "changed",
+          G_CALLBACK(notification_display_changed), setting_dialog);
+      gtk_box_pack_start(GTK_BOX(hbox), combobox, FALSE, FALSE, 0);
+
+      {
+        char* const sql = "select distinct app_name from notification order by app_name";
+        sqlite3_stmt *stmt = NULL;
+        sqlite3_prepare(db, sql, strlen(sql), &stmt, NULL);
+        while (sqlite3_step(stmt) == SQLITE_ROW) {
+          GtkTreeIter iter;
+          gtk_list_store_append(GTK_LIST_STORE(model1), &iter);
+          gtk_list_store_set(GTK_LIST_STORE(model1), &iter, 0,
+              sqlite3_column_text(stmt, 0), -1);
+        }
+        sqlite3_finalize(stmt);
+      }
+
+      const size_t len = g_list_length(display_plugins);
+      for (size_t i = 0; i < len; i++) {
+        DISPLAY_PLUGIN* const dp =
+          (DISPLAY_PLUGIN*) g_list_nth_data(display_plugins, i);
+        gtk_combo_box_append_text(GTK_COMBO_BOX(combobox), dp->name());
+      }
     }
   }
-  
+
   {
     GtkWidget* vbox = gtk_vbox_new(FALSE, 5);
     gtk_container_set_border_width(GTK_CONTAINER(vbox), 10);
