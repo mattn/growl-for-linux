@@ -286,15 +286,30 @@ status_icon_popup(
       my_gtk_status_icon_position_menu, status_icon, button, activate_time);
 }
 
-static void
-display_tree_selection_changed(GtkTreeSelection *selection, gpointer user_data) {
+static bool
+get_tree_model_from_selection(gchar** const pname, GtkTreeSelection* const selection)
+{
   GtkTreeIter iter;
   GtkTreeModel* model;
-  if (!gtk_tree_selection_get_selected(selection, &model, &iter)) return;
+  if (!gtk_tree_selection_get_selected(selection, &model, &iter)) return false;
+
+  gtk_tree_model_get(model, &iter, 0, pname, -1);
+  return true;
+}
+
+static bool
+get_tree_model_from_tree(gchar** const pname, GtkWidget* const tree)
+{
+  GtkTreeSelection* const selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(tree));
+  return get_tree_model_from_selection(pname, selection);
+}
+
+static void
+display_tree_selection_changed(GtkTreeSelection *selection, gpointer user_data) {
+  gchar* name;
+  if (!get_tree_model_from_selection(&name, selection)) return;
 
   DISPLAY_PLUGIN* cp = current_display;
-  gchar* name;
-  gtk_tree_model_get(model, &iter, 0, &name, -1);
   const size_t len = g_list_length(display_plugins);
   for (size_t i = 0; i < len; i++) {
     DISPLAY_PLUGIN* const dp = (DISPLAY_PLUGIN*) g_list_nth_data(display_plugins, i);
@@ -327,12 +342,8 @@ display_tree_selection_changed(GtkTreeSelection *selection, gpointer user_data) 
 
 static void
 application_tree_selection_changed(GtkTreeSelection *selection, gpointer user_data) {
-  GtkTreeIter iter;
-  GtkTreeModel* model1;
-  if (!gtk_tree_selection_get_selected(selection, &model1, &iter)) return;
-
   gchar* app_name;
-  gtk_tree_model_get(model1, &iter, 0, &app_name, -1);
+  if (!get_tree_model_from_selection(&app_name, selection)) return;
 
   GtkListStore* model2 =
     (GtkListStore*) g_object_get_data(G_OBJECT(user_data), "model2");
@@ -362,12 +373,9 @@ application_tree_selection_changed(GtkTreeSelection *selection, gpointer user_da
 static void
 set_as_default_clicked(GtkWidget* widget, gpointer user_data) {
   GtkTreeSelection* const selection = (GtkTreeSelection*) user_data;
-  GtkTreeIter iter;
-  GtkTreeModel* model;
-  if (!gtk_tree_selection_get_selected(selection, &model, &iter)) return;
-
   gchar* name;
-  gtk_tree_model_get(model, &iter, 0, &name, -1);
+  if (!get_tree_model_from_selection(&name, selection)) return;
+
   const size_t len = g_list_length(display_plugins);
   for (size_t i = 0; i < len; i++) {
     DISPLAY_PLUGIN* const dp =
@@ -384,18 +392,15 @@ set_as_default_clicked(GtkWidget* widget, gpointer user_data) {
 static void
 preview_clicked(GtkWidget* widget, gpointer user_data) {
   GtkTreeSelection* selection = (GtkTreeSelection*) user_data;
-  GtkTreeIter iter;
-  GtkTreeModel* model;
-  if (!gtk_tree_selection_get_selected(selection, &model, &iter)) return;
-
   gchar* name;
-  gtk_tree_model_get(model, &iter, 0, &name, -1);
+  if (!get_tree_model_from_selection(&name, selection)) return;
+
   const size_t len = g_list_length(display_plugins);
   for (size_t i = 0; i < len; i++) {
     DISPLAY_PLUGIN* const dp =
       (DISPLAY_PLUGIN*) g_list_nth_data(display_plugins, i);
     if (!g_strcasecmp(dp->name(), name)) {
-      NOTIFICATION_INFO* ni = g_new0(NOTIFICATION_INFO, 1);
+      NOTIFICATION_INFO* const ni = g_new0(NOTIFICATION_INFO, 1);
       ni->title = g_strdup("Preview Display");
       ni->text = g_strdup_printf(
           "This is a preview of the '%s' display.", dp->name());
@@ -438,15 +443,15 @@ static void
 subscriber_enable_toggled(
     GtkCellRendererToggle *cell, gchar* path_str, gpointer user_data) {
 
-  GtkTreeModel* model = (GtkTreeModel *) user_data;
+  GtkTreeModel* const model = (GtkTreeModel *) user_data;
   GtkTreeIter iter;
-  GtkTreePath* path = gtk_tree_path_new_from_string (path_str);
+  GtkTreePath* const path = gtk_tree_path_new_from_string (path_str);
   gboolean enable;
   gchar* name;
 
   gtk_tree_model_get_iter (model, &iter, path);
   gtk_tree_model_get (model, &iter, 0, &enable, 1, &name, -1);
-  enable ^= 1;
+  enable = !enable;
   gtk_list_store_set(GTK_LIST_STORE(model), &iter, 0, enable, -1);
 
   exec_splite3(
@@ -474,30 +479,19 @@ subscriber_enable_toggled(
 
 static void
 notification_tree_selection_changed(GtkTreeSelection *selection, gpointer user_data) {
-  GtkTreeIter iter1;
-  GtkWidget* tree1 = g_object_get_data(G_OBJECT(user_data), "tree1");
-  GtkTreeSelection* selection1
-    = gtk_tree_view_get_selection(GTK_TREE_VIEW(tree1));
-  GtkTreeModel* model1;
-  if (!gtk_tree_selection_get_selected(selection1, &model1, &iter1)) return;
-
-  GtkTreeIter iter2;
-  GtkWidget* tree2 = g_object_get_data(G_OBJECT(user_data), "tree2");
-  GtkTreeSelection* selection2
-    = gtk_tree_view_get_selection(GTK_TREE_VIEW(tree2));
-  GtkTreeModel* model2;
-  if (!gtk_tree_selection_get_selected(selection2, &model2, &iter2)) return;
-
   gchar* app_name;
-  gchar* name;
-  gtk_tree_model_get(model1, &iter1, 0, &app_name, -1);
-  gtk_tree_model_get(model2, &iter2, 0, &name, -1);
+  GtkWidget* const tree1 = g_object_get_data(G_OBJECT(user_data), "tree1");
+  if (!get_tree_model_from_tree(&app_name, tree1)) return;
 
-  GtkWidget* cbx1
+  gchar* name;
+  GtkWidget* const tree2 = g_object_get_data(G_OBJECT(user_data), "tree2");
+  if (!get_tree_model_from_tree(&name, tree2)) return;
+
+  GtkWidget* const cbx1
     = (GtkWidget*) g_object_get_data(G_OBJECT(user_data), "enable");
   gtk_widget_set_sensitive(cbx1, TRUE);
   gtk_combo_box_set_active(GTK_COMBO_BOX(cbx1), -1);
-  GtkWidget* cbx2
+  GtkWidget* const cbx2
     = (GtkWidget*) g_object_get_data(G_OBJECT(user_data), "display");
   gtk_widget_set_sensitive(cbx2, TRUE);
   gtk_combo_box_set_active(GTK_COMBO_BOX(cbx2), -1);
@@ -510,7 +504,7 @@ notification_tree_selection_changed(GtkTreeSelection *selection, gpointer user_d
   if (sqlite3_step(stmt) == SQLITE_ROW) {
     gtk_combo_box_set_active(GTK_COMBO_BOX(cbx1),
         sqlite3_column_int(stmt, 0) != 0 ? 0 : 1);
-    char* display = (char*) sqlite3_column_text(stmt, 1);
+    char* const display = (char*) sqlite3_column_text(stmt, 1);
     const size_t len = g_list_length(display_plugins);
     for (size_t i = 0; i < len; i++) {
       DISPLAY_PLUGIN* const dp
@@ -530,26 +524,15 @@ notification_tree_selection_changed(GtkTreeSelection *selection, gpointer user_d
 
 static void
 notification_enable_changed(GtkComboBox *combobox, gpointer user_data) {
-  GtkTreeIter iter1;
-  GtkWidget* tree1 = g_object_get_data(G_OBJECT(user_data), "tree1");
-  GtkTreeSelection* selection1 =
-    gtk_tree_view_get_selection(GTK_TREE_VIEW(tree1));
-  GtkTreeModel* model1;
-  if (!gtk_tree_selection_get_selected(selection1, &model1, &iter1)) return;
-
-  GtkTreeIter iter2;
-  GtkWidget* tree2 = g_object_get_data(G_OBJECT(user_data), "tree2");
-  GtkTreeSelection* selection2 =
-    gtk_tree_view_get_selection(GTK_TREE_VIEW(tree2));
-  GtkTreeModel* model2;
-  if (!gtk_tree_selection_get_selected(selection2, &model2, &iter2)) return;
-
   gchar* app_name;
-  gchar* name;
-  gtk_tree_model_get(model1, &iter1, 0, &app_name, -1);
-  gtk_tree_model_get(model2, &iter2, 0, &name, -1);
+  GtkWidget* const tree1 = g_object_get_data(G_OBJECT(user_data), "tree1");
+  if (!get_tree_model_from_tree(&app_name, tree1)) return;
 
-  gint enable = gtk_combo_box_get_active(combobox) == 0 ? 1 : 0;
+  gchar* name;
+  GtkWidget* const tree2 = g_object_get_data(G_OBJECT(user_data), "tree2");
+  if (!get_tree_model_from_tree(&name, tree2)) return;
+
+  const gint enable = gtk_combo_box_get_active(combobox) == 0 ? 1 : 0;
 
   char* const sql = sqlite3_mprintf(
         "update notification set enable = %d"
@@ -564,24 +547,13 @@ notification_enable_changed(GtkComboBox *combobox, gpointer user_data) {
 
 static void
 notification_display_changed(GtkComboBox *combobox, gpointer user_data) {
-  GtkTreeIter iter1;
-  GtkWidget* tree1 = g_object_get_data(G_OBJECT(user_data), "tree1");
-  GtkTreeSelection* selection1 =
-    gtk_tree_view_get_selection(GTK_TREE_VIEW(tree1));
-  GtkTreeModel* model1;
-  if (!gtk_tree_selection_get_selected(selection1, &model1, &iter1)) return;
-
-  GtkTreeIter iter2;
-  GtkWidget* tree2 = g_object_get_data(G_OBJECT(user_data), "tree2");
-  GtkTreeSelection* selection2 =
-    gtk_tree_view_get_selection(GTK_TREE_VIEW(tree2));
-  GtkTreeModel* model2;
-  if (!gtk_tree_selection_get_selected(selection2, &model2, &iter2)) return;
-
   gchar* app_name;
+  GtkWidget* const tree1 = g_object_get_data(G_OBJECT(user_data), "tree1");
+  if (!get_tree_model_from_tree(&app_name, tree1)) return;
+
   gchar* name;
-  gtk_tree_model_get(model1, &iter1, 0, &app_name, -1);
-  gtk_tree_model_get(model2, &iter2, 0, &name, -1);
+  GtkWidget* const tree2 = g_object_get_data(G_OBJECT(user_data), "tree2");
+  if (!get_tree_model_from_tree(&name, tree2)) return;
 
   gchar* const display = gtk_combo_box_get_active_text(combobox);
 
