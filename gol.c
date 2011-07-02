@@ -1016,7 +1016,7 @@ static char*
 crlf_to_term_and_skip(char* const str) {
   char* tmp = crlf_to_term_or_null(str);
   if (!tmp) {
-    tmp = str + strlen(str) + 1;
+    tmp = str + strlen(str);
   }
   return tmp;
 }
@@ -1168,26 +1168,26 @@ gntp_recv_proc(gpointer user_data) {
       char* application_icon = NULL;
       long notifications_count = 0;
       while (*ptr) {
-        char* const next_keyvalue = crlf_to_term_and_skip(ptr);
-        if (*ptr == '\0') break;
-        cr_to_lf(ptr);
+        char* const line = ptr;
+        ptr = crlf_to_term_and_skip(ptr);
+        if (*line== '\0') break;
+        cr_to_lf(line);
 
-        const char* const colon = strchr(ptr, ':');
+        const char* const colon = strchr(line, ':');
         if (colon)
         {
           char* value = g_strdup(skipsp(colon + 1));
-          if (!strncmp(ptr, "Application-Name:", 17)) {
+          if (!strncmp(line, "Application-Name:", 17)) {
             str_swap(&value, &application_name);
           }
-          else if (!strncmp(ptr, "Application-Icon:", 17)) {
+          else if (!strncmp(line, "Application-Icon:", 17)) {
             str_swap(&value, &application_icon);
           }
-          else if (!strncmp(ptr, "Notifications-Count:", 20)) {
+          else if (!strncmp(line, "Notifications-Count:", 20)) {
             notifications_count = atol(value);
           }
           g_free(value);
         }
-        ptr = next_keyvalue;
       }
       int n;
       for (n = 0; n < notifications_count; n++) {
@@ -1196,32 +1196,29 @@ gntp_recv_proc(gpointer user_data) {
         gboolean notification_enabled = FALSE;
         char* notification_display_name = NULL;
         while (*ptr) {
-          char* const next_keyvalue = crlf_to_term_and_skip(ptr);
-          if (*ptr == '\0') break;
-          cr_to_lf(ptr);
+          char* const line = ptr;
+          ptr = crlf_to_term_and_skip(ptr);
+          if (*line== '\0') break;
+          cr_to_lf(line);
 
-          const char* const colon = strchr(ptr, ':');
+          const char* const colon = strchr(line, ':');
           if (colon)
           {
             char* value = g_strdup(skipsp(colon + 1));
-            if (!strncmp(ptr, "Notification-Name:", 18)) {
+            if (!strncmp(line, "Notification-Name:", 18)) {
               str_swap(&value, &notification_name);
             }
-            else if (!strncmp(ptr, "Notification-Icon:", 18)) {
+            else if (!strncmp(line, "Notification-Icon:", 18)) {
               str_swap(&value, &notification_icon);
             }
-            else if (!strncmp(ptr, "Notification-Enabled:", 21)) {
+            else if (!strncmp(line, "Notification-Enabled:", 21)) {
               notification_enabled = strcasecmp(value, "true") == 0;
             }
-            else if (!strncmp(ptr, "Notification-Display-Name:", 26)) {
+            else if (!strncmp(line, "Notification-Display-Name:", 26)) {
               str_swap(&value, &notification_display_name);
             }
             g_free(value);
           }
-
-          char* line = next_keyvalue - 1;
-          while (isspace(*line)) *line-- = '\0';
-          ptr = next_keyvalue;
         }
 
         exec_splite3(
@@ -1263,41 +1260,38 @@ gntp_recv_proc(gpointer user_data) {
       char* notification_name = NULL;
       char* notification_display_name = NULL;
       while (*ptr) {
-        char* const next_keyvalue = crlf_to_term_and_skip(ptr);
-        if (*ptr == '\0') break;
-        cr_to_lf(ptr);
+        char* const line = ptr;
+        ptr = crlf_to_term_and_skip(ptr);
+        if (*line == '\0') break;
+        cr_to_lf(line);
 
-        const char* const colon = strchr(ptr, ':');
+        const char* const colon = strchr(line, ':');
         if (colon)
         {
           char* value = g_strdup(skipsp(colon + 1));
-          if (!strncmp(ptr, "Application-Name:", 17)) {
+          if (!strncmp(line, "Application-Name:", 17)) {
             str_swap(&value, &application_name);
           }
-          else if (!strncmp(ptr, "Notification-Name:", 18)) {
+          else if (!strncmp(line, "Notification-Name:", 18)) {
             str_swap(&value, &notification_name);
           }
-          else if (!strncmp(ptr, "Notification-Title:", 19)) {
+          else if (!strncmp(line, "Notification-Title:", 19)) {
             str_swap(&value, &ni->title);
           }
-          else if (!strncmp(ptr, "Notification-Text:", 18)) {
+          else if (!strncmp(line, "Notification-Text:", 18)) {
             str_swap(&value, &ni->text);
           }
-          else if (!strncmp(ptr, "Notification-Icon:", 18)) {
+          else if (!strncmp(line, "Notification-Icon:", 18)) {
             str_swap(&value, &ni->icon);
           }
-          else if (!strncmp(ptr, "Notification-Callback-Target:", 29)) {
+          else if (!strncmp(line, "Notification-Callback-Target:", 29)) {
             str_swap(&value, &ni->url);
           }
-          else if (!strncmp(ptr, "Notification-Display-Name:", 26)) {
+          else if (!strncmp(line, "Notification-Display-Name:", 26)) {
             str_swap(&value, &notification_display_name);
           }
           g_free(value);
         }
-
-        char* line = next_keyvalue - 1;
-        while (*line && isspace(*line)) *line-- = 0;
-        ptr = next_keyvalue;
       }
 
       if (ni->title && ni->text) {
