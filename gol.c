@@ -1240,16 +1240,16 @@ gntp_recv_proc(gpointer user_data) {
               notification_display_name : "Default",
             FALSE));
 
-        if (notification_name) g_free(notification_name);
-        if (notification_icon) g_free(notification_icon);
-        if (notification_display_name) g_free(notification_display_name);
+        g_free(notification_name);
+        g_free(notification_icon);
+        g_free(notification_display_name);
       }
       ptr = n == notifications_count
         ? GNTP_OK_STRING_LITERAL("1.0", "REGISTER")
         : GNTP_ERROR_STRING_LITERAL("1.0", "Invalid data", "Invalid data");
       send(sock, ptr, strlen(ptr), 0);
-      if (application_name) g_free(application_name);
-      if (application_icon) g_free(application_icon);
+      g_free(application_name);
+      g_free(application_icon);
     } else {
       NOTIFICATION_INFO* ni = g_new0(NOTIFICATION_INFO, 1);
       if (!ni) {
@@ -1332,15 +1332,15 @@ gntp_recv_proc(gpointer user_data) {
         ptr = GNTP_ERROR_STRING_LITERAL("1.0", "Invalid data", "Invalid data");
         send(sock, ptr, strlen(ptr), 0);
 
-        if (ni->title) g_free(ni->title);
-        if (ni->text) g_free(ni->text);
-        if (ni->icon) g_free(ni->icon);
-        if (ni->url) g_free(ni->url);
+        g_free(ni->title);
+        g_free(ni->text);
+        g_free(ni->icon);
+        g_free(ni->url);
         g_free(ni);
       }
-      if (notification_name) g_free(notification_name);
-      if (notification_display_name) g_free(notification_display_name);
-      if (application_name) g_free(application_name);
+      g_free(notification_name);
+      g_free(notification_display_name);
+      g_free(application_name);
     }
     free(data);
   } else {
@@ -1529,7 +1529,7 @@ load_config() {
 
 static void
 unload_config() {
-  if (password) g_free(password);
+  g_free(password);
   if (db) sqlite3_close(db);
 }
 
@@ -1896,7 +1896,7 @@ leave:
   destroy_gntp_server(gntp_io);
   destroy_udp_server(udp_io);
   unload_config();
-  if (exepath) g_free(exepath);
+  g_free(exepath);
 
 #ifdef _WIN32
   WSACleanup();
