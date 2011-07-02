@@ -1597,13 +1597,13 @@ load_display_plugins() {
 
 static void
 unload_display_plugins() {
-  const size_t len = g_list_length(display_plugins);
-  for (size_t i = 0; i < len; i++) {
-    DISPLAY_PLUGIN* dp = (DISPLAY_PLUGIN*) g_list_nth_data(display_plugins, i);
+  void
+  close_plugin(DISPLAY_PLUGIN* dp) {
     if (dp->term) dp->term();
     g_module_close(dp->handle);
     g_free(dp);
   }
+  foreach_display_plugin(close_plugin);
   g_list_free(display_plugins);
   display_plugins = NULL;
 }
