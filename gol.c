@@ -34,6 +34,7 @@
 #endif
 #include <stddef.h>
 #include <stdbool.h>
+#include <stdarg.h>
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -225,14 +226,20 @@ foreach_subscribe_plugin(void(* func)(SUBSCRIBE_PLUGIN*)) {
 }
 
 static inline void
-exec_splite3(char *);
+exec_splite3(const char *, ...);
 
 static void
-exec_splite3(char * const sql)
+exec_splite3(const char * const tsql, ...)
 {
-  if (sql) {
+  if (tsql) {
+    va_list list;
+    va_start(list, tsql);
+
+    char* const sql = sqlite3_vmprintf(tsql, list);
     sqlite3_exec(db, sql, NULL, NULL, NULL);
     sqlite3_free(sql);
+
+    va_end(list);
   }
 }
 
@@ -283,25 +290,18 @@ get_config_string(const char* key, const char* def) {
 
 static void
 set_config_bool(const char* key, gboolean value) {
-  exec_splite3(
-    sqlite3_mprintf(
-      "delete from config where key = '%q'", key));
+  exec_splite3("delete from config where key = '%q'", key);
 
   exec_splite3(
-    sqlite3_mprintf(
-      "insert into config(key, value) values('%q', '%q')",
-      key, value ? "1" : "0"));
+    "insert into config(key, value) values('%q', '%q')",
+    key, value ? "1" : "0");
 }
 
 static void
 set_config_string(const char* key, const char* value) {
-  exec_splite3(
-    sqlite3_mprintf(
-      "delete from config where key = '%q'", key));
+  exec_splite3("delete from config where key = '%q'", key);
 
-  exec_splite3(
-    sqlite3_mprintf(
-      "insert into config(key, value) values('%q', '%q')", key, value));
+  exec_splite3("insert into config(key, value) values('%q', '%q')", key, value);
 }
 
 static void
@@ -492,14 +492,11 @@ subscriber_enable_toggled(
   enable = !enable;
   gtk_list_store_set(GTK_LIST_STORE(model), &iter, 0, enable, -1);
 
-  exec_splite3(
-    sqlite3_mprintf(
-      "delete from subscriber where name = '%q'", name));
+  exec_splite3("delete from subscriber where name = '%q'", name);
 
   exec_splite3(
-    sqlite3_mprintf(
-      "insert into subscriber(name, enable) values('%q', %d)",
-      name, enable ? 1 : 0));
+    "insert into subscriber(name, enable) values('%q', %d)",
+    name, enable ? 1 : 0);
 
   bool
   is_model_name(const SUBSCRIBE_PLUGIN* sp) {
@@ -595,10 +592,9 @@ notification_display_changed(GtkComboBox *combobox, gpointer user_data) {
   gchar* const display = gtk_combo_box_get_active_text(combobox);
 
   exec_splite3(
-    sqlite3_mprintf(
-      "update notification set display = '%q'"
-      " where app_name = '%q' and name = '%q'",
-      display, app_name, name));
+    "update notification set display = '%q'"
+    " where app_name = '%q' and name = '%q'",
+    display, app_name, name);
 
   g_free(display);
   g_free(app_name);
@@ -625,31 +621,23 @@ application_delete(GtkWidget* widget, gpointer user_data) {
 
   if (!selected1 && !selected2) return;
 
+  gchar* app_name;
+  gtk_tree_model_get(model1, &iter1, 0, &app_name, -1);
   if (selected2) {
-    gchar* app_name;
     gchar* name;
-    gtk_tree_model_get(model1, &iter1, 0, &app_name, -1);
     gtk_tree_model_get(model2, &iter2, 0, &name, -1);
     exec_splite3(
-      sqlite3_mprintf(
-        "delete from notification where app_name = '%q' and name = '%q'",
-        app_name, name));
-    g_free(app_name);
+      "delete from notification where app_name = '%q' and name = '%q'",
+      app_name, name);
     g_free(name);
 
     gtk_list_store_remove(GTK_LIST_STORE(model2), &iter2);
   } else {
-    gchar* app_name;
-    gtk_tree_model_get(model1, &iter1, 0, &app_name, -1);
-    exec_splite3(
-      sqlite3_mprintf(
-        "delete from notification where app_name = '%q'",
-        app_name));
-    g_free(app_name);
-
+    exec_splite3("delete from notification where app_name = '%q'", app_name);
     gtk_list_store_remove(GTK_LIST_STORE(model1), &iter1);
     gtk_list_store_clear(GTK_LIST_STORE(model2));
   }
+  g_free(app_name);
 
   GtkWidget* cbx1
     = (GtkWidget*) g_object_get_data(G_OBJECT(user_data), "enable");
@@ -1222,23 +1210,21 @@ gntp_recv_proc(gpointer user_data) {
         }
 
         exec_splite3(
-          sqlite3_mprintf(
-            "delete from notification where app_name = '%q' and name = '%q'",
-            application_name, notification_name));
+          "delete from notification where app_name = '%q' and name = '%q'",
+          application_name, notification_name);
 
         exec_splite3(
-          sqlite3_mprintf(
-            "insert into notification("
-            "app_name, app_icon, name, icon, enable, display, sticky)"
-            " values('%q', '%q', '%q', '%q', %d, '%q', %d)",
-            application_name,
-            application_icon ? application_icon : "",
-            notification_name,
-            notification_icon ? notification_icon : "",
-            notification_enabled,
-            notification_display_name ?
-              notification_display_name : "Default",
-            FALSE));
+          "insert into notification("
+          "app_name, app_icon, name, icon, enable, display, sticky)"
+          " values('%q', '%q', '%q', '%q', %d, '%q', %d)",
+          application_name,
+          application_icon ? application_icon : "",
+          notification_name,
+          notification_icon ? notification_icon : "",
+          notification_enabled,
+          notification_display_name ?
+            notification_display_name : "Default",
+          FALSE);
 
         g_free(notification_name);
         g_free(notification_icon);
