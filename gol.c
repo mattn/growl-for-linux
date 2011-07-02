@@ -1498,7 +1498,7 @@ load_config() {
       "drop table _subscriber",
       NULL
     };
-    for (const char* const* sql = sqls; sql; ++sql) {
+    for (const char* const* sql = sqls; *sql; ++sql) {
       sqlite3_exec(db, *sql, NULL, NULL, NULL);
     }
     set_config_string("version", PACKAGE_VERSION);
