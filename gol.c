@@ -186,6 +186,44 @@ unhex(unsigned char c) {
   return strtol(str, &_unused_endptr, 16);
 }
 
+DISPLAY_PLUGIN*
+find_display_plugin(bool(* pred)(const DISPLAY_PLUGIN*)) {
+  gint
+  wrapped_pred(gconstpointer dp, gconstpointer _unused) {
+    return pred((const DISPLAY_PLUGIN*) dp) ? 0 : 1;
+  }
+  GList* elem = g_list_find_custom(display_plugins, NULL, wrapped_pred);
+  return elem ? (DISPLAY_PLUGIN*) elem->data : NULL;
+}
+
+SUBSCRIBE_PLUGIN*
+find_subscribe_plugin(bool(* pred)(const SUBSCRIBE_PLUGIN*)) {
+  gint
+  wrapped_pred(gconstpointer sp, gconstpointer _unused) {
+    return pred((const SUBSCRIBE_PLUGIN*) sp) ? 0 : 1;
+  }
+  GList* elem = g_list_find_custom(subscribe_plugins, NULL, wrapped_pred);
+  return elem ? (SUBSCRIBE_PLUGIN*) elem->data : NULL;
+}
+
+void
+foreach_display_plugin(void(* func)(DISPLAY_PLUGIN*)) {
+  void
+  wrapped_func(gpointer dp, gpointer _unused) {
+    func((DISPLAY_PLUGIN*) dp);
+  }
+  g_list_foreach(display_plugins, wrapped_func, NULL);
+}
+
+void
+foreach_subscribe_plugin(void(* func)(SUBSCRIBE_PLUGIN*)) {
+  void
+  wrapped_func(gpointer sp, gpointer _unused) {
+    func((SUBSCRIBE_PLUGIN*) sp);
+  }
+  g_list_foreach(subscribe_plugins, wrapped_func, NULL);
+}
+
 static inline void
 exec_splite3(char *);
 
@@ -376,15 +414,15 @@ set_as_default_clicked(GtkWidget* widget, gpointer user_data) {
   gchar* name;
   if (!get_tree_model_from_selection(&name, selection)) return;
 
-  const size_t len = g_list_length(display_plugins);
-  for (size_t i = 0; i < len; i++) {
-    DISPLAY_PLUGIN* const dp =
-      (DISPLAY_PLUGIN*) g_list_nth_data(display_plugins, i);
-    if (!g_strcasecmp(dp->name(), name)) {
-      current_display = dp;
-      set_config_string("default_display", name);
-      break;
-    }
+  bool
+  is_selection_name(const DISPLAY_PLUGIN* dp) {
+    return !g_strcasecmp(dp->name(), name);
+  }
+
+  DISPLAY_PLUGIN* const dp = find_display_plugin(is_selection_name);
+  if (dp) {
+    current_display = dp;
+    set_config_string("default_display", name);
   }
   g_free(name);
 }
@@ -395,20 +433,20 @@ preview_clicked(GtkWidget* widget, gpointer user_data) {
   gchar* name;
   if (!get_tree_model_from_selection(&name, selection)) return;
 
-  const size_t len = g_list_length(display_plugins);
-  for (size_t i = 0; i < len; i++) {
-    DISPLAY_PLUGIN* const dp =
-      (DISPLAY_PLUGIN*) g_list_nth_data(display_plugins, i);
-    if (!g_strcasecmp(dp->name(), name)) {
-      NOTIFICATION_INFO* const ni = g_new0(NOTIFICATION_INFO, 1);
-      ni->title = g_strdup("Preview Display");
-      ni->text = g_strdup_printf(
-          "This is a preview of the '%s' display.", dp->name());
-      ni->icon = g_build_filename(DATADIR, "data", "mattn.png", NULL);
-      ni->local = TRUE;
-      g_idle_add((GSourceFunc) dp->show, ni);
-      break;
-    }
+  bool
+  is_selection_name(const DISPLAY_PLUGIN* dp) {
+    return !g_strcasecmp(dp->name(), name);
+  }
+
+  DISPLAY_PLUGIN* const dp = find_display_plugin(is_selection_name);
+  if (dp) {
+    NOTIFICATION_INFO* const ni = g_new0(NOTIFICATION_INFO, 1);
+    ni->title = g_strdup("Preview Display");
+    ni->text = g_strdup_printf(
+        "This is a preview of the '%s' display.", dp->name());
+    ni->icon = g_build_filename(DATADIR, "data", "mattn.png", NULL);
+    ni->local = TRUE;
+    g_idle_add((GSourceFunc) dp->show, ni);
   }
   g_free(name);
 }
@@ -463,14 +501,13 @@ subscriber_enable_toggled(
       "insert into subscriber(name, enable) values('%q', %d)",
       name, enable ? 1 : 0));
 
-  const size_t len = g_list_length(subscribe_plugins);
-  for (size_t i = 0; i < len; i++) {
-    SUBSCRIBE_PLUGIN* const sp =
-      (SUBSCRIBE_PLUGIN*) g_list_nth_data(subscribe_plugins, i);
-    if (!g_strcasecmp(sp->name(), name)) {
-      enable ? sp->start() : sp->stop();
-      break;
-    }
+  bool
+  is_model_name(const SUBSCRIBE_PLUGIN* sp) {
+    return !g_strcasecmp(sp->name(), name);
+  }
+  SUBSCRIBE_PLUGIN* const sp = find_subscribe_plugin(is_model_name);
+  if (sp) {
+    enable ? sp->start() : sp->stop();
   }
 
   g_free(name);
@@ -747,16 +784,15 @@ settings_clicked(GtkWidget* widget, GdkEvent* event, gpointer user_data) {
         G_CALLBACK(preview_clicked), select);
     gtk_box_pack_end(GTK_BOX(hbox), button, FALSE, FALSE, 0);
 
-    const size_t len = g_list_length(display_plugins);
-    for (size_t i = 0; i < len; i++) {
+    void
+    append_display_plugins(DISPLAY_PLUGIN* dp) {
       GtkTreeIter iter;
       gtk_list_store_append(GTK_LIST_STORE(model), &iter);
-      DISPLAY_PLUGIN* const dp =
-        (DISPLAY_PLUGIN*) g_list_nth_data(display_plugins, i);
       gtk_list_store_set(GTK_LIST_STORE(model), &iter, 0, dp->name(), -1);
       if (dp == current_display)
         gtk_tree_selection_select_iter(select, &iter);
     }
+    foreach_display_plugin(append_display_plugins);
   }
 
   {
@@ -829,12 +865,11 @@ settings_clicked(GtkWidget* widget, GdkEvent* event, gpointer user_data) {
         sqlite3_finalize(stmt);
       }
 
-      const size_t len = g_list_length(display_plugins);
-      for (size_t i = 0; i < len; i++) {
-        DISPLAY_PLUGIN* const dp =
-          (DISPLAY_PLUGIN*) g_list_nth_data(display_plugins, i);
+      void
+      append_display_plugins(DISPLAY_PLUGIN* dp) {
         gtk_combo_box_append_text(GTK_COMBO_BOX(combobox), dp->name());
       }
+      foreach_display_plugin(append_display_plugins);
     }
   }
 
@@ -898,11 +933,9 @@ settings_clicked(GtkWidget* widget, GdkEvent* event, gpointer user_data) {
         gtk_tree_view_column_new_with_attributes(
           "Description", gtk_cell_renderer_text_new(), "markup", 2, NULL));
 
-    int i, len = g_list_length(subscribe_plugins);
-    for (i = 0; i < len; i++) {
+    void
+    append_subscribe_plugins(SUBSCRIBE_PLUGIN* sp) {
       GtkTreeIter iter;
-      SUBSCRIBE_PLUGIN* sp =
-        (SUBSCRIBE_PLUGIN*) g_list_nth_data(subscribe_plugins, i);
       gtk_list_store_append(GTK_LIST_STORE(model), &iter);
       gtk_list_store_set(GTK_LIST_STORE(model), &iter,
           0, get_subscriber_enabled(sp->name()),
@@ -910,6 +943,7 @@ settings_clicked(GtkWidget* widget, GdkEvent* event, gpointer user_data) {
           2, sp->description(),
           -1);
     }
+    foreach_subscribe_plugin(append_subscribe_plugins);
   }
 
   gtk_widget_set_size_request(setting_dialog, 500, 500);
@@ -1289,14 +1323,13 @@ gntp_recv_proc(gpointer user_data) {
         if (enable) {
           DISPLAY_PLUGIN* cp = current_display;
           if (notification_display_name) {
-            const size_t len = g_list_length(display_plugins);
-            for (size_t i = 0; i < len; i++) {
-              DISPLAY_PLUGIN* dp =
-                (DISPLAY_PLUGIN*) g_list_nth_data(display_plugins, i);
-              if (!g_strcasecmp(dp->name(), notification_display_name)) {
-                cp = dp;
-                break;
-              }
+            bool
+            is_notification_display(const DISPLAY_PLUGIN* dp) {
+              return !g_strcasecmp(dp->name(), notification_display_name);
+            }
+            DISPLAY_PLUGIN* const dp = find_display_plugin(is_notification_display);
+            if (dp) {
+              cp = dp;
             }
           }
           g_idle_add((GSourceFunc) cp->show, ni); // call once
@@ -1627,14 +1660,13 @@ load_subscribe_plugins() {
 
 static void
 unload_subscribe_plugins() {
-  const size_t len = g_list_length(subscribe_plugins);
-  for (size_t i = 0; i < len; i++) {
-    SUBSCRIBE_PLUGIN* sp =
-      (SUBSCRIBE_PLUGIN*) g_list_nth_data(subscribe_plugins, i);
+  void
+  close_plugin(SUBSCRIBE_PLUGIN* sp) {
     if (sp->term) sp->term();
     g_module_close(sp->handle);
     g_free(sp);
   }
+  foreach_subscribe_plugin(close_plugin);
   g_list_free(subscribe_plugins);
   subscribe_plugins = NULL;
 }
