@@ -188,13 +188,18 @@ unhex(unsigned char c) {
 }
 
 DISPLAY_PLUGIN*
-find_display_plugin(bool(* pred)(const DISPLAY_PLUGIN*)) {
+find_display_plugin_or(bool(* pred)(const DISPLAY_PLUGIN*), DISPLAY_PLUGIN* or_dp) {
   gint
   wrapped_pred(gconstpointer dp, gconstpointer _unused) {
     return pred((const DISPLAY_PLUGIN*) dp) ? 0 : 1;
   }
   GList* elem = g_list_find_custom(display_plugins, NULL, wrapped_pred);
-  return elem ? (DISPLAY_PLUGIN*) elem->data : NULL;
+  return elem ? (DISPLAY_PLUGIN*) elem->data : or_dp;
+}
+
+DISPLAY_PLUGIN*
+find_display_plugin(bool(* pred)(const DISPLAY_PLUGIN*)) {
+  return find_display_plugin_or(pred, NULL);
 }
 
 SUBSCRIBE_PLUGIN*
@@ -347,15 +352,11 @@ display_tree_selection_changed(GtkTreeSelection *selection, gpointer user_data) 
   gchar* name;
   if (!get_tree_model_from_selection(&name, selection)) return;
 
-  DISPLAY_PLUGIN* cp = current_display;
-  const size_t len = g_list_length(display_plugins);
-  for (size_t i = 0; i < len; i++) {
-    DISPLAY_PLUGIN* const dp = (DISPLAY_PLUGIN*) g_list_nth_data(display_plugins, i);
-    if (!g_strcasecmp(dp->name(), name)) {
-      cp = dp;
-      break;
-    }
+  bool
+  is_selection_name(const DISPLAY_PLUGIN* dp) {
+    return !g_strcasecmp(dp->name(), name);
   }
+  DISPLAY_PLUGIN* const cp = find_display_plugin_or(is_selection_name, current_display);
 
   GtkWidget* const label =
     (GtkWidget*) g_object_get_data(G_OBJECT(user_data), "description");
@@ -418,7 +419,6 @@ set_as_default_clicked(GtkWidget* widget, gpointer user_data) {
   is_selection_name(const DISPLAY_PLUGIN* dp) {
     return !g_strcasecmp(dp->name(), name);
   }
-
   DISPLAY_PLUGIN* const dp = find_display_plugin(is_selection_name);
   if (dp) {
     current_display = dp;
@@ -437,7 +437,6 @@ preview_clicked(GtkWidget* widget, gpointer user_data) {
   is_selection_name(const DISPLAY_PLUGIN* dp) {
     return !g_strcasecmp(dp->name(), name);
   }
-
   DISPLAY_PLUGIN* const dp = find_display_plugin(is_selection_name);
   if (dp) {
     NOTIFICATION_INFO* const ni = g_new0(NOTIFICATION_INFO, 1);
