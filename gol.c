@@ -601,6 +601,14 @@ notification_display_changed(GtkComboBox *combobox, gpointer user_data) {
 }
 
 static void
+append_new_menu_item_from_stock(
+    GtkMenuShell* const menu, const gchar* const stock, GCallback callback) {
+  GtkWidget* const menu_item = gtk_image_menu_item_new_from_stock(stock, NULL);
+  g_signal_connect(G_OBJECT(menu_item), "activate", callback, NULL);
+  gtk_menu_shell_append(menu, menu_item);
+}
+
+static void
 application_delete(GtkWidget* widget, gpointer user_data) {
   GtkTreeIter iter1;
   GtkTreeIter iter2;
@@ -1398,37 +1406,29 @@ disabled_pixbuf(GdkPixbuf *pixbuf) {
 
 static void
 create_menu() {
-  GtkWidget* menu_item;
+  {
+    // TODO: absolute path
+    gchar* const path = g_build_filename(DATADIR, "data", NULL);
+    gchar* const fullpath = g_build_filename(path, "icon.png", NULL);
+    g_free(path);
+    status_icon = gtk_status_icon_new_from_file(fullpath);
+    g_free(fullpath);
+    gtk_status_icon_set_tooltip(status_icon, "Growl");
+    gtk_status_icon_set_visible(status_icon, TRUE);
+  }
 
-  // TODO: absolute path
-  gchar* path = g_build_filename(DATADIR, "data", NULL);
-  gchar* fullpath = g_build_filename(path, "icon.png", NULL);
-  g_free(path);
-  status_icon = gtk_status_icon_new_from_file(fullpath);
-  g_free(fullpath);
-  gtk_status_icon_set_tooltip(status_icon, "Growl");
-  gtk_status_icon_set_visible(status_icon, TRUE);
   popup_menu = gtk_menu_new();
   g_signal_connect(G_OBJECT(status_icon), "popup-menu",
       G_CALLBACK(status_icon_popup), popup_menu);
 
-  menu_item = gtk_image_menu_item_new_from_stock(GTK_STOCK_PREFERENCES, NULL);
-  g_signal_connect(G_OBJECT(menu_item), "activate",
-      G_CALLBACK(settings_clicked), NULL);
-  gtk_menu_shell_append(GTK_MENU_SHELL(popup_menu), menu_item);
-
-  menu_item = gtk_image_menu_item_new_from_stock(GTK_STOCK_ABOUT, NULL);
-  g_signal_connect(G_OBJECT(menu_item), "activate",
-      G_CALLBACK(about_click), NULL);
-  gtk_menu_shell_append(GTK_MENU_SHELL(popup_menu), menu_item);
-
-  gtk_menu_shell_append(GTK_MENU_SHELL(popup_menu), gtk_separator_menu_item_new());
-
-  menu_item = gtk_image_menu_item_new_from_stock(GTK_STOCK_QUIT, NULL);
-  g_signal_connect(G_OBJECT(menu_item), "activate",
-      G_CALLBACK(exit_clicked), NULL);
-  gtk_menu_shell_append(GTK_MENU_SHELL(popup_menu), menu_item);
-
+  append_new_menu_item_from_stock(GTK_MENU_SHELL(popup_menu),
+    GTK_STOCK_PREFERENCES, G_CALLBACK(settings_clicked));
+  append_new_menu_item_from_stock(GTK_MENU_SHELL(popup_menu),
+    GTK_STOCK_ABOUT, G_CALLBACK(about_click));
+  gtk_menu_shell_append(GTK_MENU_SHELL(popup_menu),
+    gtk_separator_menu_item_new());
+  append_new_menu_item_from_stock(GTK_MENU_SHELL(popup_menu),
+    GTK_STOCK_QUIT, G_CALLBACK(exit_clicked));
   gtk_widget_show_all(popup_menu);
 }
 
@@ -1445,23 +1445,24 @@ destroy_menu() {
 
 static gboolean
 load_config() {
-  gchar* confdir = (gchar*) g_get_user_config_dir();
-  gchar* appdir = g_build_path(G_DIR_SEPARATOR_S, confdir, "gol", NULL);
+  const gchar* const confdir = (const gchar*) g_get_user_config_dir();
+  gchar* const appdir = g_build_path(G_DIR_SEPARATOR_S, confdir, "gol", NULL);
   if (g_mkdir_with_parents(appdir, 0700) < 0) {
     perror("mkdir");
     g_critical("Can't create directory: %s", appdir);
     g_free(appdir);
     return FALSE;
   }
-  gchar* confdb = g_build_filename(appdir, "config.db", NULL);
+  gchar* const confdb = g_build_filename(appdir, "config.db", NULL);
   g_free(appdir);
-  gboolean exist = g_file_test(confdb, G_FILE_TEST_EXISTS);
+  const gboolean exist = g_file_test(confdb, G_FILE_TEST_EXISTS);
   if (sqlite3_open(confdb, &db) != SQLITE_OK) {
     g_critical("Can't open database: %s", confdb);
     g_free(confdb);
     return FALSE;
   }
   g_free(confdb);
+
   if (!exist) {
     if (sqlite3_exec(db, "create table config"
           "(key text not null primary key, value text not null)",
@@ -1471,7 +1472,7 @@ load_config() {
     }
   }
 
-  gchar* version = get_config_string("version", "");
+  gchar* const version = get_config_string("version", "");
   if (strcmp(version, PACKAGE_VERSION)) {
     const char* sqls[] = {
       "drop table _notification",
@@ -1520,24 +1521,24 @@ unload_config() {
 
 static gboolean
 load_display_plugins() {
-  const gchar *filename;
-  gchar* path = g_build_filename(LIBDIR, "display", NULL);
-  GDir* dir = g_dir_open(path, 0, NULL);
+  gchar* const path = g_build_filename(LIBDIR, "display", NULL);
+  GDir* const dir = g_dir_open(path, 0, NULL);
   if (!dir) {
     perror("open");
     g_critical("Display plugin directory isn't found: %s", path);
     return FALSE;
   }
 
-  gchar* default_display = get_config_string("default_display", "Default");
+  gchar* const default_display = get_config_string("default_display", "Default");
 
   current_display = NULL;
+  const gchar *filename;
   while ((filename = g_dir_read_name(dir))) {
     if (!g_str_has_suffix(filename, G_MODULE_SUFFIX))
       continue;
 
-    gchar* fullpath = g_build_filename(path, filename, NULL);
-    GModule* handle = g_module_open(fullpath, G_MODULE_BIND_LAZY);
+    gchar* const fullpath = g_build_filename(path, filename, NULL);
+    GModule* const handle = g_module_open(fullpath, G_MODULE_BIND_LAZY);
     g_free(fullpath);
     if (!handle) {
       continue;
@@ -1594,26 +1595,26 @@ subscribe_show(NOTIFICATION_INFO* ni) {
 
 static gboolean
 load_subscribe_plugins() {
-  const gchar *filename;
-  gchar* path = g_build_filename(LIBDIR, "subscribe", NULL);
-  GDir* dir = g_dir_open(path, 0, NULL);
+  gchar* const path = g_build_filename(LIBDIR, "subscribe", NULL);
+  GDir* const dir = g_dir_open(path, 0, NULL);
   if (!dir) {
     g_warning("Subscribe plugin directory isn't found: %s", path);
     return TRUE;
   }
 
   sc.show = subscribe_show;
+  const gchar *filename;
   while ((filename = g_dir_read_name(dir))) {
     if (!g_str_has_suffix(filename, G_MODULE_SUFFIX))
       continue;
 
-    gchar* fullpath = g_build_filename(path, filename, NULL);
-    GModule* handle = g_module_open(fullpath, G_MODULE_BIND_LAZY);
+    gchar* const fullpath = g_build_filename(path, filename, NULL);
+    GModule* const handle = g_module_open(fullpath, G_MODULE_BIND_LAZY);
     g_free(fullpath);
     if (!handle) {
       continue;
     }
-    SUBSCRIBE_PLUGIN* sp = g_new0(SUBSCRIBE_PLUGIN, 1);
+    SUBSCRIBE_PLUGIN* const sp = g_new0(SUBSCRIBE_PLUGIN, 1);
     sp->handle = handle;
     g_module_symbol(handle, "subscribe_start", (void**) &sp->start);
     g_module_symbol(handle, "subscribe_stop", (void**) &sp->stop);
