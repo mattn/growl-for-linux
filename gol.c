@@ -556,14 +556,13 @@ notification_tree_selection_changed(GtkTreeSelection *selection, gpointer user_d
     if (sqlite3_step(stmt) != SQLITE_ROW) return;
     gtk_combo_box_set_active(cbx1, sqlite3_column_int(stmt, 0) != 0 ? 0 : 1);
     char* const display = (char*) sqlite3_column_text(stmt, 1);
-    const size_t len = g_list_length(display_plugins);
-    for (size_t i = 0; i < len; i++) {
-      DISPLAY_PLUGIN* const dp
-        = (DISPLAY_PLUGIN*) g_list_nth_data(display_plugins, i);
-      if (!g_strcasecmp(dp->name(), display)) {
-        gtk_combo_box_set_active(cbx2, i);
-        break;
-      }
+    bool
+    is_display(const DISPLAY_PLUGIN* dp) {
+      return !g_strcasecmp(dp->name(), display);
+    }
+    DISPLAY_PLUGIN* const dp = find_display_plugin(is_display);
+    if (dp) {
+      gtk_combo_box_set_active(cbx2, g_list_index(display_plugins, dp));
     }
   }
   statement_sqlite3(create_combo_boxes,
