@@ -231,82 +231,94 @@ foreach_subscribe_plugin(void(* func)(SUBSCRIBE_PLUGIN*)) {
 }
 
 static inline void
-exec_splite3(const char *, ...);
+exec_sqlite3(const char[ const static 1 ], ...);
 
 static void
-exec_splite3(const char * const tsql, ...)
-{
-  if (tsql) {
-    va_list list;
-    va_start(list, tsql);
+exec_sqlite3(const char tsql[ const static 1 ], ...) {
+  va_list list;
+  va_start(list, tsql);
 
-    char* const sql = sqlite3_vmprintf(tsql, list);
-    sqlite3_exec(db, sql, NULL, NULL, NULL);
-    sqlite3_free(sql);
+  char* const sql = sqlite3_vmprintf(tsql, list);
+  sqlite3_exec(db, sql, NULL, NULL, NULL);
+  sqlite3_free(sql);
 
-    va_end(list);
-  }
+  va_end(list);
+}
+
+static void
+statement_sqlite3(void(* stmt_func)(sqlite3_stmt*), const char * const tsql, ...) {
+  va_list list;
+  va_start(list, tsql);
+
+  char* const sql = sqlite3_vmprintf(tsql, list);
+  sqlite3_stmt* stmt = NULL;
+  sqlite3_prepare(db, sql, strlen(sql), &stmt, NULL);
+
+  stmt_func(stmt);
+
+  sqlite3_finalize(stmt);
+  sqlite3_free(sql);
+
+  va_end(list);
 }
 
 static gboolean
 get_config_bool(const char* key, gboolean def) {
-  char* const sql = sqlite3_mprintf(
-      "select value from config where key = '%q'", key);
-  sqlite3_stmt *stmt = NULL;
-  sqlite3_prepare(db, sql, strlen(sql), &stmt, NULL);
-  const gboolean ret =
-    sqlite3_step(stmt) == SQLITE_ROW
+  gboolean ret;
+  void
+  get_int(sqlite3_stmt* const stmt) {
+    ret = sqlite3_step(stmt) == SQLITE_ROW
       ? (gboolean) sqlite3_column_int(stmt, 0)
       : def;
-  sqlite3_finalize(stmt);
-  sqlite3_free(sql);
+  }
+  statement_sqlite3(get_int,
+      "select value from config where key = '%q'", key);
   return ret;
 }
 
 static gboolean
 get_subscriber_enabled(const char* name) {
-  char* const sql = sqlite3_mprintf(
+  gboolean ret;
+  void
+  get_enabled(sqlite3_stmt* const stmt) {
+    ret = sqlite3_step(stmt) == SQLITE_ROW
+        ? (gboolean) sqlite3_column_int(stmt, 0)
+        : FALSE;
+  }
+  statement_sqlite3(get_enabled,
       "select enable from subscriber where name = '%q'", name);
-  sqlite3_stmt *stmt = NULL;
-  sqlite3_prepare(db, sql, strlen(sql), &stmt, NULL);
-  const gboolean ret =
-    sqlite3_step(stmt) == SQLITE_ROW
-      ? (gboolean) sqlite3_column_int(stmt, 0)
-      : FALSE;
-  sqlite3_finalize(stmt);
-  sqlite3_free(sql);
   return ret;
 }
 
 static gchar*
 get_config_string(const char* const key, const char* const def) {
-  char* const sql = sqlite3_mprintf(
+  gchar* value;
+  void
+  get_string(sqlite3_stmt* const stmt) {
+    value = g_strdup(
+        sqlite3_step(stmt) == SQLITE_ROW
+          ? (char*) sqlite3_column_text(stmt, 0)
+          : def ? def : "");
+  }
+  statement_sqlite3(get_string,
       "select value from config where key = '%q'", key);
-  sqlite3_stmt *stmt = NULL;
-  sqlite3_prepare(db, sql, strlen(sql), &stmt, NULL);
-  gchar* const value =
-    sqlite3_step(stmt) == SQLITE_ROW
-      ? g_strdup((char*) sqlite3_column_text(stmt, 0))
-      : g_strdup(def ? def : "");
-  sqlite3_finalize(stmt);
-  sqlite3_free(sql);
   return value;
 }
 
 static void
 set_config_bool(const char* key, gboolean value) {
-  exec_splite3("delete from config where key = '%q'", key);
+  exec_sqlite3("delete from config where key = '%q'", key);
 
-  exec_splite3(
+  exec_sqlite3(
     "insert into config(key, value) values('%q', '%q')",
     key, value ? "1" : "0");
 }
 
 static void
 set_config_string(const char* const key, const char* const value) {
-  exec_splite3("delete from config where key = '%q'", key);
+  exec_sqlite3("delete from config where key = '%q'", key);
 
-  exec_splite3("insert into config(key, value) values('%q', '%q')", key, value);
+  exec_sqlite3("insert into config(key, value) values('%q', '%q')", key, value);
 }
 
 static void
@@ -357,6 +369,19 @@ list_store_set_after_append(GtkListStore* const list_store, ...) {
   return iter;
 }
 
+static gpointer
+get_data_as_object(gpointer user_data, const gchar* const key) {
+  return g_object_get_data(G_OBJECT(user_data), key);
+}
+
+static GtkComboBox*
+combo_box_set_active_as_object(gpointer user_data, const gchar* const key) {
+  GtkWidget* const cbx = (GtkWidget*) get_data_as_object(user_data, key);
+  gtk_widget_set_sensitive(cbx, TRUE);
+  gtk_combo_box_set_active(GTK_COMBO_BOX(cbx), -1);
+  return GTK_COMBO_BOX(cbx);
+}
+
 static void
 display_tree_selection_changed(GtkTreeSelection * const selection, const gpointer user_data) {
   gchar* name;
@@ -368,15 +393,13 @@ display_tree_selection_changed(GtkTreeSelection * const selection, const gpointe
   }
   DISPLAY_PLUGIN* const cp = find_display_plugin_or(is_selection_name, current_display);
 
-  GtkWidget* const label =
-    (GtkWidget*) g_object_get_data(G_OBJECT(user_data), "description");
+  GtkWidget* const label = (GtkWidget*) get_data_as_object(user_data, "description");
   gtk_label_set_markup(GTK_LABEL(label), "");
   if (cp->description) {
     gtk_label_set_markup(GTK_LABEL(label), cp->description());
   }
 
-  GtkWidget* const image =
-    (GtkWidget*) g_object_get_data(G_OBJECT(user_data), "thumbnail");
+  GtkWidget* const image = (GtkWidget*) get_data_as_object(user_data, "thumbnail");
   gtk_image_clear(GTK_IMAGE(image));
   if (cp->thumbnail) {
     GdkBitmap* bitmap;
@@ -394,27 +417,24 @@ application_tree_selection_changed(GtkTreeSelection *selection, gpointer user_da
   gchar* app_name;
   if (!get_tree_model_from_selection(&app_name, selection)) return;
 
-  GtkListStore* model2 =
-    (GtkListStore*) g_object_get_data(G_OBJECT(user_data), "model2");
+  GtkListStore* const model2 = (GtkListStore*) get_data_as_object(user_data, "model2");
   gtk_list_store_clear(model2);
-  char* const sql = sqlite3_mprintf(
+
+  void
+  append_applications(sqlite3_stmt* const stmt) {
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+      list_store_set_after_append(
+          GTK_LIST_STORE(model2), 0, sqlite3_column_text(stmt, 0), -1);
+    }
+  }
+  statement_sqlite3(append_applications,
       "select distinct name from notification"
       " where app_name = '%q' order by name", app_name);
-  sqlite3_stmt *stmt = NULL;
-  sqlite3_prepare(db, sql, strlen(sql), &stmt, NULL);
-  while (sqlite3_step(stmt) == SQLITE_ROW) {
-    list_store_set_after_append(
-        GTK_LIST_STORE(model2), 0, sqlite3_column_text(stmt, 0), -1);
-  }
-  sqlite3_finalize(stmt);
-  sqlite3_free(sql);
 
   g_free(app_name);
 
-  gtk_widget_set_sensitive(
-    (GtkWidget*) g_object_get_data(G_OBJECT(user_data), "enable"), FALSE);
-  gtk_widget_set_sensitive(
-    (GtkWidget*) g_object_get_data(G_OBJECT(user_data), "display"), FALSE);
+  gtk_widget_set_sensitive((GtkWidget*) get_data_as_object(user_data, "enable"), FALSE);
+  gtk_widget_set_sensitive((GtkWidget*) get_data_as_object(user_data, "display"), FALSE);
 }
 
 static void
@@ -499,9 +519,9 @@ subscriber_enable_toggled(
   enable = !enable;
   gtk_list_store_set(GTK_LIST_STORE(model), &iter, 0, enable, -1);
 
-  exec_splite3("delete from subscriber where name = '%q'", name);
+  exec_sqlite3("delete from subscriber where name = '%q'", name);
 
-  exec_splite3(
+  exec_sqlite3(
     "insert into subscriber(name, enable) values('%q', %d)",
     name, enable ? 1 : 0);
 
@@ -521,43 +541,34 @@ subscriber_enable_toggled(
 static void
 notification_tree_selection_changed(GtkTreeSelection *selection, gpointer user_data) {
   gchar* app_name;
-  GtkWidget* const tree1 = g_object_get_data(G_OBJECT(user_data), "tree1");
+  GtkWidget* const tree1 = get_data_as_object(user_data, "tree1");
   if (!get_tree_model_from_tree(&app_name, tree1)) return;
 
   gchar* name;
-  GtkWidget* const tree2 = g_object_get_data(G_OBJECT(user_data), "tree2");
+  GtkWidget* const tree2 = get_data_as_object(user_data, "tree2");
   if (!get_tree_model_from_tree(&name, tree2)) return;
 
-  GtkWidget* const cbx1
-    = (GtkWidget*) g_object_get_data(G_OBJECT(user_data), "enable");
-  gtk_widget_set_sensitive(cbx1, TRUE);
-  gtk_combo_box_set_active(GTK_COMBO_BOX(cbx1), -1);
-  GtkWidget* const cbx2
-    = (GtkWidget*) g_object_get_data(G_OBJECT(user_data), "display");
-  gtk_widget_set_sensitive(cbx2, TRUE);
-  gtk_combo_box_set_active(GTK_COMBO_BOX(cbx2), -1);
+  GtkComboBox* const cbx1 = combo_box_set_active_as_object(user_data, "enable");
+  GtkComboBox* const cbx2 = combo_box_set_active_as_object(user_data, "display");
 
-  char* const sql = sqlite3_mprintf(
-      "select enable, display from notification"
-      " where app_name = '%q' and name = '%q'", app_name, name);
-  sqlite3_stmt *stmt = NULL;
-  sqlite3_prepare(db, sql, strlen(sql), &stmt, NULL);
-  if (sqlite3_step(stmt) == SQLITE_ROW) {
-    gtk_combo_box_set_active(GTK_COMBO_BOX(cbx1),
-        sqlite3_column_int(stmt, 0) != 0 ? 0 : 1);
+  void
+  create_combo_boxes(sqlite3_stmt* const stmt) {
+    if (sqlite3_step(stmt) != SQLITE_ROW) return;
+    gtk_combo_box_set_active(cbx1, sqlite3_column_int(stmt, 0) != 0 ? 0 : 1);
     char* const display = (char*) sqlite3_column_text(stmt, 1);
     const size_t len = g_list_length(display_plugins);
     for (size_t i = 0; i < len; i++) {
       DISPLAY_PLUGIN* const dp
         = (DISPLAY_PLUGIN*) g_list_nth_data(display_plugins, i);
       if (!g_strcasecmp(dp->name(), display)) {
-        gtk_combo_box_set_active(GTK_COMBO_BOX(cbx2), i);
+        gtk_combo_box_set_active(cbx2, i);
         break;
       }
     }
   }
-  sqlite3_finalize(stmt);
-  sqlite3_free(sql);
+  statement_sqlite3(create_combo_boxes,
+      "select enable, display from notification"
+      " where app_name = '%q' and name = '%q'", app_name, name);
 
   g_free(app_name);
   g_free(name);
@@ -566,21 +577,19 @@ notification_tree_selection_changed(GtkTreeSelection *selection, gpointer user_d
 static void
 notification_enable_changed(GtkComboBox *combobox, gpointer user_data) {
   gchar* app_name;
-  GtkWidget* const tree1 = g_object_get_data(G_OBJECT(user_data), "tree1");
+  GtkWidget* const tree1 = get_data_as_object(user_data, "tree1");
   if (!get_tree_model_from_tree(&app_name, tree1)) return;
 
   gchar* name;
-  GtkWidget* const tree2 = g_object_get_data(G_OBJECT(user_data), "tree2");
+  GtkWidget* const tree2 = get_data_as_object(user_data, "tree2");
   if (!get_tree_model_from_tree(&name, tree2)) return;
 
   const gint enable = gtk_combo_box_get_active(combobox) == 0 ? 1 : 0;
 
-  char* const sql = sqlite3_mprintf(
-        "update notification set enable = %d"
-        " where app_name = '%q' and name = '%q'",
-        enable, app_name, name);
-  sqlite3_exec(db, sql, NULL, NULL, NULL);
-  sqlite3_free(sql);
+  exec_sqlite3(
+      "update notification set enable = %d"
+      " where app_name = '%q' and name = '%q'",
+      enable, app_name, name);
 
   g_free(app_name);
   g_free(name);
@@ -589,16 +598,16 @@ notification_enable_changed(GtkComboBox *combobox, gpointer user_data) {
 static void
 notification_display_changed(GtkComboBox *combobox, gpointer user_data) {
   gchar* app_name;
-  GtkWidget* const tree1 = g_object_get_data(G_OBJECT(user_data), "tree1");
+  GtkWidget* const tree1 = get_data_as_object(user_data, "tree1");
   if (!get_tree_model_from_tree(&app_name, tree1)) return;
 
   gchar* name;
-  GtkWidget* const tree2 = g_object_get_data(G_OBJECT(user_data), "tree2");
+  GtkWidget* const tree2 = get_data_as_object(user_data, "tree2");
   if (!get_tree_model_from_tree(&name, tree2)) return;
 
   gchar* const display = gtk_combo_box_get_active_text(combobox);
 
-  exec_splite3(
+  exec_sqlite3(
     "update notification set display = '%q'"
     " where app_name = '%q' and name = '%q'",
     display, app_name, name);
@@ -619,49 +628,38 @@ append_new_menu_item_from_stock(
 static void
 application_delete(GtkWidget* widget, gpointer user_data) {
   GtkTreeIter iter1;
-  GtkTreeIter iter2;
-  GtkWidget* tree1 = g_object_get_data(G_OBJECT(user_data), "tree1");
-  GtkWidget* tree2 = g_object_get_data(G_OBJECT(user_data), "tree2");
-  GtkTreeSelection* selection1
+  GtkWidget* const tree1 = get_data_as_object(user_data, "tree1");
+  GtkTreeSelection* const selection1
     = gtk_tree_view_get_selection(GTK_TREE_VIEW(tree1));
-  GtkTreeSelection* selection2
-    = gtk_tree_view_get_selection(GTK_TREE_VIEW(tree2));
   GtkTreeModel* model1;
-  GtkTreeModel* model2;
-
-  gboolean selected1 =
-      gtk_tree_selection_get_selected(selection1, &model1, &iter1);
-  gboolean selected2 =
-      gtk_tree_selection_get_selected(selection2, &model2, &iter2);
-
-  if (!selected1 && !selected2) return;
+  if (!gtk_tree_selection_get_selected(selection1, &model1, &iter1)) return;
 
   gchar* app_name;
   gtk_tree_model_get(model1, &iter1, 0, &app_name, -1);
-  if (selected2) {
+
+  GtkTreeIter iter2;
+  GtkWidget* const tree2 = get_data_as_object(user_data, "tree2");
+  GtkTreeSelection* const selection2
+    = gtk_tree_view_get_selection(GTK_TREE_VIEW(tree2));
+  GtkTreeModel* model2;
+  if (gtk_tree_selection_get_selected(selection2, &model2, &iter2)) {
     gchar* name;
     gtk_tree_model_get(model2, &iter2, 0, &name, -1);
-    exec_splite3(
+    exec_sqlite3(
       "delete from notification where app_name = '%q' and name = '%q'",
       app_name, name);
     g_free(name);
 
     gtk_list_store_remove(GTK_LIST_STORE(model2), &iter2);
   } else {
-    exec_splite3("delete from notification where app_name = '%q'", app_name);
+    exec_sqlite3("delete from notification where app_name = '%q'", app_name);
     gtk_list_store_remove(GTK_LIST_STORE(model1), &iter1);
     gtk_list_store_clear(GTK_LIST_STORE(model2));
   }
   g_free(app_name);
 
-  GtkWidget* cbx1
-    = (GtkWidget*) g_object_get_data(G_OBJECT(user_data), "enable");
-  gtk_widget_set_sensitive(cbx1, TRUE);
-  gtk_combo_box_set_active(GTK_COMBO_BOX(cbx1), -1);
-  GtkWidget* cbx2
-    = (GtkWidget*) g_object_get_data(G_OBJECT(user_data), "display");
-  gtk_widget_set_sensitive(cbx2, TRUE);
-  gtk_combo_box_set_active(GTK_COMBO_BOX(cbx2), -1);
+  combo_box_set_active_as_object(user_data, "enable");
+  combo_box_set_active_as_object(user_data, "display");
 }
 
 static gboolean
@@ -731,7 +729,7 @@ settings_clicked(GtkWidget* widget, GdkEvent* event, gpointer user_data) {
   setting_dialog = gtk_dialog_new_with_buttons(
       "Settings", NULL, GTK_DIALOG_MODAL,
       GTK_STOCK_CLOSE, GTK_RESPONSE_CLOSE, NULL);
-  gchar* path = g_build_filename(DATADIR, "data", "icon.png", NULL);
+  gchar* const path = g_build_filename(DATADIR, "data", "icon.png", NULL);
   gtk_window_set_icon_from_file(GTK_WINDOW(setting_dialog), path, NULL);
   g_free(path);
   gtk_window_set_position(GTK_WINDOW(setting_dialog), GTK_WIN_POS_CENTER);
@@ -982,11 +980,9 @@ about_click(GtkWidget* widget, gpointer user_data) {
   }
   gtk_about_dialog_set_website(GTK_ABOUT_DIALOG(about_dialog),
       "http://mattn.kaoriya.net/");
-  gchar* path = g_build_filename(DATADIR, "data", NULL);
-  gchar* fullpath = g_build_filename(path, "growl4linux.jpg", NULL);
+  gchar* const path = g_build_filename(DATADIR, "data", "growl4linux.jpg", NULL);
+  logo = gdk_pixbuf_new_from_file(path, NULL);
   g_free(path);
-  logo = gdk_pixbuf_new_from_file(fullpath, NULL);
-  g_free(fullpath);
   gtk_about_dialog_set_logo (GTK_ABOUT_DIALOG(about_dialog), logo);
   g_object_unref(G_OBJECT(logo));
   gtk_window_set_position(GTK_WINDOW(about_dialog), GTK_WIN_POS_CENTER);
@@ -1219,11 +1215,11 @@ gntp_recv_proc(gpointer user_data) {
           }
         }
 
-        exec_splite3(
+        exec_sqlite3(
           "delete from notification where app_name = '%q' and name = '%q'",
           application_name, notification_name);
 
-        exec_splite3(
+        exec_sqlite3(
           "insert into notification("
           "app_name, app_icon, name, icon, enable, display, sticky)"
           " values('%q', '%q', '%q', '%q', %d, '%q', %d)",
@@ -1408,11 +1404,9 @@ static void
 create_menu() {
   {
     // TODO: absolute path
-    gchar* const path = g_build_filename(DATADIR, "data", NULL);
-    gchar* const fullpath = g_build_filename(path, "icon.png", NULL);
+    gchar* const path = g_build_filename(DATADIR, "data", "icon.png", NULL);
+    status_icon = gtk_status_icon_new_from_file(path);
     g_free(path);
-    status_icon = gtk_status_icon_new_from_file(fullpath);
-    g_free(fullpath);
     gtk_status_icon_set_tooltip(status_icon, "Growl");
     gtk_status_icon_set_visible(status_icon, TRUE);
   }
@@ -1537,9 +1531,9 @@ load_display_plugins() {
     if (!g_str_has_suffix(filename, G_MODULE_SUFFIX))
       continue;
 
-    gchar* const fullpath = g_build_filename(path, filename, NULL);
-    GModule* const handle = g_module_open(fullpath, G_MODULE_BIND_LAZY);
-    g_free(fullpath);
+    gchar* const filepath = g_build_filename(path, filename, NULL);
+    GModule* const handle = g_module_open(filepath, G_MODULE_BIND_LAZY);
+    g_free(filepath);
     if (!handle) {
       continue;
     }
@@ -1608,9 +1602,9 @@ load_subscribe_plugins() {
     if (!g_str_has_suffix(filename, G_MODULE_SUFFIX))
       continue;
 
-    gchar* const fullpath = g_build_filename(path, filename, NULL);
-    GModule* const handle = g_module_open(fullpath, G_MODULE_BIND_LAZY);
-    g_free(fullpath);
+    gchar* const filepath = g_build_filename(path, filename, NULL);
+    GModule* const handle = g_module_open(filepath, G_MODULE_BIND_LAZY);
+    g_free(filepath);
     if (!handle) {
       continue;
     }
