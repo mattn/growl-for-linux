@@ -330,8 +330,7 @@ status_icon_popup(
 }
 
 static bool
-get_tree_model_from_selection(gchar** const pname, GtkTreeSelection* const selection)
-{
+get_tree_model_from_selection(gchar** const pname, GtkTreeSelection* const selection) {
   GtkTreeIter iter;
   GtkTreeModel* model;
   if (!gtk_tree_selection_get_selected(selection, &model, &iter)) return false;
@@ -341,15 +340,24 @@ get_tree_model_from_selection(gchar** const pname, GtkTreeSelection* const selec
 }
 
 static bool
-get_tree_model_from_tree(gchar** const pname, GtkWidget* const tree)
-{
+get_tree_model_from_tree(gchar** const pname, GtkWidget* const tree) {
   GtkTreeSelection* const selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(tree));
   return get_tree_model_from_selection(pname, selection);
 }
 
+static GtkTreeIter
+list_store_set_after_append(GtkListStore* const list_store, ...) {
+  va_list list;
+  va_start(list, list_store);
+  GtkTreeIter iter;
+  gtk_list_store_append(list_store, &iter);
+  gtk_list_store_set_valist(list_store, &iter, list);
+  va_end(list);
+  return iter;
+}
+
 static void
-display_tree_selection_changed(GtkTreeSelection *selection, gpointer user_data) {
-  gchar* name;
+display_tree_selection_changed(GtkTreeSelection *selection, gpointer user_data) { gchar* name;
   if (!get_tree_model_from_selection(&name, selection)) return;
 
   bool
@@ -393,10 +401,8 @@ application_tree_selection_changed(GtkTreeSelection *selection, gpointer user_da
   sqlite3_stmt *stmt = NULL;
   sqlite3_prepare(db, sql, strlen(sql), &stmt, NULL);
   while (sqlite3_step(stmt) == SQLITE_ROW) {
-    GtkTreeIter iter;
-    gtk_list_store_append(GTK_LIST_STORE(model2), &iter);
-    gtk_list_store_set(GTK_LIST_STORE(model2), &iter, 0,
-        sqlite3_column_text(stmt, 0), -1);
+    list_store_set_after_append(
+        GTK_LIST_STORE(model2), 0, sqlite3_column_text(stmt, 0), -1);
   }
   sqlite3_finalize(stmt);
   sqlite3_free(sql);
@@ -781,9 +787,8 @@ settings_clicked(GtkWidget* widget, GdkEvent* event, gpointer user_data) {
 
     void
     append_display_plugins(DISPLAY_PLUGIN* dp) {
-      GtkTreeIter iter;
-      gtk_list_store_append(GTK_LIST_STORE(model), &iter);
-      gtk_list_store_set(GTK_LIST_STORE(model), &iter, 0, dp->name(), -1);
+      GtkTreeIter iter = list_store_set_after_append(
+          GTK_LIST_STORE(model), 0, dp->name(), -1);
       if (dp == current_display)
         gtk_tree_selection_select_iter(select, &iter);
     }
@@ -852,10 +857,8 @@ settings_clicked(GtkWidget* widget, GdkEvent* event, gpointer user_data) {
         sqlite3_stmt *stmt = NULL;
         sqlite3_prepare(db, sql, strlen(sql), &stmt, NULL);
         while (sqlite3_step(stmt) == SQLITE_ROW) {
-          GtkTreeIter iter;
-          gtk_list_store_append(GTK_LIST_STORE(model1), &iter);
-          gtk_list_store_set(GTK_LIST_STORE(model1), &iter, 0,
-              sqlite3_column_text(stmt, 0), -1);
+          list_store_set_after_append(
+              GTK_LIST_STORE(model1), 0, sqlite3_column_text(stmt, 0), -1);
         }
         sqlite3_finalize(stmt);
       }
@@ -930,9 +933,7 @@ settings_clicked(GtkWidget* widget, GdkEvent* event, gpointer user_data) {
 
     void
     append_subscribe_plugins(SUBSCRIBE_PLUGIN* sp) {
-      GtkTreeIter iter;
-      gtk_list_store_append(GTK_LIST_STORE(model), &iter);
-      gtk_list_store_set(GTK_LIST_STORE(model), &iter,
+      list_store_set_after_append(GTK_LIST_STORE(model),
           0, get_subscriber_enabled(sp->name()),
           1, sp->name(),
           2, sp->description(),
