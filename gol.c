@@ -188,7 +188,7 @@ unhex(unsigned char c) {
 }
 
 DISPLAY_PLUGIN*
-find_display_plugin_or(bool(* pred)(const DISPLAY_PLUGIN*), DISPLAY_PLUGIN* or_dp) {
+find_display_plugin_or(bool(* pred)(const DISPLAY_PLUGIN*), DISPLAY_PLUGIN* const or_dp) {
   gint
   wrapped_pred(gconstpointer dp, gconstpointer _unused) {
     return pred((const DISPLAY_PLUGIN*) dp) ? 0 : 1;
@@ -279,7 +279,7 @@ get_subscriber_enabled(const char* name) {
 }
 
 static gchar*
-get_config_string(const char* key, const char* def) {
+get_config_string(const char* const key, const char* const def) {
   char* const sql = sqlite3_mprintf(
       "select value from config where key = '%q'", key);
   sqlite3_stmt *stmt = NULL;
@@ -303,7 +303,7 @@ set_config_bool(const char* key, gboolean value) {
 }
 
 static void
-set_config_string(const char* key, const char* value) {
+set_config_string(const char* const key, const char* const value) {
   exec_splite3("delete from config where key = '%q'", key);
 
   exec_splite3("insert into config(key, value) values('%q', '%q')", key, value);
@@ -311,7 +311,8 @@ set_config_string(const char* key, const char* value) {
 
 static void
 my_gtk_status_icon_position_menu(
-    GtkMenu* menu, gint* x, gint* y, gboolean* push_in, gpointer user_data) {
+    GtkMenu* const menu, gint* const x, gint* const y,
+    gboolean* const push_in, const gpointer user_data) {
   gtk_status_icon_position_menu(menu, x, y, push_in, user_data);
 #ifdef _WIN32
   RECT rect;
@@ -323,14 +324,14 @@ my_gtk_status_icon_position_menu(
 
 static void
 status_icon_popup(
-    GtkStatusIcon* status_icon, guint button,
-    guint32 activate_time, gpointer menu) {
+    GtkStatusIcon* const status_icon, const guint button,
+    const guint32 activate_time, const gpointer menu) {
   gtk_menu_popup(GTK_MENU(menu), NULL, NULL,
       my_gtk_status_icon_position_menu, status_icon, button, activate_time);
 }
 
 static bool
-get_tree_model_from_selection(gchar** const pname, GtkTreeSelection* const selection) {
+get_tree_model_from_selection(gchar** const restrict pname, GtkTreeSelection* const restrict selection) {
   GtkTreeIter iter;
   GtkTreeModel* model;
   if (!gtk_tree_selection_get_selected(selection, &model, &iter)) return false;
@@ -340,7 +341,7 @@ get_tree_model_from_selection(gchar** const pname, GtkTreeSelection* const selec
 }
 
 static bool
-get_tree_model_from_tree(gchar** const pname, GtkWidget* const tree) {
+get_tree_model_from_tree(gchar** const restrict pname, GtkWidget* const restrict tree) {
   GtkTreeSelection* const selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(tree));
   return get_tree_model_from_selection(pname, selection);
 }
@@ -357,7 +358,8 @@ list_store_set_after_append(GtkListStore* const list_store, ...) {
 }
 
 static void
-display_tree_selection_changed(GtkTreeSelection *selection, gpointer user_data) { gchar* name;
+display_tree_selection_changed(GtkTreeSelection * const selection, const gpointer user_data) {
+  gchar* name;
   if (!get_tree_model_from_selection(&name, selection)) return;
 
   bool
@@ -1315,10 +1317,7 @@ gntp_recv_proc(gpointer user_data) {
             is_notification_display(const DISPLAY_PLUGIN* dp) {
               return !g_strcasecmp(dp->name(), notification_display_name);
             }
-            DISPLAY_PLUGIN* const dp = find_display_plugin(is_notification_display);
-            if (dp) {
-              cp = dp;
-            }
+            cp = find_display_plugin_or(is_notification_display, cp);
           }
           g_idle_add((GSourceFunc) cp->show, ni); // call once
         }
@@ -1544,7 +1543,7 @@ load_display_plugins() {
     if (!handle) {
       continue;
     }
-    DISPLAY_PLUGIN* dp = g_new0(DISPLAY_PLUGIN, 1);
+    DISPLAY_PLUGIN* const dp = g_new0(DISPLAY_PLUGIN, 1);
     dp->handle = handle;
     g_module_symbol(handle, "display_show", (void**) &dp->show);
     g_module_symbol(handle, "display_init", (void**) &dp->init);
@@ -1590,7 +1589,7 @@ unload_display_plugins() {
 }
 
 static void
-subscribe_show(NOTIFICATION_INFO* ni) {
+subscribe_show(NOTIFICATION_INFO* const ni) {
   g_idle_add((GSourceFunc) current_display->show, ni);
 }
 
@@ -1653,7 +1652,7 @@ unload_subscribe_plugins() {
 }
 
 static gboolean
-gntp_accepted(GIOChannel* source, GIOCondition condition, gpointer user_data) {
+gntp_accepted(GIOChannel* const source, GIOCondition condition, gpointer user_data) {
   int fd = g_io_channel_unix_get_fd(source);
   int sock;
   struct sockaddr_in client;
@@ -1691,7 +1690,7 @@ typedef struct {
 } GROWL_NOTIFY_PACKET;
 
 static gboolean
-udp_recv_proc(GIOChannel* source, GIOCondition condition, gpointer user_data) {
+udp_recv_proc(GIOChannel* const source, GIOCondition condition, gpointer user_data) {
   int is_local_app = FALSE;
   int fd = g_io_channel_unix_get_fd(source);
   char buf[BUFSIZ] = {0};
@@ -1718,16 +1717,16 @@ udp_recv_proc(GIOChannel* source, GIOCondition condition, gpointer user_data) {
   }\
 }
         if (packet->type == 1) {
-          HASH_DIGEST_CHECK( MD5, password, buf, len );
+          HASH_DIGEST_CHECK(MD5, password, buf, len);
         }
         else if (packet->type == 3) {
-          HASH_DIGEST_CHECK( SHA256, password, buf, len );
+          HASH_DIGEST_CHECK(SHA256, password, buf, len);
         } else {
           if (is_local_app && require_password_for_local_apps) goto leave;
           if (!is_local_app && require_password_for_lan_apps) goto leave;
         }
 #undef HASH_DIGEST_CHECK
-        NOTIFICATION_INFO* ni = g_new0(NOTIFICATION_INFO, 1);
+        NOTIFICATION_INFO* const ni = g_new0(NOTIFICATION_INFO, 1);
         ni->title = g_strndup(
             &buf[sizeof(GROWL_NOTIFY_PACKET)
               + ntohs(packet->notification_length)],
@@ -1755,21 +1754,21 @@ create_udp_server() {
     return NULL;
   }
 
-  struct sockaddr_in server_addr =
+  const struct sockaddr_in server_addr =
   {
     .sin_family      = AF_INET,
     .sin_addr.s_addr = htonl(INADDR_ANY),
     .sin_port        = htons(9887),
   };
 
-  if (bind(fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
+  if (bind(fd, (const struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
     perror("bind");
     return NULL;
   }
 
   fd_set fdset;
   FD_SET(fd, &fdset);
-  GIOChannel* channel = g_io_channel_unix_new(fd);
+  GIOChannel* const channel = g_io_channel_unix_new(fd);
   g_io_add_watch(channel, G_IO_IN | G_IO_ERR, udp_recv_proc, NULL);
   g_io_channel_unref(channel);
 
@@ -1796,14 +1795,14 @@ create_gntp_server() {
     return NULL;
   }
 
-  struct sockaddr_in server_addr =
+  const struct sockaddr_in server_addr =
   {
     .sin_family      = AF_INET,
     .sin_addr.s_addr = htonl(INADDR_ANY),
     .sin_port        = htons(23053),
   };
 
-  if (bind(fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
+  if (bind(fd, (const struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
     perror("bind");
     return NULL;
   }
@@ -1816,7 +1815,7 @@ create_gntp_server() {
 
   fd_set fdset;
   FD_SET(fd, &fdset);
-  GIOChannel* channel = g_io_channel_unix_new(fd);
+  GIOChannel* const channel = g_io_channel_unix_new(fd);
   g_io_add_watch(channel, G_IO_IN | G_IO_ERR, gntp_accepted, NULL);
   g_io_channel_unref(channel);
 
@@ -1826,7 +1825,7 @@ create_gntp_server() {
 
 
 static void
-destroy_gntp_server(GIOChannel* channel) {
+destroy_gntp_server(GIOChannel* const channel) {
   if (channel) {
     closesocket(g_io_channel_unix_get_fd(channel));
     g_io_channel_unref(channel);
@@ -1834,7 +1833,7 @@ destroy_gntp_server(GIOChannel* channel) {
 }
 
 static void
-destroy_udp_server(GIOChannel* channel) {
+destroy_udp_server(GIOChannel* const channel) {
   if (channel) {
     closesocket(g_io_channel_unix_get_fd(channel));
     g_io_channel_unref(channel);
