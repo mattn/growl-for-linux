@@ -5,6 +5,7 @@
 *.o
 *.so
 *.desktop
+*.swp
 autom4te.cache
 aclocal.m4
 compile
