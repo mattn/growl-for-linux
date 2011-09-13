@@ -76,12 +76,20 @@ memfclose(MEMFILE* mf) {
 static size_t
 memfwrite(char* ptr, size_t size, size_t nmemb, void* stream) {
   MEMFILE* mf = (MEMFILE*) stream;
-  int block = size * nmemb;
+  const int block = size * nmemb;
   if (!mf) return block; // through
   if (!mf->data)
     mf->data = (char*) malloc(block);
-  else
-    mf->data = (char*) realloc(mf->data, mf->size + block);
+  else {
+    char* const tmp = (char*) realloc(mf->data, mf->size + block);
+    if (tmp)
+      mf->data = tmp;
+    else {
+      free(mf->data);
+      mf->data = NULL;
+      mf->size = 0;
+    }
+  }
   if (mf->data) {
     memcpy(mf->data + mf->size, ptr, block);
     mf->size += block;
@@ -91,9 +99,8 @@ memfwrite(char* ptr, size_t size, size_t nmemb, void* stream) {
 
 static char*
 memfstrdup(MEMFILE* mf) {
-  char* buf;
   if (mf->size == 0) return NULL;
-  buf = (char*) malloc(mf->size + 1);
+  char* buf = (char*) malloc(mf->size + 1);
   memcpy(buf, mf->data, mf->size);
   buf[mf->size] = 0;
   return buf;
@@ -101,21 +108,17 @@ memfstrdup(MEMFILE* mf) {
 
 static char*
 get_http_header_alloc(const char* ptr, const char* key) {
-  const char* tmp = ptr;
-
   while (*ptr) {
-    tmp = strpbrk(ptr, "\r\n");
+    const char* tmp = strpbrk(ptr, "\r\n");
     if (!tmp) break;
     if (!strncasecmp(ptr, key, strlen(key)) && *(ptr + strlen(key)) == ':') {
-      size_t len;
-      char* val;
       const char* top = ptr + strlen(key) + 1;
       while (*top && isspace(*top)) top++;
       if (!*top) return NULL;
-      len = tmp - top + 1;
-      val = malloc(len);
-      memset(val, 0, len);
+      const size_t len = tmp - top + 1;
+      char* val = malloc(len);
       strncpy(val, top, len-1);
+      val[len-1] = 0;
       return val;
     }
     ptr = tmp + 1;
@@ -162,20 +165,17 @@ url2pixbuf(const char* url, GError** error) {
   memfclose(mbody);
 
   if (res == CURLE_OK) {
-    char* ctype;
-    char* csize;
-    ctype = get_http_header_alloc(head, "Content-Type");
-    csize = get_http_header_alloc(head, "Content-Length");
+    char* ctype = get_http_header_alloc(head, "Content-Type");
+    char* csize = get_http_header_alloc(head, "Content-Length");
 
 #ifdef _WIN32
     if (ctype &&
         (!strcmp(ctype, "image/jpeg") || !strcmp(ctype, "image/gif"))) {
       char temp_path[MAX_PATH];
       char temp_filename[MAX_PATH];
-      FILE* fp;
       GetTempPath(sizeof(temp_path), temp_path);
       GetTempFileName(temp_path, "growl-for-linux-", 0, temp_filename);
-      fp = fopen(temp_filename, "wb");
+      FILE* fp = fopen(temp_filename, "wb");
       if (fp) {
         fwrite(body, size, 1, fp);
         fclose(fp);
@@ -197,8 +197,8 @@ url2pixbuf(const char* url, GError** error) {
         pixbuf = gdk_pixbuf_loader_get_pixbuf(loader);
       }
     }
-    if (ctype) free(ctype);
-    if (csize) free(csize);
+    free(ctype);
+    free(csize);
     if (loader) gdk_pixbuf_loader_close(loader, NULL);
   } else {
     _error = g_error_new_literal(G_FILE_ERROR, res,
@@ -254,10 +254,10 @@ display_animation_func(gpointer data) {
   if (di->timeout < 0) {
     gtk_widget_destroy(di->popup);
     notifications = g_list_remove(notifications, di);
-    if (di->ni->title) g_free(di->ni->title);
-    if (di->ni->text) g_free(di->ni->text);
-    if (di->ni->icon) g_free(di->ni->icon);
-    if (di->ni->url) g_free(di->ni->url);
+    g_free(di->ni->title);
+    g_free(di->ni->text);
+    g_free(di->ni->icon);
+    g_free(di->ni->url);
     g_free(di->ni);
     g_free(di);
     return FALSE;
@@ -265,7 +265,7 @@ display_animation_func(gpointer data) {
 
   if (di->offset < 160) {
     di->offset += 2;
-	gdk_window_move_resize(di->popup->window, di->x, di->y - di->offset, 180, di->offset);
+    gdk_window_move_resize(di->popup->window, di->x, di->y - di->offset, 180, di->offset);
   }
 
   if (di->timeout < 30) {
