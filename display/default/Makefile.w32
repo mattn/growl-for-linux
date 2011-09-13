@@ -9,7 +9,8 @@ libdefault.dll : default.o
         -Lc:/gtk/lib -lgtk-win32-2.0 -lgdk-win32-2.0 -latk-1.0 -lgio-2.0 -lgdk_pixbuf-2.0 -lpangowin32-1.0 -lgdi32 -lpangocairo-1.0 -lpango-1.0 -lcairo -lgobject-2.0 -lgmodule-2.0 -lxml2 -lgthread-2.0 -lglib-2.0 -lws2_32 -lintl \
 		-lcurldll \
 		-lshell32 \
-		-lsqlite3
+		-lsqlite3 \
+		-L../../ -lgolplug
 
 default.o : default.c display_default.xpm
 	gcc -g -Wall -c $(CFLAGS) -o default.o \

@@ -4,6 +4,7 @@ PACKAGE_VERSION=$(shell cat VERSION)
 all : gol.exe displays
 
 displays:
+	cd plugins && ${MAKE} -f Makefile.w32
 	cd display/default && ${MAKE} -f Makefile.w32 && cp libdefault.dll ..
 	cd display/balloon && ${MAKE} -f Makefile.w32 && cp libballoon.dll ..
 	cd display/nico2 && ${MAKE} -f Makefile.w32 && cp libnico2.dll ..
@@ -40,6 +41,7 @@ gol.res : gol.rc
 
 clean:
 	-rm *.o *.res *.exe
+	-cd plugins && ${MAKE} -f Makefile.w32 clean
 	-cd display/default && ${MAKE} -f Makefile.w32 clean
 	-cd display/balloon && ${MAKE} -f Makefile.w32 clean
 	-cd display/nico2 && ${MAKE} -f Makefile.w32 clean

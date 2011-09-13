@@ -1,0 +1,13 @@
+CFLAGS=
+PACKAGE_VERSION=$(shell cat VERSION)
+
+all: libgolplug.lib
+
+libgolplug.lib : memfile.o
+	gcc -g -o libgolplug.lib memfile.o
+
+memfile.o : memfile.c memfile.h
+	gcc -g -Wall -c $(CFLAGS) -o memfile.o -mms-bitfields memfile.c
+
+clean:
+	-rm *.o *.lib

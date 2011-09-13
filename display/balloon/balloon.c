@@ -29,6 +29,7 @@
 #include <memory.h>
 #include <curl/curl.h>
 #include "../../gol.h"
+#include "../../plugins/memfile.h"
 #include "balloon.xpm"
 #include "display_balloon.xpm"
 
@@ -55,53 +56,6 @@ typedef struct {
   gboolean sticky;
   gboolean hover;
 } DISPLAY_INFO;
-
-typedef struct {
-  char* data;     // response data from server
-  size_t size;    // response size of data
-} MEMFILE;
-
-static MEMFILE*
-memfopen() {
-  MEMFILE* mf = (MEMFILE*) malloc(sizeof(MEMFILE));
-  if (mf) {
-    mf->data = NULL;
-    mf->size = 0;
-  }
-  return mf;
-}
-
-static void
-memfclose(MEMFILE* mf) {
-  if (mf->data) free(mf->data);
-  free(mf);
-}
-
-static size_t
-memfwrite(char* ptr, size_t size, size_t nmemb, void* stream) {
-  MEMFILE* mf = (MEMFILE*) stream;
-  int block = size * nmemb;
-  if (!mf) return block; // through
-  if (!mf->data)
-    mf->data = (char*) malloc(block);
-  else
-    mf->data = (char*) realloc(mf->data, mf->size + block);
-  if (mf->data) {
-    memcpy(mf->data + mf->size, ptr, block);
-    mf->size += block;
-  }
-  return block;
-}
-
-static char*
-memfstrdup(MEMFILE* mf) {
-  char* buf;
-  if (mf->size == 0) return NULL;
-  buf = (char*) malloc(mf->size + 1);
-  memcpy(buf, mf->data, mf->size);
-  buf[mf->size] = 0;
-  return buf;
-}
 
 static char*
 get_http_header_alloc(const char* ptr, const char* key) {

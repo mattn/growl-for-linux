@@ -37,6 +37,7 @@ AC_FUNC_REALLOC
 AC_CHECK_FUNCS([inet_ntoa memset socket strchr strncasecmp strpbrk strstr])
 
 AC_CONFIG_FILES([Makefile
+                 plugins/Makefile
                  data/Makefile
                  display/balloon/Makefile
                  display/default/Makefile
