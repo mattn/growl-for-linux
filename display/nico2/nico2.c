@@ -30,9 +30,8 @@
 #include <curl/curl.h>
 #include "../../gol.h"
 #include "../../plugins/memfile.h"
+#include "../../plugins/from_url.h"
 #include "display_nico2.xpm"
-
-#define REQUEST_TIMEOUT            (5)
 
 #ifdef _WIN32
 # ifndef strncasecmp
@@ -53,21 +52,27 @@ typedef struct {
   gboolean hover;
 } DISPLAY_INFO;
 
+static void
+free_display_info(DISPLAY_INFO* di) {
+  g_free(di->ni->title);
+  g_free(di->ni->text);
+  g_free(di->ni->icon);
+  g_free(di->ni->url);
+  g_free(di->ni);
+  g_free(di);
+}
+
 static char*
 get_http_header_alloc(const char* ptr, const char* key) {
-  const char* tmp = ptr;
-
   while (*ptr) {
-    tmp = strpbrk(ptr, "\r\n");
+    const char* tmp = strpbrk(ptr, "\r\n");
     if (!tmp) break;
     if (!strncasecmp(ptr, key, strlen(key)) && *(ptr + strlen(key)) == ':') {
-      size_t len;
-      char* val;
       const char* top = ptr + strlen(key) + 1;
       while (*top && isspace(*top)) top++;
       if (!*top) return NULL;
-      len = tmp - top + 1;
-      val = malloc(len);
+      const size_t len = tmp - top + 1;
+      char* val = (char*) malloc(len);
       memset(val, 0, len);
       strncpy(val, top, len-1);
       return val;
@@ -79,57 +84,39 @@ get_http_header_alloc(const char* ptr, const char* key) {
 
 static GdkPixbuf*
 url2pixbuf(const char* url, GError** error) {
+  MEMFILE* mbody;
+  MEMFILE* mhead;
+  const CURLcode res = memfile_from_url((memfile_from_url_info){
+    .url           = url,
+    .body          = &mbody,
+    .header        = &mhead,
+    .body_writer   = memfwrite,
+    .header_writer = memfwrite,
+  });
+  if (res == CURLE_FAILED_INIT) return NULL;
+
+  char* head = memfstrdup(mhead);
+  char* body = memfstrdup(mbody);
+  unsigned long size = mbody->size;
+  memfclose(mhead);
+  memfclose(mbody);
+
   GdkPixbuf* pixbuf = NULL;
   GdkPixbufLoader* loader = NULL;
   GError* _error = NULL;
 
-  CURL* curl = NULL;
-  MEMFILE* mbody;
-  MEMFILE* mhead;
-  char* head;
-  char* body;
-  unsigned long size;
-  CURLcode res = CURLE_FAILED_INIT;
-
-  curl = curl_easy_init();
-  if (!curl) return NULL;
-
-  mbody = memfopen();
-  mhead = memfopen();
-
-  curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0);
-  curl_easy_setopt(curl, CURLOPT_URL, url);
-  curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, REQUEST_TIMEOUT);
-  curl_easy_setopt(curl, CURLOPT_TIMEOUT, REQUEST_TIMEOUT);
-  curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, memfwrite);
-  curl_easy_setopt(curl, CURLOPT_WRITEDATA, mbody);
-  curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, memfwrite);
-  curl_easy_setopt(curl, CURLOPT_HEADERDATA, mhead);
-  curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1);
-  res = curl_easy_perform(curl);
-  curl_easy_cleanup(curl);
-
-  head = memfstrdup(mhead);
-  memfclose(mhead);
-  body = memfstrdup(mbody);
-  size = mbody->size;
-  memfclose(mbody);
-
   if (res == CURLE_OK) {
-    char* ctype;
-    char* csize;
-    ctype = get_http_header_alloc(head, "Content-Type");
-    csize = get_http_header_alloc(head, "Content-Length");
+    char* ctype = get_http_header_alloc(head, "Content-Type");
+    char* csize = get_http_header_alloc(head, "Content-Length");
 
 #ifdef _WIN32
     if (ctype &&
         (!strcmp(ctype, "image/jpeg") || !strcmp(ctype, "image/gif"))) {
       char temp_path[MAX_PATH];
       char temp_filename[MAX_PATH];
-      FILE* fp;
       GetTempPath(sizeof(temp_path), temp_path);
       GetTempFileName(temp_path, "growl-for-linux-", 0, temp_filename);
-      fp = fopen(temp_filename, "wb");
+      FILE* fp = fopen(temp_filename, "wb");
       if (fp) {
         fwrite(body, size, 1, fp);
         fclose(fp);
@@ -140,19 +127,15 @@ url2pixbuf(const char* url, GError** error) {
 #endif
     {
       if (ctype)
-        loader =
-          (GdkPixbufLoader*) gdk_pixbuf_loader_new_with_mime_type(ctype,
-              error);
+        loader = (GdkPixbufLoader*) gdk_pixbuf_loader_new_with_mime_type(ctype, error);
       if (csize)
         size = atol(csize);
       if (!loader) loader = gdk_pixbuf_loader_new();
-      if (body && gdk_pixbuf_loader_write(loader, (const guchar*) body,
-            size, &_error)) {
+      if (body && gdk_pixbuf_loader_write(loader, (const guchar*) body, size, &_error))
         pixbuf = gdk_pixbuf_loader_get_pixbuf(loader);
-      }
     }
-    if (ctype) free(ctype);
-    if (csize) free(csize);
+    free(ctype);
+    free(csize);
     if (loader) gdk_pixbuf_loader_close(loader, NULL);
   } else {
     _error = g_error_new_literal(G_FILE_ERROR, res,
@@ -207,12 +190,7 @@ display_animation_func(gpointer data) {
     gtk_widget_destroy(di->popup);
     di->popup = NULL;
     notifications = g_list_remove(notifications, di);
-    if (di->ni->title) g_free(di->ni->title);
-    if (di->ni->text) g_free(di->ni->text);
-    if (di->ni->icon) g_free(di->ni->icon);
-    if (di->ni->url) g_free(di->ni->url);
-    g_free(di->ni);
-    g_free(di);
+    free_display_info(di);
     return FALSE;
   }
 

@@ -30,9 +30,8 @@
 #include <curl/curl.h>
 #include "../../gol.h"
 #include "../../plugins/memfile.h"
+#include "../../plugins/from_url.h"
 #include "display_default.xpm"
-
-#define REQUEST_TIMEOUT            (5)
 
 #ifdef _WIN32
 # ifndef strncasecmp
@@ -58,6 +57,16 @@ typedef struct {
   gboolean hover;
 } DISPLAY_INFO;
 
+static void
+free_display_info(DISPLAY_INFO* di) {
+  g_free(di->ni->title);
+  g_free(di->ni->text);
+  g_free(di->ni->icon);
+  g_free(di->ni->url);
+  g_free(di->ni);
+  g_free(di);
+}
+
 static char*
 get_http_header_alloc(const char* ptr, const char* key) {
   while (*ptr) {
@@ -78,47 +87,11 @@ get_http_header_alloc(const char* ptr, const char* key) {
   return NULL;
 }
 
-typedef size_t writer_t(char*, size_t, size_t, void*);
-typedef struct
-{
-    const char* url;
-    MEMFILE**   body;
-    MEMFILE**   header;
-    writer_t*   body_writer;
-    writer_t*   header_writer;
-} url2memfile_info;
-
-static CURLcode
-url2memfile(const url2memfile_info info) {
-  CURL* curl = curl_easy_init();
-  if (!curl) return CURLE_FAILED_INIT;
-
-  *info.body = memfopen();
-  *info.header = memfopen();
-
-  curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0);
-  curl_easy_setopt(curl, CURLOPT_URL, info.url);
-  curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, REQUEST_TIMEOUT);
-  curl_easy_setopt(curl, CURLOPT_TIMEOUT, REQUEST_TIMEOUT);
-  curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, info.body_writer);
-  curl_easy_setopt(curl, CURLOPT_WRITEDATA, *info.body);
-  curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, info.header_writer);
-  curl_easy_setopt(curl, CURLOPT_HEADERDATA, *info.header);
-  curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1);
-  const CURLcode res = curl_easy_perform(curl);
-  curl_easy_cleanup(curl);
-  return res;
-}
-
 static GdkPixbuf*
 url2pixbuf(const char* url, GError** error) {
-  GdkPixbuf* pixbuf = NULL;
-  GdkPixbufLoader* loader = NULL;
-  GError* _error = NULL;
-
   MEMFILE* mbody;
   MEMFILE* mhead;
-  CURLcode res = url2memfile((url2memfile_info){
+  const CURLcode res = memfile_from_url((memfile_from_url_info){
     .url           = url,
     .body          = &mbody,
     .header        = &mhead,
@@ -132,6 +105,10 @@ url2pixbuf(const char* url, GError** error) {
   unsigned long size = mbody->size;
   memfclose(mhead);
   memfclose(mbody);
+
+  GdkPixbuf* pixbuf = NULL;
+  GdkPixbufLoader* loader = NULL;
+  GError* _error = NULL;
 
   if (res == CURLE_OK) {
     char* ctype = get_http_header_alloc(head, "Content-Type");
@@ -155,16 +132,12 @@ url2pixbuf(const char* url, GError** error) {
 #endif
     {
       if (ctype)
-        loader =
-          (GdkPixbufLoader*) gdk_pixbuf_loader_new_with_mime_type(ctype,
-              error);
+        loader = (GdkPixbufLoader*) gdk_pixbuf_loader_new_with_mime_type(ctype, error);
       if (csize)
         size = atol(csize);
       if (!loader) loader = gdk_pixbuf_loader_new();
-      if (body && gdk_pixbuf_loader_write(loader, (const guchar*) body,
-            size, &_error)) {
+      if (body && gdk_pixbuf_loader_write(loader, (const guchar*) body, size, &_error))
         pixbuf = gdk_pixbuf_loader_get_pixbuf(loader);
-      }
     }
     free(ctype);
     free(csize);
@@ -222,12 +195,7 @@ display_animation_func(gpointer data) {
   if (di->timeout < 0) {
     gtk_widget_destroy(di->popup);
     notifications = g_list_remove(notifications, di);
-    g_free(di->ni->title);
-    g_free(di->ni->text);
-    g_free(di->ni->icon);
-    g_free(di->ni->url);
-    g_free(di->ni);
-    g_free(di);
+    free_display_info(di);
     return FALSE;
   }
 
@@ -288,9 +256,7 @@ display_show(gpointer data) {
       y -= 180;
       if (y < 0) {
         x -= 200;
-        if (x < 0) {
-          return FALSE;
-        }
+        if (x < 0) return FALSE;
         y = rect.y + rect.height - 180;
       }
     }
@@ -383,7 +349,7 @@ display_show(gpointer data) {
 #ifdef _WIN32
   SetWindowPos(GDK_WINDOW_HWND(di->popup->window), HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
 #endif
-  
+
   g_timeout_add(10, display_animation_func, di);
 
   return FALSE;

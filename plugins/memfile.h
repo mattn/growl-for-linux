@@ -1,5 +1,5 @@
-#ifndef memfile_h_
-#define memfile_h_
+#ifndef plugins_memfile_h_
+#define plugins_memfile_h_
 
 typedef struct {
   char*  data;  // response data from server
@@ -18,4 +18,4 @@ memfwrite(char*, size_t, size_t, void*);
 char*
 memfstrdup(MEMFILE*);
 
-#endif /* memfile_h_ */
+#endif /* plugins_memfile_h_ */

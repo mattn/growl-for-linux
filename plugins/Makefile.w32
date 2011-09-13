@@ -3,11 +3,14 @@ PACKAGE_VERSION=$(shell cat VERSION)
 
 all: libgolplug.lib
 
-libgolplug.lib : memfile.o
-	gcc -g -o libgolplug.lib memfile.o
+libgolplug.lib : memfile.o from_url.o
+	gcc -g -o libgolplug.lib memfile.o from_url.o
 
 memfile.o : memfile.c memfile.h
 	gcc -g -Wall -c $(CFLAGS) -o memfile.o -mms-bitfields memfile.c
+
+from_url.o : from_url.c from_url.h
+	gcc -g -Wall -c $(CFLAGS) -o from_url.o -mms-bitfields from_url.c
 
 clean:
 	-rm *.o *.lib
