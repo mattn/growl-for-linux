@@ -39,6 +39,32 @@
 # endif
 #endif
 
+G_MODULE_EXPORT gboolean
+display_init() {
+  return TRUE;
+}
+
+G_MODULE_EXPORT void
+display_term() {
+}
+
+G_MODULE_EXPORT gchar*
+display_name() {
+  return "Default";
+}
+
+G_MODULE_EXPORT gchar*
+display_description() {
+  return "<span size=\"large\"><b>Default</b></span>\n"
+    "<span>This is default notification display.</span>\n"
+    "<span>Slide-up white box. And fadeout after a while.</span>\n";
+}
+
+G_MODULE_EXPORT char**
+display_thumbnail() {
+  return display_default;
+}
+
 static GList* notifications = NULL;
 
 typedef struct {
@@ -126,42 +152,59 @@ get_http_header_alloc(const char* ptr, const char* key) {
   return NULL;
 }
 
+typedef size_t writer_t(char*, size_t, size_t, void*);
+typedef struct
+{
+    const char* url;
+    MEMFILE**   body;
+    MEMFILE**   header;
+    writer_t*   body_writer;
+    writer_t*   header_writer;
+} url2memfile_info;
+
+static CURLcode
+url2memfile(const url2memfile_info info) {
+  CURL* curl = curl_easy_init();
+  if (!curl) return CURLE_FAILED_INIT;
+
+  *info.body = memfopen();
+  *info.header = memfopen();
+
+  curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0);
+  curl_easy_setopt(curl, CURLOPT_URL, info.url);
+  curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, REQUEST_TIMEOUT);
+  curl_easy_setopt(curl, CURLOPT_TIMEOUT, REQUEST_TIMEOUT);
+  curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, info.body_writer);
+  curl_easy_setopt(curl, CURLOPT_WRITEDATA, *info.body);
+  curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, info.header_writer);
+  curl_easy_setopt(curl, CURLOPT_HEADERDATA, *info.header);
+  curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1);
+  const CURLcode res = curl_easy_perform(curl);
+  curl_easy_cleanup(curl);
+  return res;
+}
+
 static GdkPixbuf*
 url2pixbuf(const char* url, GError** error) {
   GdkPixbuf* pixbuf = NULL;
   GdkPixbufLoader* loader = NULL;
   GError* _error = NULL;
 
-  CURL* curl = NULL;
   MEMFILE* mbody;
   MEMFILE* mhead;
-  char* head;
-  char* body;
-  unsigned long size;
-  CURLcode res = CURLE_FAILED_INIT;
+  CURLcode res = url2memfile((url2memfile_info){
+    .url           = url,
+    .body          = &mbody,
+    .header        = &mhead,
+    .body_writer   = memfwrite,
+    .header_writer = memfwrite,
+  });
+  if (res == CURLE_FAILED_INIT) return NULL;
 
-  curl = curl_easy_init();
-  if (!curl) return NULL;
-
-  mbody = memfopen();
-  mhead = memfopen();
-
-  curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0);
-  curl_easy_setopt(curl, CURLOPT_URL, url);
-  curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, REQUEST_TIMEOUT);
-  curl_easy_setopt(curl, CURLOPT_TIMEOUT, REQUEST_TIMEOUT);
-  curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, memfwrite);
-  curl_easy_setopt(curl, CURLOPT_WRITEDATA, mbody);
-  curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, memfwrite);
-  curl_easy_setopt(curl, CURLOPT_HEADERDATA, mhead);
-  curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1);
-  res = curl_easy_perform(curl);
-  curl_easy_cleanup(curl);
-
-  head = memfstrdup(mhead);
+  char* head = memfstrdup(mhead);
+  char* body = memfstrdup(mbody);
+  unsigned long size = mbody->size;
   memfclose(mhead);
-  body = memfstrdup(mbody);
-  size = mbody->size;
   memfclose(mbody);
 
   if (res == CURLE_OK) {
@@ -201,8 +244,7 @@ url2pixbuf(const char* url, GError** error) {
     free(csize);
     if (loader) gdk_pixbuf_loader_close(loader, NULL);
   } else {
-    _error = g_error_new_literal(G_FILE_ERROR, res,
-    curl_easy_strerror(res));
+    _error = g_error_new_literal(G_FILE_ERROR, res, curl_easy_strerror(res));
   }
 
   free(head);
@@ -288,44 +330,43 @@ G_MODULE_EXPORT gboolean
 display_show(gpointer data) {
   NOTIFICATION_INFO* ni = (NOTIFICATION_INFO*) data;
 
-  GdkColor color;
-  GtkWidget* vbox;
-  GtkWidget* hbox;
-  GtkWidget* label;
-  GtkWidget* image;
-  GdkScreen* screen;
-  gint n, pos, len;
-  gint x, y;
-  gint monitor_num;
-  GdkRectangle rect;
-
   DISPLAY_INFO* di = g_new0(DISPLAY_INFO, 1);
-  if (!di) {
-    perror("g_new0");
-    return FALSE;
+  {
+    if (!di) {
+      perror("g_new0");
+      return FALSE;
+    }
+  }
+
+  gint pos;
+  {
+    const gint len = g_list_length(notifications);
+    for (pos = 0; pos < len; pos++) {
+      const DISPLAY_INFO* p = g_list_nth_data(notifications, pos);
+      if (pos != p->pos) break;
+    }
   }
   di->ni = ni;
 
-  len = g_list_length(notifications);
-  for (pos = 0; pos < len; pos++) {
-    DISPLAY_INFO* p = g_list_nth_data(notifications, pos);
-    if (pos != p->pos) break;
+  GdkRectangle rect;
+  {
+    GdkScreen* screen = gdk_screen_get_default();
+    const gint monitor_num = gdk_screen_get_primary_monitor(screen);
+    gdk_screen_get_monitor_geometry(screen, monitor_num, &rect);
   }
 
-  screen = gdk_screen_get_default();
-  monitor_num = gdk_screen_get_primary_monitor(screen);
-  gdk_screen_get_monitor_geometry(screen, monitor_num, &rect);
-
-  x = rect.x + rect.width - 180;
-  y = rect.y + rect.height - 180;
-  for (n = 0; n < pos; n++) {
-    y -= 180;
-    if (y < 0) {
-      x -= 200;
-      if (x < 0) {
-        return FALSE;
+  gint x = rect.x + rect.width - 180;
+  gint y = rect.y + rect.height - 180;
+  {
+    for (gint n = 0; n < pos; n++) {
+      y -= 180;
+      if (y < 0) {
+        x -= 200;
+        if (x < 0) {
+          return FALSE;
+        }
+        y = rect.y + rect.height - 180;
       }
-      y = rect.y + rect.height - 180;
     }
   }
 
@@ -340,6 +381,7 @@ display_show(gpointer data) {
   gtk_window_set_decorated(GTK_WINDOW(di->popup), FALSE);
   gtk_window_set_keep_above(GTK_WINDOW(di->popup), TRUE);
 
+  GdkColor color;
   gtk_window_stick(GTK_WINDOW(di->popup));
   gtk_window_set_opacity(GTK_WINDOW(di->popup), 0.8);
   gdk_color_parse("lightgray", &color);
@@ -349,11 +391,11 @@ display_show(gpointer data) {
   gtk_event_box_set_visible_window(GTK_EVENT_BOX(ebox), FALSE);
   gtk_container_add(GTK_CONTAINER(di->popup), ebox);
 
-  vbox = gtk_vbox_new(FALSE, 5);
+  GtkWidget* vbox = gtk_vbox_new(FALSE, 5);
   gtk_container_set_border_width(GTK_CONTAINER(vbox), 5);
   gtk_container_add(GTK_CONTAINER(ebox), vbox);
 
-  hbox = gtk_hbox_new(FALSE, 5);
+  GtkWidget* hbox = gtk_hbox_new(FALSE, 5);
   gtk_box_pack_start(GTK_BOX(vbox), hbox, FALSE, TRUE, 0);
 
   if (di->ni->icon && *di->ni->icon) {
@@ -362,28 +404,28 @@ display_show(gpointer data) {
       gchar* newurl = g_filename_from_uri(di->ni->icon, NULL, NULL);
       GError* error = NULL;
       pixbuf = gdk_pixbuf_new_from_file(newurl ? newurl : di->ni->icon, &error);
-      if (newurl) g_free(newurl);
-    } else
+      g_free(newurl);
+    } else {
       pixbuf = url2pixbuf(di->ni->icon, NULL);
+    }
+
     if (pixbuf) {
       GdkPixbuf* tmp = gdk_pixbuf_scale_simple(pixbuf, 32, 32, GDK_INTERP_TILES);
       if (tmp) {
         g_object_unref(pixbuf);
         pixbuf = tmp;
       }
-      image = gtk_image_new_from_pixbuf(pixbuf);
+      GtkWidget* image = gtk_image_new_from_pixbuf(pixbuf);
       gtk_container_add(GTK_CONTAINER(hbox), image);
       g_object_unref(pixbuf);
     }
   }
 
-  PangoFontDescription* font_desc;
-
-  font_desc = pango_font_description_new();
+  PangoFontDescription* font_desc = pango_font_description_new();
   pango_font_description_set_family(font_desc, "Sans");
   pango_font_description_set_size(font_desc, 12 * PANGO_SCALE);
 
-  label = gtk_label_new(di->ni->title);
+  GtkWidget* label = gtk_label_new(di->ni->title);
   gdk_color_parse("black", &color);
   gtk_widget_modify_fg(label, GTK_STATE_NORMAL, &color);
   gtk_widget_modify_font(label, font_desc);
@@ -404,8 +446,6 @@ display_show(gpointer data) {
   gtk_label_set_line_wrap_mode(GTK_LABEL(label), PANGO_WRAP_CHAR);
   gtk_box_pack_start(GTK_BOX(vbox), label, FALSE, FALSE, 0);
 
-  gtk_widget_modify_font(label, font_desc);
-
   gtk_widget_set_size_request(di->popup, 180, 1);
 
   g_signal_connect(G_OBJECT(ebox), "button-press-event", G_CALLBACK(display_clicked), di);
@@ -425,32 +465,6 @@ display_show(gpointer data) {
   g_timeout_add(10, display_animation_func, di);
 
   return FALSE;
-}
-
-G_MODULE_EXPORT gboolean
-display_init() {
-  return TRUE;
-}
-
-G_MODULE_EXPORT void
-display_term() {
-}
-
-G_MODULE_EXPORT gchar*
-display_name() {
-  return "Default";
-}
-
-G_MODULE_EXPORT gchar*
-display_description() {
-  return "<span size=\"large\"><b>Default</b></span>\n"
-    "<span>This is default notification display.</span>\n"
-    "<span>Slide-up white box. And fadeout after a while.</span>\n";
-}
-
-G_MODULE_EXPORT char**
-display_thumbnail() {
-  return display_default;
 }
 
 // vim:set et sw=2 ts=2 ai:
