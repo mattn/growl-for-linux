@@ -454,14 +454,15 @@ G_MODULE_EXPORT void
 display_term() {
 }
 
-G_MODULE_EXPORT gchar*
+G_MODULE_EXPORT const gchar*
 display_name() {
   return "Balloon";
 }
 
-G_MODULE_EXPORT gchar*
+G_MODULE_EXPORT const gchar*
 display_description() {
-  return "<span size=\"large\"><b>Balloon</b></span>\n"
+  return
+    "<span size=\"large\"><b>Balloon</b></span>\n"
     "<span>This is balloon notification display.</span>\n"
     "<span>Fade-in black box. And fadeout after a while.</span>\n";
 }

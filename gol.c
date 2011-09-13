@@ -89,8 +89,8 @@ typedef struct {
   gboolean (*start)();
   gboolean (*stop)();
   gboolean (*term)();
-  gchar* (*name)();
-  gchar* (*description)();
+  const gchar* (*name)();
+  const gchar* (*description)();
   gchar** (*thumbnail)();
 } SUBSCRIBE_PLUGIN;
 
@@ -99,8 +99,8 @@ typedef struct {
   gboolean (*init)();
   gboolean (*show)(NOTIFICATION_INFO* ni);
   gboolean (*term)();
-  gchar* (*name)();
-  gchar* (*description)();
+  const gchar* (*name)();
+  const gchar* (*description)();
   gchar** (*thumbnail)();
 } DISPLAY_PLUGIN;
 

@@ -225,14 +225,15 @@ subscribe_stop() {
   enable = FALSE;
 }
 
-G_MODULE_EXPORT gchar*
+G_MODULE_EXPORT const gchar*
 subscribe_name() {
   return "Tweets";
 }
 
-G_MODULE_EXPORT gchar*
+G_MODULE_EXPORT const gchar*
 subscribe_description() {
-  return "<span size=\"large\"><b>Tweets</b></span>\n"
+  return
+    "<span size=\"large\"><b>Tweets</b></span>\n"
     "<span>This is tweets subscriber.</span>\n"
     "<span>Polling twitter timeline, and show notification.</span>\n"
     "<span>Currently, fetching public timeline.</span>\n";

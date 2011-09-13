@@ -39,40 +39,12 @@
 # endif
 #endif
 
+static GList* notifications = NULL;
+
 static GdkColor inst_color_lightgray_;
 static GdkColor inst_color_black_;
-static const GdkColor* color_lightgray = &inst_color_lightgray_;
-static const GdkColor* color_black     = &inst_color_black_;
-
-G_MODULE_EXPORT gboolean
-display_init() {
-  gdk_color_parse("lightgray", &inst_color_lightgray_);
-  gdk_color_parse("black", &inst_color_black_);
-  return TRUE;
-}
-
-G_MODULE_EXPORT void
-display_term() {
-}
-
-G_MODULE_EXPORT gchar*
-display_name() {
-  return "Default";
-}
-
-G_MODULE_EXPORT gchar*
-display_description() {
-  return "<span size=\"large\"><b>Default</b></span>\n"
-    "<span>This is default notification display.</span>\n"
-    "<span>Slide-up white box. And fadeout after a while.</span>\n";
-}
-
-G_MODULE_EXPORT char**
-display_thumbnail() {
-  return display_default;
-}
-
-static GList* notifications = NULL;
+static const GdkColor* const color_lightgray = &inst_color_lightgray_;
+static const GdkColor* const color_black     = &inst_color_black_;
 
 typedef struct {
   NOTIFICATION_INFO* ni;
@@ -468,6 +440,35 @@ display_show(gpointer data) {
   g_timeout_add(10, display_animation_func, di);
 
   return FALSE;
+}
+
+G_MODULE_EXPORT gboolean
+display_init() {
+  gdk_color_parse("lightgray", &inst_color_lightgray_);
+  gdk_color_parse("black", &inst_color_black_);
+  return TRUE;
+}
+
+G_MODULE_EXPORT void
+display_term() {
+}
+
+G_MODULE_EXPORT const gchar*
+display_name() {
+  return "Default";
+}
+
+G_MODULE_EXPORT const gchar*
+display_description() {
+  return
+    "<span size=\"large\"><b>Default</b></span>\n"
+    "<span>This is default notification display.</span>\n"
+    "<span>Slide-up white box. And fadeout after a while.</span>\n";
+}
+
+G_MODULE_EXPORT char**
+display_thumbnail() {
+  return display_default;
 }
 
 // vim:set et sw=2 ts=2 ai:

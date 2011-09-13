@@ -401,14 +401,15 @@ G_MODULE_EXPORT void
 display_term() {
 }
 
-G_MODULE_EXPORT gchar*
+G_MODULE_EXPORT const gchar*
 display_name() {
   return "Nico2";
 }
 
-G_MODULE_EXPORT gchar*
+G_MODULE_EXPORT const gchar*
 display_description() {
-  return "<span size=\"large\"><b>Nico2</b></span>\n"
+  return
+    "<span size=\"large\"><b>Nico2</b></span>\n"
     "<span>This is nico2 notification display.</span>\n"
     "<span>Slide notification from right to left similar to nico nico douga.</span>\n";
 }

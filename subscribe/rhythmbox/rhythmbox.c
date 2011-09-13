@@ -370,14 +370,15 @@ subscribe_stop() {
   enable = FALSE;
 }
 
-G_MODULE_EXPORT gchar*
+G_MODULE_EXPORT const gchar*
 subscribe_name() {
   return "Rhythmbox";
 }
 
-G_MODULE_EXPORT gchar*
+G_MODULE_EXPORT const gchar*
 subscribe_description() {
-  return "<span size=\"large\"><b>Rhythmbox</b></span>\n"
+  return
+    "<span size=\"large\"><b>Rhythmbox</b></span>\n"
     "<span>This is rhythmbox subscriber.</span>\n"
     "<span>Show now playing music in rhythmbox.</span>\n";
 }
