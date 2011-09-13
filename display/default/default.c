@@ -39,8 +39,15 @@
 # endif
 #endif
 
+static GdkColor inst_color_lightgray_;
+static GdkColor inst_color_black_;
+static const GdkColor* color_lightgray = &inst_color_lightgray_;
+static const GdkColor* color_black     = &inst_color_black_;
+
 G_MODULE_EXPORT gboolean
 display_init() {
+  gdk_color_parse("lightgray", &inst_color_lightgray_);
+  gdk_color_parse("black", &inst_color_black_);
   return TRUE;
 }
 
@@ -381,11 +388,9 @@ display_show(gpointer data) {
   gtk_window_set_decorated(GTK_WINDOW(di->popup), FALSE);
   gtk_window_set_keep_above(GTK_WINDOW(di->popup), TRUE);
 
-  GdkColor color;
   gtk_window_stick(GTK_WINDOW(di->popup));
   gtk_window_set_opacity(GTK_WINDOW(di->popup), 0.8);
-  gdk_color_parse("lightgray", &color);
-  gtk_widget_modify_bg(di->popup, GTK_STATE_NORMAL, &color);
+  gtk_widget_modify_bg(di->popup, GTK_STATE_NORMAL, color_lightgray);
 
   GtkWidget* ebox = gtk_event_box_new();
   gtk_event_box_set_visible_window(GTK_EVENT_BOX(ebox), FALSE);
@@ -426,8 +431,7 @@ display_show(gpointer data) {
   pango_font_description_set_size(font_desc, 12 * PANGO_SCALE);
 
   GtkWidget* label = gtk_label_new(di->ni->title);
-  gdk_color_parse("black", &color);
-  gtk_widget_modify_fg(label, GTK_STATE_NORMAL, &color);
+  gtk_widget_modify_fg(label, GTK_STATE_NORMAL, color_black);
   gtk_widget_modify_font(label, font_desc);
   gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, FALSE, 0);
 
@@ -438,8 +442,7 @@ display_show(gpointer data) {
   pango_font_description_set_size(font_desc, 8 * PANGO_SCALE);
 
   label = gtk_label_new(di->ni->text);
-  gdk_color_parse("black", &color);
-  gtk_widget_modify_fg(label, GTK_STATE_NORMAL, &color);
+  gtk_widget_modify_fg(label, GTK_STATE_NORMAL, color_black);
   gtk_widget_modify_font(label, font_desc);
   g_signal_connect(G_OBJECT(label), "size-allocate", G_CALLBACK(label_size_allocate), NULL);
   gtk_label_set_line_wrap(GTK_LABEL(label), TRUE);
