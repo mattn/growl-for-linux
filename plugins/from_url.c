@@ -15,6 +15,12 @@
 #include "memfile.h"
 #include "from_url.h"
 
+#ifdef _WIN32
+# ifndef strncasecmp
+#  define strncasecmp(d,s,n) strnicmp(d,s,n)
+# endif
+#endif
+
 #define REQUEST_TIMEOUT (5)
 
 CURLcode
