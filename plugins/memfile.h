@@ -12,6 +12,33 @@ typedef struct {
   size_t size;  // response size of data
 } MEMFILE;
 
+static const char*
+memfcdata(const MEMFILE* mf) {
+  return mf ? mf->data : NULL;
+}
+
+static char*
+memfdata(MEMFILE* mf) {
+  return mf ? mf->data : NULL;
+}
+
+static size_t
+memfsize(const MEMFILE* mf) {
+  return mf ? mf->size : 0;
+}
+
+char*
+memfresize(MEMFILE*, size_t);
+
+static MEMFILE*
+memfrelease(MEMFILE** pmf) {
+  if (!pmf) return NULL;
+
+  MEMFILE* const tmp = *pmf;
+  *pmf = NULL;
+  return tmp;
+}
+
 MEMFILE*
 memfopen();
 

@@ -23,6 +23,7 @@ typedef struct
     size_t (*header_writer)(const char*, size_t, size_t, void*);
 } memfile_from_url_info;
 
+// *body* and *header* field are not modified when error.
 CURLcode
 memfile_from_url(memfile_from_url_info);
 
