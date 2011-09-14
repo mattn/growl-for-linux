@@ -145,13 +145,14 @@ display_show(gpointer data) {
     return FALSE;
   }
 
-  gint pos = 0;
-  gint
-  is_field_cavity(gconstpointer p, gconstpointer _unused) {
-    const DISPLAY_INFO* di = (const DISPLAY_INFO*) p;
-    return pos == di->pos;
+  gint pos;
+  {
+    const gint len = g_list_length(notifications);
+    for (pos = 0; pos < len; pos++) {
+      const DISPLAY_INFO* p = g_list_nth_data(notifications, pos);
+      if (pos != p->pos) break;
+    }
   }
-  g_list_find_custom(notifications, NULL, is_field_cavity);
   di->ni = ni;
 
   gint x = screen_rect.x + screen_rect.width - 180;
