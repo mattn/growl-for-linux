@@ -1,16 +1,25 @@
-CFLAGS=
-PACKAGE_VERSION=$(shell cat VERSION)
+PACKAGE_VERSION=$(shell cat ../VERSION)
+CFLAGS=-g -Wall -std=c99 -DPACKAGE_VERSION=\"$(PACKAGE_VERSION)\" \
+  -mms-bitfields -Ic:/gtk/include/gtk-2.0 -Ic:/gtk/lib/gtk-2.0/include -Ic:/gtk/include/atk-1.0 -Ic:/gtk/include/cairo -Ic:/gtk/include/pango-1.0 -Ic:/gtk/include/glib-2.0 -Ic:/gtk/lib/glib-2.0/include -Ic:/gtk/include/freetype2 -Ic:/gtk/include -Ic:/gtk/include/libpng14 -Ic:/gtk/include/libxml2 \
+  -Ic:/openssl-win32/include
+LDFLAGS=-Lc:/gtk/lib \
+  -Lc:/gtk/lib -lgtk-win32-2.0 -lgdk-win32-2.0 -latk-1.0 -lgio-2.0 -lgdk_pixbuf-2.0 -lpangowin32-1.0 -lgdi32 -lpangocairo-1.0 -lpango-1.0 -lcairo -lgobject-2.0 -lgmodule-2.0 -lxml2 -lgthread-2.0 -lglib-2.0 -lws2_32 -lintl \
+  -Lc:/openssl-win32/lib/mingw \
+  -leay32 \
+  -lshell32 \
+  -lsqlite3 \
+  -lcurldll
 
-all: libgolplug.lib
+all: libgolplug.a
 
-libgolplug.lib : memfile.o from_url.o
-	gcc -g -o libgolplug.lib memfile.o from_url.o
+libgolplug.a : memfile.o from_url.o
+	ar crv libgolplug.a memfile.o from_url.o
 
 memfile.o : memfile.c memfile.h
-	gcc -g -Wall -c $(CFLAGS) -o memfile.o -mms-bitfields memfile.c
+	gcc -c $(CFLAGS) -o memfile.o -mms-bitfields memfile.c
 
 from_url.o : from_url.c from_url.h
-	gcc -g -Wall -c $(CFLAGS) -o from_url.o -mms-bitfields from_url.c
+	gcc -c $(CFLAGS) -o from_url.o -mms-bitfields from_url.c
 
 clean:
 	-rm *.o *.lib
