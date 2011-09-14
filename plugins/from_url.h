@@ -3,6 +3,9 @@
 
 #include <stddef.h>
 
+#include <glib.h>
+#include <gdk-pixbuf/gdk-pixbuf.h>
+
 #include <curl/curl.h>
 
 #include "memfile.h"
@@ -18,5 +21,8 @@ typedef struct
 
 CURLcode
 memfile_from_url(memfile_from_url_info);
+
+GdkPixbuf*
+pixbuf_from_url(const char*, GError**);
 
 #endif /* plugins_from_url_h_ */
