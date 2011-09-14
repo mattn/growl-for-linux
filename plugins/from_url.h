@@ -10,6 +10,10 @@
 
 #include "memfile.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef struct
 {
     const char* url;
@@ -25,4 +29,9 @@ memfile_from_url(memfile_from_url_info);
 GdkPixbuf*
 pixbuf_from_url(const char*, GError**);
 
+#ifdef __cplusplus
+}
+#endif
+
 #endif /* plugins_from_url_h_ */
+
