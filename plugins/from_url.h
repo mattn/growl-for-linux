@@ -19,8 +19,8 @@ typedef struct
     const char* url;
     MEMFILE**   body;
     MEMFILE**   header;
-    size_t (*body_writer)(char*, size_t, size_t, void*);
-    size_t (*header_writer)(char*, size_t, size_t, void*);
+    size_t (*body_writer)(const char*, size_t, size_t, void*);
+    size_t (*header_writer)(const char*, size_t, size_t, void*);
 } memfile_from_url_info;
 
 CURLcode

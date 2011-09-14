@@ -1,6 +1,8 @@
 #ifndef _gol_h_
 #define _gol_h_
 
+#include <glib.h>
+
 typedef struct {
   gchar* title;
   gchar* text;
@@ -15,3 +17,4 @@ typedef struct {
 } SUBSCRIPTOR_CONTEXT;
 
 #endif /* _gol_h_ */
+

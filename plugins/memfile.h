@@ -19,10 +19,10 @@ void
 memfclose(MEMFILE*);
 
 size_t
-memfwrite(char*, size_t, size_t, void*);
+memfwrite(const char*, size_t, size_t, void*);
 
 char*
-memfstrdup(MEMFILE*);
+memfstrdup(const MEMFILE*);
 
 #ifdef __cplusplus
 }
