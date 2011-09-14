@@ -40,20 +40,21 @@ memfile_from_url(const memfile_from_url_info info) {
 
 static char*
 get_http_header_alloc(const char* ptr, const char* key) {
-  while (*ptr) {
-    const char* tmp = strpbrk(ptr, "\r\n");
-    if (!tmp) break;
-    if (!strncasecmp(ptr, key, strlen(key)) && *(ptr + strlen(key)) == ':') {
-      const char* top = ptr + strlen(key) + 1;
-      while (*top && isspace(*top)) top++;
-      if (!*top) return NULL;
-      const size_t len = tmp - top + 1;
-      char* val = malloc(len);
-      strncpy(val, top, len-1);
-      val[len-1] = 0;
-      return val;
-    }
-    ptr = tmp + 1;
+  const size_t key_length = strlen(key);
+  for (const char* tmp; *ptr && (tmp = strpbrk(ptr, "\r\n")); ptr = tmp + 1) {
+    if (*(ptr + key_length) != ':' || strncasecmp(ptr, key, key_length))
+      continue;
+
+    // remove leading spaces
+    const char* top = ptr + key_length + 1;
+    while (*top && isspace(*top)) top++;
+    if (!*top) break;
+
+    const size_t len = tmp - top;
+    char* val = malloc(len + 1);
+    strncpy(val, top, len);
+    val[len] = 0;
+    return val;
   }
   return NULL;
 }
