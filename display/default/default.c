@@ -20,13 +20,11 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+#include <stdio.h>
 #include <gtk/gtk.h>
 #ifdef _WIN32
 # include <gdk/gdkwin32.h>
 #endif
-#include <ctype.h>
-#include <stdlib.h>
-#include <memory.h>
 #include <curl/curl.h>
 #include "../../gol.h"
 #include "../../plugins/from_url.h"
@@ -47,6 +45,8 @@ static const GdkColor* const color_black     = &inst_color_black_;
 
 static PangoFontDescription* font_sans12_desc;
 static PangoFontDescription* font_sans8_desc;
+
+static GdkRectangle screen_rect;
 
 typedef struct {
   NOTIFICATION_INFO* ni;
@@ -155,22 +155,15 @@ display_show(gpointer data) {
   }
   di->ni = ni;
 
-  GdkRectangle rect;
-  {
-    GdkScreen* screen = gdk_screen_get_default();
-    const gint monitor_num = gdk_screen_get_primary_monitor(screen);
-    gdk_screen_get_monitor_geometry(screen, monitor_num, &rect);
-  }
-
-  gint x = rect.x + rect.width - 180;
-  gint y = rect.y + rect.height - 180;
+  gint x = screen_rect.x + screen_rect.width - 180;
+  gint y = screen_rect.y + screen_rect.height - 180;
   {
     for (gint n = 0; n < pos; n++) {
       y -= 180;
       if (y < 0) {
         x -= 200;
         if (x < 0) return FALSE;
-        y = rect.y + rect.height - 180;
+        y = screen_rect.y + screen_rect.height - 180;
       }
     }
   }
@@ -270,6 +263,10 @@ display_init() {
   font_sans8_desc = pango_font_description_new();
   pango_font_description_set_family(font_sans8_desc, "Sans");
   pango_font_description_set_size(font_sans8_desc, 8 * PANGO_SCALE);
+
+  GdkScreen* screen = gdk_screen_get_default();
+  const gint monitor_num = gdk_screen_get_primary_monitor(screen);
+  gdk_screen_get_monitor_geometry(screen, monitor_num, &screen_rect);
 
   return TRUE;
 }
