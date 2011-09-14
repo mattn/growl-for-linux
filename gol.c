@@ -34,6 +34,7 @@
 #endif
 #include <stddef.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdarg.h>
 #include <ctype.h>
 #include <stdio.h>
@@ -1030,7 +1031,7 @@ str_swap(char ** restrict _left, char ** restrict _right)
 
 static gpointer
 gntp_recv_proc(gpointer user_data) {
-  int sock = (int) user_data;
+  int sock = (int)(intptr_t) user_data;
   bool is_local_app = false;
 
   struct sockaddr_in client;
@@ -1657,7 +1658,7 @@ gntp_accepted(GIOChannel* const source, GIOCondition condition, gpointer user_da
   }
 
 #ifdef G_THREADS_ENABLED
-  g_thread_create(gntp_recv_proc, (gpointer) sock, FALSE, NULL);
+  g_thread_create(gntp_recv_proc, (gpointer)(intptr_t) sock, FALSE, NULL);
 #else
   gntp_recv_proc((gpointer) sock);
 #endif
