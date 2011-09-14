@@ -78,21 +78,18 @@ pixbuf_from_url(const char* url, GError** error) {
   memfclose(mbody);
 
   GdkPixbuf* pixbuf = NULL;
-  GdkPixbufLoader* loader = NULL;
-  GError* _error = NULL;
 
   if (res == CURLE_OK) {
     char* ctype = get_http_header_alloc(head, "Content-Type");
     char* csize = get_http_header_alloc(head, "Content-Length");
 
 #ifdef _WIN32
-    if (ctype &&
-        (!strcmp(ctype, "image/jpeg") || !strcmp(ctype, "image/gif"))) {
+    if (ctype && (!strcmp(ctype, "image/jpeg") || !strcmp(ctype, "image/gif"))) {
       char temp_path[MAX_PATH];
       char temp_filename[MAX_PATH];
       GetTempPath(sizeof(temp_path), temp_path);
       GetTempFileName(temp_path, "growl-for-linux-", 0, temp_filename);
-      FILE* fp = fopen(temp_filename, "wb");
+      FILE* const fp = fopen(temp_filename, "wb");
       if (fp) {
         fwrite(body, size, 1, fp);
         fclose(fp);
@@ -102,26 +99,30 @@ pixbuf_from_url(const char* url, GError** error) {
     } else
 #endif
     {
-      if (ctype)
-        loader = (GdkPixbufLoader*) gdk_pixbuf_loader_new_with_mime_type(ctype, error);
-      if (csize)
-        size = atol(csize);
-      if (!loader) loader = gdk_pixbuf_loader_new();
+      GdkPixbufLoader* const loader =
+        ctype ? gdk_pixbuf_loader_new_with_mime_type(ctype, error)
+              : gdk_pixbuf_loader_new();
+      if (csize) size = atol(csize);
+
+      GError* _error = NULL;
       if (body && gdk_pixbuf_loader_write(loader, (const guchar*) body, size, &_error))
         pixbuf = gdk_pixbuf_loader_get_pixbuf(loader);
+      else if (error)
+        *error = _error;
+      else if (_error)
+        g_error_free(_error);
+
+      if (loader) gdk_pixbuf_loader_close(loader, NULL);
     }
     free(ctype);
     free(csize);
-    if (loader) gdk_pixbuf_loader_close(loader, NULL);
-  } else {
-    _error = g_error_new_literal(G_FILE_ERROR, res, curl_easy_strerror(res));
+  } else if (error) {
+    *error = g_error_new_literal(G_FILE_ERROR, res, curl_easy_strerror(res));
   }
 
   free(head);
   free(body);
 
-  /* cleanup callback data */
-  if (error && _error) *error = _error;
   return pixbuf;
 }
 
