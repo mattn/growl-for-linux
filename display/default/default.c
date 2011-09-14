@@ -45,6 +45,9 @@ static GdkColor inst_color_black_;
 static const GdkColor* const color_lightgray = &inst_color_lightgray_;
 static const GdkColor* const color_black     = &inst_color_black_;
 
+static PangoFontDescription* font_sans12_desc;
+static PangoFontDescription* font_sans8_desc;
+
 typedef struct {
   NOTIFICATION_INFO* ni;
   gint pos;
@@ -137,11 +140,9 @@ display_show(gpointer data) {
   NOTIFICATION_INFO* ni = (NOTIFICATION_INFO*) data;
 
   DISPLAY_INFO* di = g_new0(DISPLAY_INFO, 1);
-  {
-    if (!di) {
-      perror("g_new0");
-      return FALSE;
-    }
+  if (!di) {
+    perror("g_new0");
+    return FALSE;
   }
 
   gint pos;
@@ -223,24 +224,14 @@ display_show(gpointer data) {
     }
   }
 
-  PangoFontDescription* font_desc = pango_font_description_new();
-  pango_font_description_set_family(font_desc, "Sans");
-  pango_font_description_set_size(font_desc, 12 * PANGO_SCALE);
-
   GtkWidget* label = gtk_label_new(di->ni->title);
   gtk_widget_modify_fg(label, GTK_STATE_NORMAL, color_black);
-  gtk_widget_modify_font(label, font_desc);
+  gtk_widget_modify_font(label, font_sans12_desc);
   gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, FALSE, 0);
-
-  pango_font_description_free(font_desc);
-
-  font_desc = pango_font_description_new();
-  pango_font_description_set_family(font_desc, "Sans");
-  pango_font_description_set_size(font_desc, 8 * PANGO_SCALE);
 
   label = gtk_label_new(di->ni->text);
   gtk_widget_modify_fg(label, GTK_STATE_NORMAL, color_black);
-  gtk_widget_modify_font(label, font_desc);
+  gtk_widget_modify_font(label, font_sans8_desc);
   g_signal_connect(G_OBJECT(label), "size-allocate", G_CALLBACK(label_size_allocate), NULL);
   gtk_label_set_line_wrap(GTK_LABEL(label), TRUE);
   gtk_label_set_line_wrap_mode(GTK_LABEL(label), PANGO_WRAP_CHAR);
@@ -271,11 +262,22 @@ G_MODULE_EXPORT gboolean
 display_init() {
   gdk_color_parse("lightgray", &inst_color_lightgray_);
   gdk_color_parse("black", &inst_color_black_);
+
+  font_sans12_desc = pango_font_description_new();
+  pango_font_description_set_family(font_sans12_desc, "Sans");
+  pango_font_description_set_size(font_sans12_desc, 12 * PANGO_SCALE);
+
+  font_sans8_desc = pango_font_description_new();
+  pango_font_description_set_family(font_sans8_desc, "Sans");
+  pango_font_description_set_size(font_sans8_desc, 8 * PANGO_SCALE);
+
   return TRUE;
 }
 
 G_MODULE_EXPORT void
 display_term() {
+  pango_font_description_free(font_sans12_desc);
+  pango_font_description_free(font_sans8_desc);
 }
 
 G_MODULE_EXPORT const gchar*
