@@ -138,16 +138,16 @@ display_show(gpointer data) {
     perror("g_new0");
     return FALSE;
   }
+  di->ni = ni;
 
   gint pos;
   {
     const gint len = g_list_length(notifications);
     for (pos = 0; pos < len; pos++) {
-      const DISPLAY_INFO* p = g_list_nth_data(notifications, pos);
+      const DISPLAY_INFO* const p = g_list_nth_data(notifications, pos);
       if (pos != p->pos) break;
     }
   }
-  di->ni = ni;
 
   gint x = screen_rect.x + screen_rect.width - 180;
   gint y = screen_rect.y + screen_rect.height - 180;
@@ -258,7 +258,7 @@ display_init() {
   pango_font_description_set_family(font_sans8_desc, "Sans");
   pango_font_description_set_size(font_sans8_desc, 8 * PANGO_SCALE);
 
-  GdkScreen* screen = gdk_screen_get_default();
+  GdkScreen* const screen = gdk_screen_get_default();
   const gint monitor_num = gdk_screen_get_primary_monitor(screen);
   gdk_screen_get_monitor_geometry(screen, monitor_num, &screen_rect);
 

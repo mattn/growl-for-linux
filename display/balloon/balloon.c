@@ -38,6 +38,14 @@ static GdkPixmap* pixmap = NULL;
 static GdkBitmap* bitmap = NULL;
 static gint pixmap_width, pixmap_height;
 
+static GdkColor inst_color_white_;
+static const GdkColor* const color_white = &inst_color_white_;
+
+static PangoFontDescription* font_sans12_desc;
+static PangoFontDescription* font_sans8_desc;
+
+static GdkRectangle screen_rect;
+
 typedef struct {
   NOTIFICATION_INFO* ni;
   gint pos;
@@ -140,17 +148,6 @@ label_size_allocate(GtkWidget* label, GtkAllocation* allocation, gpointer data) 
 
 G_MODULE_EXPORT gboolean
 display_show(NOTIFICATION_INFO* ni) {
-  GdkColor color;
-  GtkWidget* vbox;
-  GtkWidget* hbox;
-  GtkWidget* label;
-  GtkWidget* image;
-  GdkScreen* screen;
-  gint n, pos, len;
-  gint x, y;
-  gint monitor_num;
-  GdkRectangle rect;
-
   DISPLAY_INFO* di = g_new0(DISPLAY_INFO, 1);
   if (!di) {
     perror("g_new0");
@@ -158,26 +155,23 @@ display_show(NOTIFICATION_INFO* ni) {
   }
   di->ni = ni;
 
-  len = g_list_length(notifications);
-  for (pos = 0; pos < len; pos++) {
-    DISPLAY_INFO* p = g_list_nth_data(notifications, pos);
-    if (pos != p->pos) break;
+  gint pos;
+  {
+    const gint len = g_list_length(notifications);
+    for (pos = 0; pos < len; pos++) {
+      const DISPLAY_INFO* const p = g_list_nth_data(notifications, pos);
+      if (pos != p->pos) break;
+    }
   }
 
-  screen = gdk_screen_get_default();
-  monitor_num = gdk_screen_get_primary_monitor(screen);
-  gdk_screen_get_monitor_geometry(screen, monitor_num, &rect);
-
-  x = rect.x + rect.width - 250;
-  y = rect.y + rect.height - 110;
-  for (n = 0; n < pos; n++) {
+  gint x = screen_rect.x + screen_rect.width - 250;
+  gint y = screen_rect.y + screen_rect.height - 110;
+  for (gint n = 0; n < pos; n++) {
     y -= 110;
     if (y < 0) {
       x -= 250;
-      if (x < 0) {
-        return FALSE;
-      }
-      y = rect.y + rect.height - 110;
+      if (x < 0) return FALSE;
+      y = screen_rect.y + screen_rect.height - 110;
     }
   }
 
@@ -198,11 +192,11 @@ display_show(NOTIFICATION_INFO* ni) {
   gtk_event_box_set_visible_window(GTK_EVENT_BOX(ebox), FALSE);
   gtk_container_add(GTK_CONTAINER(di->popup), ebox);
 
-  vbox = gtk_vbox_new(FALSE, 5);
+  GtkWidget* vbox = gtk_vbox_new(FALSE, 5);
   gtk_container_set_border_width(GTK_CONTAINER(vbox), 18);
   gtk_container_add(GTK_CONTAINER(ebox), vbox);
 
-  hbox = gtk_hbox_new(FALSE, 5);
+  GtkWidget* hbox = gtk_hbox_new(FALSE, 5);
   gtk_box_pack_start(GTK_BOX(vbox), hbox, FALSE, TRUE, 0);
 
   if (di->ni->icon && *di->ni->icon) {
@@ -211,55 +205,40 @@ display_show(NOTIFICATION_INFO* ni) {
       gchar* newurl = g_filename_from_uri(di->ni->icon, NULL, NULL);
       GError* error = NULL;
       pixbuf = gdk_pixbuf_new_from_file(newurl ? newurl : di->ni->icon, &error);
-      if (newurl) g_free(newurl);
-    } else
+      g_free(newurl);
+    } else {
       pixbuf = pixbuf_from_url(di->ni->icon, NULL);
+    }
+
     if (pixbuf) {
       GdkPixbuf* tmp = gdk_pixbuf_scale_simple(pixbuf, 32, 32, GDK_INTERP_TILES);
       if (tmp) {
         g_object_unref(pixbuf);
         pixbuf = tmp;
       }
-      image = gtk_image_new_from_pixbuf(pixbuf);
+      GtkWidget* image = gtk_image_new_from_pixbuf(pixbuf);
       gtk_box_pack_start(GTK_BOX(hbox), image, FALSE, FALSE, 0);
       g_object_unref(pixbuf);
     }
   }
 
-  PangoFontDescription* font_desc;
-  
-  font_desc = pango_font_description_new();
-  pango_font_description_set_family(font_desc, "Sans");
-  pango_font_description_set_size(font_desc, 12 * PANGO_SCALE);
-
-  label = gtk_label_new(di->ni->title);
-  gdk_color_parse("white", &color);
-  gtk_widget_modify_fg(label, GTK_STATE_NORMAL, &color);
-  gtk_widget_modify_font(label, font_desc);
+  GtkWidget* label = gtk_label_new(di->ni->title);
+  gtk_widget_modify_fg(label, GTK_STATE_NORMAL, color_white);
+  gtk_widget_modify_font(label, font_sans12_desc);
   gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, FALSE, 0);
 
-  pango_font_description_free(font_desc);
-
-  font_desc = pango_font_description_new();
-  pango_font_description_set_family(font_desc, "Sans");
-  pango_font_description_set_size(font_desc, 8 * PANGO_SCALE);
-
   label = gtk_label_new(di->ni->text);
-  gdk_color_parse("white", &color);
-  gtk_widget_modify_fg(label, GTK_STATE_NORMAL, &color);
-  gtk_widget_modify_font(label, font_desc);
+  gtk_widget_modify_fg(label, GTK_STATE_NORMAL, color_white);
+  gtk_widget_modify_font(label, font_sans8_desc);
   g_signal_connect(G_OBJECT(label), "size-allocate", G_CALLBACK(label_size_allocate), NULL);
   gtk_label_set_justify(GTK_LABEL(label), GTK_JUSTIFY_LEFT);
   gtk_label_set_line_wrap(GTK_LABEL(label), TRUE);
   gtk_label_set_line_wrap_mode(GTK_LABEL(label), PANGO_WRAP_CHAR);
   gtk_box_pack_start(GTK_BOX(vbox), label, TRUE, FALSE, 0);
 
-  pango_font_description_free(font_desc);
-
   g_signal_connect(G_OBJECT(ebox), "button-press-event", G_CALLBACK(display_clicked), di);
   g_signal_connect(G_OBJECT(ebox), "enter-notify-event", G_CALLBACK(display_enter), di);
   g_signal_connect(G_OBJECT(ebox), "leave-notify-event", G_CALLBACK(display_leave), di);
-
 
   di->offset = 0;
   di->timeout = 500;
@@ -284,11 +263,27 @@ display_show(NOTIFICATION_INFO* ni) {
 
 G_MODULE_EXPORT gboolean
 display_init() {
+  gdk_color_parse("white", &inst_color_white_);
+
+  font_sans12_desc = pango_font_description_new();
+  pango_font_description_set_family(font_sans12_desc, "Sans");
+  pango_font_description_set_size(font_sans12_desc, 12 * PANGO_SCALE);
+
+  font_sans8_desc = pango_font_description_new();
+  pango_font_description_set_family(font_sans8_desc, "Sans");
+  pango_font_description_set_size(font_sans8_desc, 8 * PANGO_SCALE);
+
+  GdkScreen* const screen = gdk_screen_get_default();
+  const gint monitor_num = gdk_screen_get_primary_monitor(screen);
+  gdk_screen_get_monitor_geometry(screen, monitor_num, &screen_rect);
+
   return TRUE;
 }
 
 G_MODULE_EXPORT void
 display_term() {
+  pango_font_description_free(font_sans12_desc);
+  pango_font_description_free(font_sans8_desc);
 }
 
 G_MODULE_EXPORT const gchar*

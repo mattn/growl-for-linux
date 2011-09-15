@@ -32,8 +32,22 @@
 #include "../../plugins/from_url.h"
 #include "display_nico2.xpm"
 
+#define lengthof(arr_) (sizeof(arr_) / sizeof(*arr_))
 
 static GList* notifications = NULL;
+
+static const char* available_colors[] = { "red", "blue", "orange" };
+static GdkColor inst_colors_[ lengthof(available_colors) ];
+static const GdkColor* const colors = inst_colors_;
+
+static GdkColor inst_color_black_;
+static GdkColor inst_color_white_;
+static GdkColor* const color_black = &inst_color_black_;
+static GdkColor* const color_white = &inst_color_white_;
+
+static PangoFontDescription* font_sans20_desc;
+
+static GdkRectangle screen_rect;
 
 typedef struct {
   NOTIFICATION_INFO* ni;
@@ -107,12 +121,6 @@ display_animation_func(gpointer data) {
 
 G_MODULE_EXPORT gboolean
 display_show(NOTIFICATION_INFO* ni) {
-  GdkColor color;
-  GtkWidget* fixed;
-  GtkWidget* image = NULL;
-  GdkScreen* screen;
-  gint monitor_num;
-  GdkRectangle rect;
 
   DISPLAY_INFO* di = g_new0(DISPLAY_INFO, 1);
   if (!di) {
@@ -120,10 +128,6 @@ display_show(NOTIFICATION_INFO* ni) {
     return FALSE;
   }
   di->ni = ni;
-
-  screen = gdk_screen_get_default();
-  monitor_num = gdk_screen_get_primary_monitor(screen);
-  gdk_screen_get_monitor_geometry(screen, monitor_num, &rect);
 
   notifications = g_list_append(notifications, di);
 
@@ -133,9 +137,7 @@ display_show(NOTIFICATION_INFO* ni) {
   gtk_window_set_decorated(GTK_WINDOW(di->popup), FALSE);
   gtk_window_set_keep_above(GTK_WINDOW(di->popup), TRUE);
 
-  const char* colors[] = { "red", "blue", "orange" };
-  gdk_color_parse(colors[rand() % 3], &color);
-  gtk_widget_modify_bg(di->popup, GTK_STATE_NORMAL, &color);
+  gtk_widget_modify_bg(di->popup, GTK_STATE_NORMAL, colors + (rand() % lengthof(available_colors)));
 
   gtk_window_stick(GTK_WINDOW(di->popup));
 
@@ -143,19 +145,22 @@ display_show(NOTIFICATION_INFO* ni) {
   gtk_event_box_set_visible_window(GTK_EVENT_BOX(ebox), FALSE);
   gtk_container_add(GTK_CONTAINER(di->popup), ebox);
 
-  fixed = gtk_fixed_new();
+  GtkWidget* fixed = gtk_fixed_new();
   gtk_container_set_border_width(GTK_CONTAINER(fixed), 0);
   gtk_container_add(GTK_CONTAINER(ebox), fixed);
 
+  GtkWidget* image = NULL;
   if (di->ni->icon && *di->ni->icon) {
     GdkPixbuf* pixbuf;
     if (di->ni->local) {
       gchar* newurl = g_filename_from_uri(di->ni->icon, NULL, NULL);
       GError* error = NULL;
       pixbuf = gdk_pixbuf_new_from_file(newurl ? newurl : di->ni->icon, &error);
-      if (newurl) g_free(newurl);
-    } else
+      g_free(newurl);
+    } else {
       pixbuf = pixbuf_from_url(di->ni->icon, NULL);
+    }
+
     if (pixbuf) {
       GdkPixbuf* tmp = gdk_pixbuf_scale_simple(pixbuf, 32, 32, GDK_INTERP_TILES);
       if (tmp) {
@@ -168,21 +173,17 @@ display_show(NOTIFICATION_INFO* ni) {
     }
   }
 
-  PangoFontDescription* font_desc = pango_font_description_new();
-  pango_font_description_set_family(font_desc, "Sans");
-  pango_font_description_set_size(font_desc, 20 * PANGO_SCALE);
-
   PangoContext* context = gtk_widget_get_pango_context(di->popup) ;
   PangoLayout* layout = pango_layout_new(context);
 
   gchar* text = g_strconcat(di->ni->title, "\n", di->ni->text, NULL);
   pango_layout_set_text(layout, text, -1);
   g_free(text);
-  pango_layout_set_font_description(layout, font_desc);
+  pango_layout_set_font_description(layout, font_sans20_desc);
   pango_layout_get_pixel_size(layout, &di->width, &di->height);
 
-  di->x = rect.width;
-  di->y = rect.y + rand() % (rect.height - di->height);
+  di->x = screen_rect.width;
+  di->y = screen_rect.y + rand() % (screen_rect.height - di->height);
   di->width += 32 + 5;
 
   if (image)
@@ -192,19 +193,15 @@ display_show(NOTIFICATION_INFO* ni) {
   GdkColormap* colormap = gdk_colormap_get_system();
   gdk_gc_set_colormap(gc, colormap);
 
-  gdk_color_parse("black", &color);
-  gdk_colormap_alloc_color(colormap, &color, TRUE, TRUE);
-  gdk_gc_set_foreground (gc, &color);
+  gdk_colormap_alloc_color(colormap, color_black, TRUE, TRUE);
+  gdk_gc_set_foreground (gc, color_black);
   gdk_draw_rectangle(bitmap, gc, TRUE, 0, 0, di->width, di->height);
 
-  gdk_color_parse("white", &color);
-  gdk_colormap_alloc_color(colormap, &color, TRUE, TRUE);
-  gdk_gc_set_foreground (gc, &color);
+  gdk_colormap_alloc_color(colormap, color_white, TRUE, TRUE);
+  gdk_gc_set_foreground (gc, color_white);
   if (image)
     gdk_draw_rectangle(bitmap, gc, TRUE, 0, di->height / 2 - 16, 32, 32);
   gdk_draw_layout(bitmap, gc, 32 + 5, 0, layout);
-
-  pango_font_description_free(font_desc);
 
   g_signal_connect(G_OBJECT(ebox), "button-press-event", G_CALLBACK(display_clicked), di);
   g_signal_connect(G_OBJECT(ebox), "enter-notify-event", G_CALLBACK(display_enter), di);
@@ -230,11 +227,25 @@ display_show(NOTIFICATION_INFO* ni) {
 
 G_MODULE_EXPORT gboolean
 display_init() {
+  for (size_t cnt = lengthof(available_colors); cnt--;)
+    gdk_color_parse(available_colors[ cnt ], inst_colors_ + cnt);
+  gdk_color_parse("black", &inst_color_black_);
+  gdk_color_parse("white", &inst_color_white_);
+
+  font_sans20_desc = pango_font_description_new();
+  pango_font_description_set_family(font_sans20_desc, "Sans");
+  pango_font_description_set_size(font_sans20_desc, 20 * PANGO_SCALE);
+
+  GdkScreen* const screen = gdk_screen_get_default();
+  const gint monitor_num = gdk_screen_get_primary_monitor(screen);
+  gdk_screen_get_monitor_geometry(screen, monitor_num, &screen_rect);
+
   return TRUE;
 }
 
 G_MODULE_EXPORT void
 display_term() {
+  pango_font_description_free(font_sans20_desc);
 }
 
 G_MODULE_EXPORT const gchar*
