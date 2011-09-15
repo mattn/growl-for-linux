@@ -124,6 +124,18 @@ notifications_compare(gconstpointer a, gconstpointer b) {
   return ((DISPLAY_INFO*)b)->pos < ((DISPLAY_INFO*)a)->pos;
 }
 
+static gint
+find_showable_position() {
+  gint pos = 0;
+  gint
+  is_differ_pos(gconstpointer p, gconstpointer unused_) {
+    return ((const DISPLAY_INFO*) p)->pos == pos++;
+  }
+  if (g_list_find_custom(notifications, NULL, is_differ_pos))
+    --pos;
+  return pos;
+}
+
 static void
 label_size_allocate(GtkWidget* label, GtkAllocation* allocation, gpointer data) {
   gtk_widget_set_size_request(label, allocation->width - 2, -1);
@@ -140,32 +152,14 @@ display_show(gpointer data) {
   }
   di->ni = ni;
 
-  gint pos;
-  {
-    const gint len = g_list_length(notifications);
-    for (pos = 0; pos < len; pos++) {
-      const DISPLAY_INFO* const p = g_list_nth_data(notifications, pos);
-      if (pos != p->pos) break;
-    }
-  }
-
-  gint x = screen_rect.x + screen_rect.width - 180;
-  gint y = screen_rect.y + screen_rect.height - 180;
-  {
-    for (gint n = 0; n < pos; n++) {
-      y -= 180;
-      if (y < 0) {
-        x -= 200;
-        if (x < 0) return FALSE;
-        y = screen_rect.y + screen_rect.height - 180;
-      }
-    }
-  }
-
-  di->pos = pos;
+  di->pos = find_showable_position();
   notifications = g_list_insert_sorted(notifications, di, notifications_compare);
-  di->x = x;
-  di->y = y + 200;
+
+  const gint vert_count = screen_rect.height / 180;
+  const gint cx = di->pos / vert_count;
+  const gint cy = di->pos % vert_count;
+  di->x = screen_rect.x + screen_rect.width  - cx * 200 - 180;
+  di->y = screen_rect.y + screen_rect.height - cy * 180 + 20;
 
   di->popup = gtk_window_new(GTK_WINDOW_POPUP);
   gtk_window_set_title(GTK_WINDOW(di->popup), "growl-for-linux");
