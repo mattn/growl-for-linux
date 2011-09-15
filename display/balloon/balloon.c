@@ -122,11 +122,6 @@ display_animation_func(gpointer data) {
   return TRUE;
 }
 
-static gint
-notifications_compare(gconstpointer a, gconstpointer b) {
-  return ((DISPLAY_INFO*)b)->pos < ((DISPLAY_INFO*)a)->pos;
-}
-
 static gboolean
 display_expose(GtkWidget *widget, GdkEventExpose *event, gpointer data) {
   gdk_window_clear_area(
@@ -141,16 +136,14 @@ display_expose(GtkWidget *widget, GdkEventExpose *event, gpointer data) {
   return FALSE;
 }
 
-static gint
+static GList*
 find_showable_position() {
   gint pos = 0;
   gint
   is_differ_pos(gconstpointer p, gconstpointer unused_) {
     return ((const DISPLAY_INFO*) p)->pos == pos++;
   }
-  if (g_list_find_custom(notifications, NULL, is_differ_pos))
-    --pos;
-  return pos;
+  return  g_list_find_custom(notifications, NULL, is_differ_pos);
 }
 
 static void
@@ -167,8 +160,9 @@ display_show(NOTIFICATION_INFO* ni) {
   }
   di->ni = ni;
 
-  di->pos = find_showable_position();
-  notifications = g_list_insert_sorted(notifications, di, notifications_compare);
+  GList* const found = find_showable_position();
+  notifications = g_list_insert_before(notifications, found, di);
+  di->pos = (found ? g_list_position(notifications, found) : g_list_length(notifications)) - 1;
 
   const gint vert_count = screen_rect.height / 110;
   const gint cx = di->pos / vert_count;
