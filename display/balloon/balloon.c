@@ -161,14 +161,19 @@ display_show(NOTIFICATION_INFO* ni) {
   di->ni = ni;
 
   GList* const found = find_showable_position();
-  notifications = g_list_insert_before(notifications, found, di);
-  di->pos = (found ? g_list_position(notifications, found) : g_list_length(notifications)) - 1;
+  di->pos = found ? g_list_position(notifications, found) : g_list_length(notifications);
 
   const gint vert_count = screen_rect.height / 110;
   const gint cx = di->pos / vert_count;
   const gint cy = di->pos % vert_count;
   di->x = screen_rect.x + screen_rect.width  - (cx + 1) * 250;
   di->y = screen_rect.y + screen_rect.height - (cy + 1) * 110;
+  if (di->y < 0) {
+    free_display_info(di);
+    return FALSE;
+  }
+
+  notifications = g_list_insert_before(notifications, found, di);
 
   di->popup = gtk_window_new(GTK_WINDOW_POPUP);
   gtk_window_set_title(GTK_WINDOW(di->popup), "growl-for-linux");
