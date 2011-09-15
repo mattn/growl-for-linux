@@ -30,12 +30,6 @@
 #include "../../plugins/from_url.h"
 #include "display_default.xpm"
 
-#ifdef _WIN32
-# ifndef strncasecmp
-#  define strncasecmp(d,s,n) strnicmp(d,s,n)
-# endif
-#endif
-
 static GList* notifications = NULL;
 
 static GdkColor inst_color_lightgray_;

@@ -33,12 +33,6 @@
 #include "balloon.xpm"
 #include "display_balloon.xpm"
 
-#ifdef _WIN32
-# ifndef strncasecmp
-#  define strncasecmp(d,s,n) strnicmp(d,s,n)
-# endif
-#endif
-
 static GList* notifications = NULL;
 static GdkPixmap* pixmap = NULL;
 static GdkBitmap* bitmap = NULL;

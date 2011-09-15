@@ -32,11 +32,6 @@
 #include "../../plugins/from_url.h"
 #include "display_nico2.xpm"
 
-#ifdef _WIN32
-# ifndef strncasecmp
-#  define strncasecmp(d,s,n) strnicmp(d,s,n)
-# endif
-#endif
 
 static GList* notifications = NULL;
 
