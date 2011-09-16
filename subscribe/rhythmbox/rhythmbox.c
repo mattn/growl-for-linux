@@ -127,13 +127,13 @@ get_album_art(const char* artist, const char* album) {
   doc = body ? xmlParseDoc((xmlChar*) body) : NULL;
   xmlNodePtr node = doc->children;
   gchar* image_url = NULL;
-  if (strcmp(node->name, "ResultSet")) goto leave;
+  if (strcmp((const char*) node->name, "ResultSet")) goto leave;
   for (node = node->children; node; node = node->next) {
-    if (strcmp(node->name, "Result")) continue;
+    if (strcmp((const char*) node->name, "Result")) continue;
     for (node = node->children; node; node = node->next) {
-      if (strcmp(node->name, "Thumbnail")) continue;
+      if (strcmp((const char*) node->name, "Thumbnail")) continue;
       for (node = node->children; node; node = node->next) {
-        if (strcmp(node->name, "Url")) continue;
+        if (strcmp((const char*) node->name, "Url")) continue;
         image_url = g_strdup(XML_CONTENT(node));
         break;
       }

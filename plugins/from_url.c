@@ -78,7 +78,7 @@ get_http_header_alloc(const char* ptr, const char* key) {
 static size_t
 get_http_content_length(const char* ptr, const size_t defaults) {
   char* csize = get_http_header_alloc(ptr, "Content-Length");
-  const size_t size = csize ? atol(csize) : defaults;
+  const size_t size = csize ? (size_t) atol(csize) : defaults;
   free(csize);
   return size;
 }

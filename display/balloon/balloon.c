@@ -161,7 +161,7 @@ display_show(NOTIFICATION_INFO* ni) {
   di->ni = ni;
 
   GList* const found = find_showable_position();
-  di->pos = found ? g_list_position(notifications, found) : g_list_length(notifications);
+  di->pos = found ? g_list_position(notifications, found) : (gint) g_list_length(notifications);
 
   const gint vert_count = screen_rect.height / 110;
   const gint cx = di->pos / vert_count;
