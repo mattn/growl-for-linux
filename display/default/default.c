@@ -134,15 +134,23 @@ label_size_allocate(GtkWidget* label, GtkAllocation* allocation, gpointer data) 
   gtk_widget_set_size_request(label, allocation->width - 2, -1);
 }
 
-G_MODULE_EXPORT gboolean
-display_show(NOTIFICATION_INFO* const ni) {
+static inline DISPLAY_INFO*
+create_display_info_with_notification_info(NOTIFICATION_INFO* const ni) {
+  if (!ni) return NULL;
 
   DISPLAY_INFO* const di = g_new0(DISPLAY_INFO, 1);
   if (!di) {
     perror("g_new0");
-    return FALSE;
+    return NULL;
   }
   di->ni = ni;
+  return di;
+}
+
+G_MODULE_EXPORT gboolean
+display_show(NOTIFICATION_INFO* const ni) {
+  DISPLAY_INFO* const di = create_display_info_with_notification_info(ni);
+  if (!di) return FALSE;
 
   GList* const found = find_showable_position();
   di->pos = found ? g_list_position(notifications, found) : (gint) g_list_length(notifications);
