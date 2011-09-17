@@ -6,12 +6,7 @@
 
 MEMFILE*
 memfopen() {
-  MEMFILE* mf = (MEMFILE*) malloc(sizeof(MEMFILE));
-  if (mf) {
-    mf->data = NULL;
-    mf->size = 0;
-  }
-  return mf;
+  return (MEMFILE*) calloc(1, sizeof(MEMFILE));
 }
 
 void
