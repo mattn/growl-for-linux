@@ -53,8 +53,8 @@ typedef struct {
   gboolean hover;
 } DISPLAY_INFO;
 
-static void
-free_display_info(DISPLAY_INFO* di) {
+static inline void
+free_display_info(DISPLAY_INFO* const di) {
   g_free(di->ni->title);
   g_free(di->ni->text);
   g_free(di->ni->icon);
@@ -80,7 +80,7 @@ open_url(const gchar* url) {
 
 static void
 display_clicked(GtkWidget* widget, GdkEvent* event, gpointer user_data) {
-  DISPLAY_INFO* di = (DISPLAY_INFO*) user_data;
+  DISPLAY_INFO* const di = (DISPLAY_INFO*) user_data;
   if (di->timeout >= 30) di->timeout = 30;
   if (di->ni->url && *di->ni->url) open_url(di->ni->url);
 }
@@ -97,7 +97,7 @@ display_leave(GtkWidget* widget, GdkEventMotion* event, gpointer user_data) {
 
 static gboolean
 display_animation_func(gpointer data) {
-  DISPLAY_INFO* di = (DISPLAY_INFO*) data;
+  DISPLAY_INFO* const di = (DISPLAY_INFO*) data;
 
   if (!di->hover) di->timeout--;
 
@@ -135,10 +135,9 @@ label_size_allocate(GtkWidget* label, GtkAllocation* allocation, gpointer data) 
 }
 
 G_MODULE_EXPORT gboolean
-display_show(gpointer data) {
-  NOTIFICATION_INFO* ni = (NOTIFICATION_INFO*) data;
+display_show(NOTIFICATION_INFO* const ni) {
 
-  DISPLAY_INFO* di = g_new0(DISPLAY_INFO, 1);
+  DISPLAY_INFO* const di = g_new0(DISPLAY_INFO, 1);
   if (!di) {
     perror("g_new0");
     return FALSE;
@@ -169,15 +168,15 @@ display_show(gpointer data) {
   gtk_window_set_opacity(GTK_WINDOW(di->popup), 0.8);
   gtk_widget_modify_bg(di->popup, GTK_STATE_NORMAL, color_lightgray);
 
-  GtkWidget* ebox = gtk_event_box_new();
+  GtkWidget* const ebox = gtk_event_box_new();
   gtk_event_box_set_visible_window(GTK_EVENT_BOX(ebox), FALSE);
   gtk_container_add(GTK_CONTAINER(di->popup), ebox);
 
-  GtkWidget* vbox = gtk_vbox_new(FALSE, 5);
+  GtkWidget* const vbox = gtk_vbox_new(FALSE, 5);
   gtk_container_set_border_width(GTK_CONTAINER(vbox), 5);
   gtk_container_add(GTK_CONTAINER(ebox), vbox);
 
-  GtkWidget* hbox = gtk_hbox_new(FALSE, 5);
+  GtkWidget* const hbox = gtk_hbox_new(FALSE, 5);
   gtk_box_pack_start(GTK_BOX(vbox), hbox, FALSE, TRUE, 0);
 
   if (di->ni->icon && *di->ni->icon) {

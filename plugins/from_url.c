@@ -71,7 +71,7 @@ get_http_header_alloc(const char* ptr, const char* key) {
       break;
   }
   const char* const top = left_trim(ptr + key_length + 1);
-  return top ? strndup(top, (size_t) (term - top)) : NULL;
+  return top ? strndup(top, (size_t)(ptrdiff_t) (term - top)) : NULL;
 }
 
 // Returns Content-Length field or defaults when no available.
