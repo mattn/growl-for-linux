@@ -65,7 +65,7 @@ get_http_header_alloc(const char* ptr, const char* key) {
   if (!ptr || !key) return NULL;
 
   const size_t key_length = strlen(key);
-  const char* term;
+  const char* term = NULL;
   for (; *ptr && (term = strpbrk(ptr, "\r\n")); ptr = term + 1) {
     if (ptr[key_length] == ':' && !strncasecmp(ptr, key, key_length))
       break;

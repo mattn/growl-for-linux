@@ -114,6 +114,7 @@ get_album_art(const char* artist, const char* album) {
   body = memfstrdup(mbody);
   memfclose(mbody);
 
+  gchar* image_url = NULL;
   if (res != CURLE_OK) {
     goto leave;
   }
@@ -126,7 +127,6 @@ get_album_art(const char* artist, const char* album) {
 
   doc = body ? xmlParseDoc((xmlChar*) body) : NULL;
   xmlNodePtr node = doc->children;
-  gchar* image_url = NULL;
   if (strcmp((const char*) node->name, "ResultSet")) goto leave;
   for (node = node->children; node; node = node->next) {
     if (strcmp((const char*) node->name, "Result")) continue;
@@ -252,12 +252,11 @@ get_rhythmbox_info(gpointer data) {
   }
   g_free(uri);
 
-  GValue* value;
-  gchar* title;
-  gchar* artist;
-  gchar* album;
-  
-  value = (GValue*) g_hash_table_lookup(table, "rb:stream-song-title");
+  gchar* title = NULL;
+  gchar* artist = NULL;
+  gchar* album = NULL;
+
+  GValue* value = (GValue*) g_hash_table_lookup(table, "rb:stream-song-title");
   if (value != NULL && G_VALUE_HOLDS_STRING(value)) {
     title = g_strdup(g_value_get_string(value));
   } else {
