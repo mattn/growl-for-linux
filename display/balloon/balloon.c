@@ -168,6 +168,21 @@ create_display_info_with_notification_info(NOTIFICATION_INFO* const ni) {
   return di;
 }
 
+static inline void
+box_enable_icon(GtkBox* const restrict box, const NOTIFICATION_INFO* const restrict ni) {
+  GdkPixbuf* const pixbuf =
+    (ni->local ? pixbuf_from_url_as_file
+               : pixbuf_from_url)(ni->icon, NULL);
+  if (!pixbuf) return;
+
+  GdkPixbuf* const tmp   = gdk_pixbuf_scale_simple(pixbuf, 32, 32, GDK_INTERP_TILES);
+  GtkWidget* const image = gtk_image_new_from_pixbuf(tmp ? tmp : pixbuf);
+  gtk_box_pack_start(box, image, FALSE, FALSE, 0);
+
+  g_object_unref(tmp);
+  g_object_unref(pixbuf);
+}
+
 G_MODULE_EXPORT gboolean
 display_show(NOTIFICATION_INFO* const ni) {
   DISPLAY_INFO* const di = create_display_info_with_notification_info(ni);
@@ -207,28 +222,7 @@ display_show(NOTIFICATION_INFO* const ni) {
   GtkWidget* const hbox = gtk_hbox_new(FALSE, 5);
   gtk_box_pack_start(GTK_BOX(vbox), hbox, FALSE, TRUE, 0);
 
-  if (di->ni->icon && *di->ni->icon) {
-    GdkPixbuf* pixbuf;
-    if (di->ni->local) {
-      gchar* newurl = g_filename_from_uri(di->ni->icon, NULL, NULL);
-      GError* error = NULL;
-      pixbuf = gdk_pixbuf_new_from_file(newurl ? newurl : di->ni->icon, &error);
-      g_free(newurl);
-    } else {
-      pixbuf = pixbuf_from_url(di->ni->icon, NULL);
-    }
-
-    if (pixbuf) {
-      GdkPixbuf* tmp = gdk_pixbuf_scale_simple(pixbuf, 32, 32, GDK_INTERP_TILES);
-      if (tmp) {
-        g_object_unref(pixbuf);
-        pixbuf = tmp;
-      }
-      GtkWidget* image = gtk_image_new_from_pixbuf(pixbuf);
-      gtk_box_pack_start(GTK_BOX(hbox), image, FALSE, FALSE, 0);
-      g_object_unref(pixbuf);
-    }
-  }
+  if (di->ni->icon && *di->ni->icon) box_enable_icon(GTK_BOX(hbox), di->ni);
 
   GtkWidget* label = gtk_label_new(di->ni->title);
   gtk_widget_modify_fg(label, GTK_STATE_NORMAL, color_white);

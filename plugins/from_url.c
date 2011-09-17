@@ -162,3 +162,13 @@ pixbuf_from_url(const char* url, GError** error) {
   return pixbuf;
 }
 
+GdkPixbuf*
+pixbuf_from_url_as_file(const char* url, GError** error) {
+  gchar* const newurl = g_filename_from_uri(url, NULL, NULL);
+  GError* _error = NULL;
+  GdkPixbuf* const pixbuf = gdk_pixbuf_new_from_file(newurl ? newurl : url, &_error);
+  if (!pixbuf) gerror_set_or_free(error, _error);
+  g_free(newurl);
+  return pixbuf;
+}
+
