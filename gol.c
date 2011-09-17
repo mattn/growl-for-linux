@@ -231,11 +231,8 @@ foreach_subscribe_plugin(void(* func)(SUBSCRIBE_PLUGIN*)) {
   g_list_foreach(subscribe_plugins, wrapped_func, NULL);
 }
 
-static inline void
-exec_sqlite3(const char[ const static 1 ], ...);
-
 static void
-exec_sqlite3(const char tsql[ const static 1 ], ...) {
+exec_sqlite3(const char tsql[], ...) {
   va_list list;
   va_start(list, tsql);
 
