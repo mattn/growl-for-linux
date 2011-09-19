@@ -31,6 +31,7 @@
 #include <memory.h>
 #include <curl/curl.h>
 #include "../../gol.h"
+#include "../../plugins/memfile.h"
 
 #define REQUEST_TIMEOUT            (5)
 
@@ -44,53 +45,6 @@ gchar* last_artist = NULL;
 gchar* last_album = NULL;
 
 #define XML_CONTENT(x) (x->children ? (char*) x->children->content : NULL)
-
-typedef struct {
-  char* data;     // response data from server
-  size_t size;    // response size of data
-} MEMFILE;
-
-static MEMFILE*
-memfopen() {
-  MEMFILE* mf = (MEMFILE*) malloc(sizeof(MEMFILE));
-  if (mf) {
-    mf->data = NULL;
-    mf->size = 0;
-  }
-  return mf;
-}
-
-static void
-memfclose(MEMFILE* mf) {
-  if (mf->data) free(mf->data);
-  free(mf);
-}
-
-static size_t
-memfwrite(char* ptr, size_t size, size_t nmemb, void* stream) {
-  MEMFILE* mf = (MEMFILE*) stream;
-  int block = size * nmemb;
-  if (!mf) return block; // through
-  if (!mf->data)
-    mf->data = (char*) malloc(block);
-  else
-    mf->data = (char*) realloc(mf->data, mf->size + block);
-  if (mf->data) {
-    memcpy(mf->data + mf->size, ptr, block);
-    mf->size += block;
-  }
-  return block;
-}
-
-static char*
-memfstrdup(MEMFILE* mf) {
-  char* buf;
-  if (mf->size == 0) return NULL;
-  buf = (char*) malloc(mf->size + 1);
-  memcpy(buf, mf->data, mf->size);
-  buf[mf->size] = 0;
-  return buf;
-}
 
 static gboolean
 delay_show(gpointer data) {
@@ -173,13 +127,13 @@ get_album_art(const char* artist, const char* album) {
   doc = body ? xmlParseDoc((xmlChar*) body) : NULL;
   xmlNodePtr node = doc->children;
   gchar* image_url = NULL;
-  if (strcmp(node->name, "ResultSet")) goto leave;
+  if (strcmp((const char*) node->name, "ResultSet")) goto leave;
   for (node = node->children; node; node = node->next) {
-    if (strcmp(node->name, "Result")) continue;
+    if (strcmp((const char*) node->name, "Result")) continue;
     for (node = node->children; node; node = node->next) {
-      if (strcmp(node->name, "Thumbnail")) continue;
+      if (strcmp((const char*) node->name, "Thumbnail")) continue;
       for (node = node->children; node; node = node->next) {
-        if (strcmp(node->name, "Url")) continue;
+        if (strcmp((const char*) node->name, "Url")) continue;
         image_url = g_strdup(XML_CONTENT(node));
         break;
       }
@@ -370,14 +324,15 @@ subscribe_stop() {
   enable = FALSE;
 }
 
-G_MODULE_EXPORT gchar*
+G_MODULE_EXPORT const gchar*
 subscribe_name() {
   return "Rhythmbox";
 }
 
-G_MODULE_EXPORT gchar*
+G_MODULE_EXPORT const gchar*
 subscribe_description() {
-  return "<span size=\"large\"><b>Rhythmbox</b></span>\n"
+  return
+    "<span size=\"large\"><b>Rhythmbox</b></span>\n"
     "<span>This is rhythmbox subscriber.</span>\n"
     "<span>Show now playing music in rhythmbox.</span>\n";
 }

@@ -29,18 +29,25 @@
 #include <memory.h>
 #include <curl/curl.h>
 #include "../../gol.h"
+#include "../../plugins/from_url.h"
 #include "display_nico2.xpm"
 
-#define REQUEST_TIMEOUT            (5)
-
-#ifdef _WIN32
-# ifndef strncasecmp
-#  define strncasecmp(d,s,n) strnicmp(d,s,n)
-# endif
-#endif
+#define lengthof(arr_) (sizeof(arr_) / sizeof(*arr_))
 
 static GList* notifications = NULL;
-static gchar* datadir = NULL;
+
+static const char* available_colors[] = { "red", "blue", "orange" };
+static GdkColor inst_colors_[ lengthof(available_colors) ];
+static const GdkColor* const colors = inst_colors_;
+
+static GdkColor inst_color_black_;
+static GdkColor inst_color_white_;
+static GdkColor* const color_black = &inst_color_black_;
+static GdkColor* const color_white = &inst_color_white_;
+
+static PangoFontDescription* font_sans20_desc;
+
+static GdkRectangle screen_rect;
 
 typedef struct {
   NOTIFICATION_INFO* ni;
@@ -53,165 +60,14 @@ typedef struct {
   gboolean hover;
 } DISPLAY_INFO;
 
-typedef struct {
-  char* data;     // response data from server
-  size_t size;    // response size of data
-} MEMFILE;
-
-static MEMFILE*
-memfopen() {
-  MEMFILE* mf = (MEMFILE*) malloc(sizeof(MEMFILE));
-  if (mf) {
-    mf->data = NULL;
-    mf->size = 0;
-  }
-  return mf;
-}
-
 static void
-memfclose(MEMFILE* mf) {
-  if (mf->data) free(mf->data);
-  free(mf);
-}
-
-static size_t
-memfwrite(char* ptr, size_t size, size_t nmemb, void* stream) {
-  MEMFILE* mf = (MEMFILE*) stream;
-  int block = size * nmemb;
-  if (!mf) return block; // through
-  if (!mf->data)
-    mf->data = (char*) malloc(block);
-  else
-    mf->data = (char*) realloc(mf->data, mf->size + block);
-  if (mf->data) {
-    memcpy(mf->data + mf->size, ptr, block);
-    mf->size += block;
-  }
-  return block;
-}
-
-static char*
-memfstrdup(MEMFILE* mf) {
-  char* buf;
-  if (mf->size == 0) return NULL;
-  buf = (char*) malloc(mf->size + 1);
-  memcpy(buf, mf->data, mf->size);
-  buf[mf->size] = 0;
-  return buf;
-}
-
-static char*
-get_http_header_alloc(const char* ptr, const char* key) {
-  const char* tmp = ptr;
-
-  while (*ptr) {
-    tmp = strpbrk(ptr, "\r\n");
-    if (!tmp) break;
-    if (!strncasecmp(ptr, key, strlen(key)) && *(ptr + strlen(key)) == ':') {
-      size_t len;
-      char* val;
-      const char* top = ptr + strlen(key) + 1;
-      while (*top && isspace(*top)) top++;
-      if (!*top) return NULL;
-      len = tmp - top + 1;
-      val = malloc(len);
-      memset(val, 0, len);
-      strncpy(val, top, len-1);
-      return val;
-    }
-    ptr = tmp + 1;
-  }
-  return NULL;
-}
-
-static GdkPixbuf*
-url2pixbuf(const char* url, GError** error) {
-  GdkPixbuf* pixbuf = NULL;
-  GdkPixbufLoader* loader = NULL;
-  GError* _error = NULL;
-
-  CURL* curl = NULL;
-  MEMFILE* mbody;
-  MEMFILE* mhead;
-  char* head;
-  char* body;
-  unsigned long size;
-  CURLcode res = CURLE_FAILED_INIT;
-
-  curl = curl_easy_init();
-  if (!curl) return NULL;
-
-  mbody = memfopen();
-  mhead = memfopen();
-
-  curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0);
-  curl_easy_setopt(curl, CURLOPT_URL, url);
-  curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, REQUEST_TIMEOUT);
-  curl_easy_setopt(curl, CURLOPT_TIMEOUT, REQUEST_TIMEOUT);
-  curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, memfwrite);
-  curl_easy_setopt(curl, CURLOPT_WRITEDATA, mbody);
-  curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, memfwrite);
-  curl_easy_setopt(curl, CURLOPT_HEADERDATA, mhead);
-  curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1);
-  res = curl_easy_perform(curl);
-  curl_easy_cleanup(curl);
-
-  head = memfstrdup(mhead);
-  memfclose(mhead);
-  body = memfstrdup(mbody);
-  size = mbody->size;
-  memfclose(mbody);
-
-  if (res == CURLE_OK) {
-    char* ctype;
-    char* csize;
-    ctype = get_http_header_alloc(head, "Content-Type");
-    csize = get_http_header_alloc(head, "Content-Length");
-
-#ifdef _WIN32
-    if (ctype &&
-        (!strcmp(ctype, "image/jpeg") || !strcmp(ctype, "image/gif"))) {
-      char temp_path[MAX_PATH];
-      char temp_filename[MAX_PATH];
-      FILE* fp;
-      GetTempPath(sizeof(temp_path), temp_path);
-      GetTempFileName(temp_path, "growl-for-linux-", 0, temp_filename);
-      fp = fopen(temp_filename, "wb");
-      if (fp) {
-        fwrite(body, size, 1, fp);
-        fclose(fp);
-      }
-      pixbuf = gdk_pixbuf_new_from_file(temp_filename, NULL);
-      DeleteFile(temp_filename);
-    } else
-#endif
-    {
-      if (ctype)
-        loader =
-          (GdkPixbufLoader*) gdk_pixbuf_loader_new_with_mime_type(ctype,
-              error);
-      if (csize)
-        size = atol(csize);
-      if (!loader) loader = gdk_pixbuf_loader_new();
-      if (body && gdk_pixbuf_loader_write(loader, (const guchar*) body,
-            size, &_error)) {
-        pixbuf = gdk_pixbuf_loader_get_pixbuf(loader);
-      }
-    }
-    if (ctype) free(ctype);
-    if (csize) free(csize);
-    if (loader) gdk_pixbuf_loader_close(loader, NULL);
-  } else {
-    _error = g_error_new_literal(G_FILE_ERROR, res,
-    curl_easy_strerror(res));
-  }
-
-  free(head);
-  free(body);
-
-  /* cleanup callback data */
-  if (error && _error) *error = _error;
-  return pixbuf;
+free_display_info(DISPLAY_INFO* di) {
+  g_free(di->ni->title);
+  g_free(di->ni->text);
+  g_free(di->ni->icon);
+  g_free(di->ni->url);
+  g_free(di->ni);
+  g_free(di);
 }
 
 static gboolean
@@ -254,12 +110,7 @@ display_animation_func(gpointer data) {
     gtk_widget_destroy(di->popup);
     di->popup = NULL;
     notifications = g_list_remove(notifications, di);
-    if (di->ni->title) g_free(di->ni->title);
-    if (di->ni->text) g_free(di->ni->text);
-    if (di->ni->icon) g_free(di->ni->icon);
-    if (di->ni->url) g_free(di->ni->url);
-    g_free(di->ni);
-    g_free(di);
+    free_display_info(di);
     return FALSE;
   }
 
@@ -270,12 +121,6 @@ display_animation_func(gpointer data) {
 
 G_MODULE_EXPORT gboolean
 display_show(NOTIFICATION_INFO* ni) {
-  GdkColor color;
-  GtkWidget* fixed;
-  GtkWidget* image = NULL;
-  GdkScreen* screen;
-  gint monitor_num;
-  GdkRectangle rect;
 
   DISPLAY_INFO* di = g_new0(DISPLAY_INFO, 1);
   if (!di) {
@@ -283,10 +128,6 @@ display_show(NOTIFICATION_INFO* ni) {
     return FALSE;
   }
   di->ni = ni;
-
-  screen = gdk_screen_get_default();
-  monitor_num = gdk_screen_get_primary_monitor(screen);
-  gdk_screen_get_monitor_geometry(screen, monitor_num, &rect);
 
   notifications = g_list_append(notifications, di);
 
@@ -296,9 +137,7 @@ display_show(NOTIFICATION_INFO* ni) {
   gtk_window_set_decorated(GTK_WINDOW(di->popup), FALSE);
   gtk_window_set_keep_above(GTK_WINDOW(di->popup), TRUE);
 
-  const char* colors[] = { "red", "blue", "orange" };
-  gdk_color_parse(colors[rand() % 3], &color);
-  gtk_widget_modify_bg(di->popup, GTK_STATE_NORMAL, &color);
+  gtk_widget_modify_bg(di->popup, GTK_STATE_NORMAL, colors + (rand() % lengthof(available_colors)));
 
   gtk_window_stick(GTK_WINDOW(di->popup));
 
@@ -306,19 +145,22 @@ display_show(NOTIFICATION_INFO* ni) {
   gtk_event_box_set_visible_window(GTK_EVENT_BOX(ebox), FALSE);
   gtk_container_add(GTK_CONTAINER(di->popup), ebox);
 
-  fixed = gtk_fixed_new();
+  GtkWidget* fixed = gtk_fixed_new();
   gtk_container_set_border_width(GTK_CONTAINER(fixed), 0);
   gtk_container_add(GTK_CONTAINER(ebox), fixed);
 
+  GtkWidget* image = NULL;
   if (di->ni->icon && *di->ni->icon) {
     GdkPixbuf* pixbuf;
     if (di->ni->local) {
       gchar* newurl = g_filename_from_uri(di->ni->icon, NULL, NULL);
       GError* error = NULL;
       pixbuf = gdk_pixbuf_new_from_file(newurl ? newurl : di->ni->icon, &error);
-      if (newurl) g_free(newurl);
-    } else
-      pixbuf = url2pixbuf(di->ni->icon, NULL);
+      g_free(newurl);
+    } else {
+      pixbuf = pixbuf_from_url(di->ni->icon, NULL);
+    }
+
     if (pixbuf) {
       GdkPixbuf* tmp = gdk_pixbuf_scale_simple(pixbuf, 32, 32, GDK_INTERP_TILES);
       if (tmp) {
@@ -331,21 +173,17 @@ display_show(NOTIFICATION_INFO* ni) {
     }
   }
 
-  PangoFontDescription* font_desc = pango_font_description_new();
-  pango_font_description_set_family(font_desc, "Sans");
-  pango_font_description_set_size(font_desc, 20 * PANGO_SCALE);
-
   PangoContext* context = gtk_widget_get_pango_context(di->popup) ;
   PangoLayout* layout = pango_layout_new(context);
 
   gchar* text = g_strconcat(di->ni->title, "\n", di->ni->text, NULL);
   pango_layout_set_text(layout, text, -1);
   g_free(text);
-  pango_layout_set_font_description(layout, font_desc);
+  pango_layout_set_font_description(layout, font_sans20_desc);
   pango_layout_get_pixel_size(layout, &di->width, &di->height);
 
-  di->x = rect.width;
-  di->y = rect.y + rand() % (rect.height - di->height);
+  di->x = screen_rect.width;
+  di->y = screen_rect.y + rand() % (screen_rect.height - di->height);
   di->width += 32 + 5;
 
   if (image)
@@ -355,19 +193,15 @@ display_show(NOTIFICATION_INFO* ni) {
   GdkColormap* colormap = gdk_colormap_get_system();
   gdk_gc_set_colormap(gc, colormap);
 
-  gdk_color_parse("black", &color);
-  gdk_colormap_alloc_color(colormap, &color, TRUE, TRUE);
-  gdk_gc_set_foreground (gc, &color);
+  gdk_colormap_alloc_color(colormap, color_black, TRUE, TRUE);
+  gdk_gc_set_foreground (gc, color_black);
   gdk_draw_rectangle(bitmap, gc, TRUE, 0, 0, di->width, di->height);
 
-  gdk_color_parse("white", &color);
-  gdk_colormap_alloc_color(colormap, &color, TRUE, TRUE);
-  gdk_gc_set_foreground (gc, &color);
+  gdk_colormap_alloc_color(colormap, color_white, TRUE, TRUE);
+  gdk_gc_set_foreground (gc, color_white);
   if (image)
     gdk_draw_rectangle(bitmap, gc, TRUE, 0, di->height / 2 - 16, 32, 32);
   gdk_draw_layout(bitmap, gc, 32 + 5, 0, layout);
-
-  pango_font_description_free(font_desc);
 
   g_signal_connect(G_OBJECT(ebox), "button-press-event", G_CALLBACK(display_clicked), di);
   g_signal_connect(G_OBJECT(ebox), "enter-notify-event", G_CALLBACK(display_enter), di);
@@ -392,23 +226,37 @@ display_show(NOTIFICATION_INFO* ni) {
 }
 
 G_MODULE_EXPORT gboolean
-display_init(gchar* _datadir) {
-  datadir = g_strdup(_datadir);
+display_init() {
+  for (size_t cnt = lengthof(available_colors); cnt--;)
+    gdk_color_parse(available_colors[ cnt ], inst_colors_ + cnt);
+  gdk_color_parse("black", &inst_color_black_);
+  gdk_color_parse("white", &inst_color_white_);
+
+  font_sans20_desc = pango_font_description_new();
+  pango_font_description_set_family(font_sans20_desc, "Sans");
+  pango_font_description_set_size(font_sans20_desc, 20 * PANGO_SCALE);
+
+  GdkScreen* const screen = gdk_screen_get_default();
+  const gint monitor_num = gdk_screen_get_primary_monitor(screen);
+  gdk_screen_get_monitor_geometry(screen, monitor_num, &screen_rect);
+
   return TRUE;
 }
 
 G_MODULE_EXPORT void
 display_term() {
+  pango_font_description_free(font_sans20_desc);
 }
 
-G_MODULE_EXPORT gchar*
+G_MODULE_EXPORT const gchar*
 display_name() {
   return "Nico2";
 }
 
-G_MODULE_EXPORT gchar*
+G_MODULE_EXPORT const gchar*
 display_description() {
-  return "<span size=\"large\"><b>Nico2</b></span>\n"
+  return
+    "<span size=\"large\"><b>Nico2</b></span>\n"
     "<span>This is nico2 notification display.</span>\n"
     "<span>Slide notification from right to left similar to nico nico douga.</span>\n";
 }

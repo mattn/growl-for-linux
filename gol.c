@@ -34,6 +34,7 @@
 #endif
 #include <stddef.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdarg.h>
 #include <ctype.h>
 #include <stdio.h>
@@ -89,8 +90,8 @@ typedef struct {
   gboolean (*start)();
   gboolean (*stop)();
   gboolean (*term)();
-  gchar* (*name)();
-  gchar* (*description)();
+  const gchar* (*name)();
+  const gchar* (*description)();
   gchar** (*thumbnail)();
 } SUBSCRIBE_PLUGIN;
 
@@ -99,8 +100,8 @@ typedef struct {
   gboolean (*init)();
   gboolean (*show)(NOTIFICATION_INFO* ni);
   gboolean (*term)();
-  gchar* (*name)();
-  gchar* (*description)();
+  const gchar* (*name)();
+  const gchar* (*description)();
   gchar** (*thumbnail)();
 } DISPLAY_PLUGIN;
 
@@ -230,11 +231,8 @@ foreach_subscribe_plugin(void(* func)(SUBSCRIBE_PLUGIN*)) {
   g_list_foreach(subscribe_plugins, wrapped_func, NULL);
 }
 
-static inline void
-exec_sqlite3(const char[ const static 1 ], ...);
-
 static void
-exec_sqlite3(const char tsql[ const static 1 ], ...) {
+exec_sqlite3(const char tsql[], ...) {
   va_list list;
   va_start(list, tsql);
 
@@ -1030,7 +1028,7 @@ str_swap(char ** restrict _left, char ** restrict _right)
 
 static gpointer
 gntp_recv_proc(gpointer user_data) {
-  int sock = (int) user_data;
+  int sock = (int)(intptr_t) user_data;
   bool is_local_app = false;
 
   struct sockaddr_in client;
@@ -1657,7 +1655,7 @@ gntp_accepted(GIOChannel* const source, GIOCondition condition, gpointer user_da
   }
 
 #ifdef G_THREADS_ENABLED
-  g_thread_create(gntp_recv_proc, (gpointer) sock, FALSE, NULL);
+  g_thread_create(gntp_recv_proc, (gpointer)(intptr_t) sock, FALSE, NULL);
 #else
   gntp_recv_proc((gpointer) sock);
 #endif
