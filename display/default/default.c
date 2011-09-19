@@ -219,39 +219,61 @@ create_popup_skelton(NOTIFICATION_INFO* const ni) {
   gtk_widget_modify_bg(di->popup, GTK_STATE_NORMAL, color_lightgray);
 
   GtkWidget* const ebox = gtk_event_box_new();
+  if (!ebox) {
+    free_display_info(di);
+    return NULL;
+  }
   gtk_event_box_set_visible_window(GTK_EVENT_BOX(ebox), FALSE);
+  g_signal_connect(G_OBJECT(ebox), "button-press-event", G_CALLBACK(display_clicked), di);
+  g_signal_connect(G_OBJECT(ebox), "enter-notify-event", G_CALLBACK(display_enter), di);
+  g_signal_connect(G_OBJECT(ebox), "leave-notify-event", G_CALLBACK(display_leave), di);
   gtk_container_add(GTK_CONTAINER(di->popup), ebox);
 
   GtkWidget* const vbox = gtk_vbox_new(FALSE, 5);
+  if (!vbox) {
+    free_display_info(di);
+    return NULL;
+  }
   gtk_container_set_border_width(GTK_CONTAINER(vbox), 5);
   gtk_container_add(GTK_CONTAINER(ebox), vbox);
 
   GtkWidget* const hbox = gtk_hbox_new(FALSE, 5);
+  if (!hbox) {
+    free_display_info(di);
+    return NULL;
+  }
   gtk_box_pack_start(GTK_BOX(vbox), hbox, FALSE, TRUE, 0);
 
   GtkWidget* const nullimg = gtk_image_new();
+  if (!nullimg) {
+    free_display_info(di);
+    return NULL;
+  }
   gtk_box_pack_start(GTK_BOX(hbox), nullimg, FALSE, FALSE, 0);
 
-  GtkWidget* label = gtk_label_new(NULL);
-  gtk_widget_modify_fg(label, GTK_STATE_NORMAL, color_black);
-  gtk_widget_modify_font(label, font_sans12_desc);
+  GtkWidget* const title = gtk_label_new(NULL);
+  if (!title) {
+    free_display_info(di);
+    return NULL;
+  }
+  gtk_widget_modify_fg(title, GTK_STATE_NORMAL, color_black);
+  gtk_widget_modify_font(title, font_sans12_desc);
   gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, FALSE, 0);
 
-  label = gtk_label_new(NULL);
-  gtk_widget_modify_fg(label, GTK_STATE_NORMAL, color_black);
-  gtk_widget_modify_font(label, font_sans8_desc);
-  g_signal_connect(G_OBJECT(label), "size-allocate", G_CALLBACK(label_size_allocate), NULL);
-  gtk_label_set_line_wrap(GTK_LABEL(label), TRUE);
-  gtk_label_set_line_wrap_mode(GTK_LABEL(label), PANGO_WRAP_CHAR);
-  gtk_box_pack_start(GTK_BOX(vbox), label, FALSE, FALSE, 0);
+  GtkWidget* const text = gtk_label_new(NULL);
+  if (!text) {
+    free_display_info(di);
+    return NULL;
+  }
+  gtk_widget_modify_fg(text, GTK_STATE_NORMAL, color_black);
+  gtk_widget_modify_font(text, font_sans8_desc);
+  g_signal_connect(G_OBJECT(text), "size-allocate", G_CALLBACK(label_size_allocate), NULL);
+  gtk_label_set_line_wrap(GTK_LABEL(text), TRUE);
+  gtk_label_set_line_wrap_mode(GTK_LABEL(text), PANGO_WRAP_CHAR);
+  gtk_box_pack_start(GTK_BOX(vbox), text, FALSE, FALSE, 0);
 
   gtk_widget_set_size_request(di->popup, 180, 1);
 
-  g_signal_connect(G_OBJECT(ebox), "button-press-event", G_CALLBACK(display_clicked), di);
-  g_signal_connect(G_OBJECT(ebox), "enter-notify-event", G_CALLBACK(display_enter), di);
-  g_signal_connect(G_OBJECT(ebox), "leave-notify-event", G_CALLBACK(display_leave), di);
-
-  di->offset = 0;
   di->timeout = 500;
 
   gtk_window_move(GTK_WINDOW(di->popup), di->x, di->y);
