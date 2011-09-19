@@ -53,6 +53,19 @@ typedef struct {
   gboolean hover;
 } DISPLAY_INFO;
 
+static inline DISPLAY_INFO*
+create_display_info_with_notification_info(NOTIFICATION_INFO* const ni) {
+  if (!ni) return NULL;
+
+  DISPLAY_INFO* const di = g_new0(DISPLAY_INFO, 1);
+  if (!di) {
+    perror("g_new0");
+    return NULL;
+  }
+  di->ni = ni;
+  return di;
+}
+
 static inline void
 free_display_info(DISPLAY_INFO* const di) {
   g_free(di->ni->title);
@@ -119,69 +132,83 @@ display_animation_func(gpointer data) {
   return TRUE;
 }
 
-static GList*
-find_showable_position() {
-  gint pos = 0;
-  gint
-  is_differ_pos(gconstpointer p, gconstpointer unused_) {
-    return ((const DISPLAY_INFO*) p)->pos == pos++;
-  }
-  return g_list_find_custom(notifications, NULL, is_differ_pos);
-}
-
 static void
 label_size_allocate(GtkWidget* label, GtkAllocation* allocation, gpointer data) {
   gtk_widget_set_size_request(label, allocation->width - 2, -1);
 }
 
-static inline DISPLAY_INFO*
-create_display_info_with_notification_info(NOTIFICATION_INFO* const ni) {
-  if (!ni) return NULL;
+static inline GtkWidget*
+DISPLAY_VBOX_NTH_ELEM(DISPLAY_INFO* const di, const gint n) {
+  GList* const pebox = gtk_container_get_children(GTK_CONTAINER(di->popup));
+  if (!pebox) return NULL;
 
-  DISPLAY_INFO* const di = g_new0(DISPLAY_INFO, 1);
-  if (!di) {
-    perror("g_new0");
-    return NULL;
-  }
-  di->ni = ni;
-  return di;
+  GtkBox* const ebox = g_list_nth_data(pebox, 0);
+  GList* const pvbox = gtk_container_get_children(GTK_CONTAINER(ebox));
+  g_list_free(pebox);
+  if (!pvbox) return NULL;
+
+  GtkBox* const vbox = g_list_nth_data(pvbox, 0);
+  GList* const pwid = gtk_container_get_children(GTK_CONTAINER(vbox));
+  g_list_free(pvbox);
+  if (!pwid) return NULL;
+
+  GtkWidget* const wid = g_list_nth_data(pwid, n);
+  g_list_free(pwid);
+  return wid;
+}
+
+static inline GtkWidget*
+DISPLAY_HBOX_NTH_ELEM(DISPLAY_INFO* const di, const gint n) {
+  GtkBox* const hbox = GTK_BOX(DISPLAY_VBOX_NTH_ELEM(di, 0));
+  if (!hbox) return NULL;
+
+  GList* const phead = gtk_container_get_children(GTK_CONTAINER(hbox));
+  GtkWidget* const wid = g_list_nth_data(phead, n);
+  g_list_free(phead);
+  return wid;
+}
+
+static inline GtkImage*
+DISPLAY_ICON_FIELD(DISPLAY_INFO* const di) {
+  return GTK_IMAGE(DISPLAY_HBOX_NTH_ELEM(di, 0));
+}
+
+static inline GtkLabel*
+DISPLAY_TITLE_FIELD(DISPLAY_INFO* const di) {
+  return GTK_LABEL(DISPLAY_HBOX_NTH_ELEM(di, 1));
+}
+
+static inline GtkLabel*
+DISPLAY_TEXT_FIELD(DISPLAY_INFO* const di) {
+  return GTK_LABEL(DISPLAY_VBOX_NTH_ELEM(di, 1));
 }
 
 static inline void
-box_enable_icon(GtkBox* const restrict box, const NOTIFICATION_INFO* const restrict ni) {
+box_set_icon_if_has(GtkImage* const restrict image, const NOTIFICATION_INFO* const restrict ni) {
+  if (!ni->icon || !*ni->icon) return;
+
   GdkPixbuf* const pixbuf =
     (ni->local ? pixbuf_from_url_as_file
                : pixbuf_from_url)(ni->icon, NULL);
   if (!pixbuf) return;
 
   GdkPixbuf* const tmp   = gdk_pixbuf_scale_simple(pixbuf, 32, 32, GDK_INTERP_TILES);
-  GtkWidget* const image = gtk_image_new_from_pixbuf(tmp ? tmp : pixbuf);
-  gtk_box_pack_start(box, image, FALSE, FALSE, 0);
+  gtk_image_set_from_pixbuf(image, tmp ? tmp : pixbuf);
 
   g_object_unref(tmp);
   g_object_unref(pixbuf);
 }
 
-G_MODULE_EXPORT gboolean
-display_show(NOTIFICATION_INFO* const ni) {
+static inline DISPLAY_INFO*
+create_popup_skelton(NOTIFICATION_INFO* const ni) {
   DISPLAY_INFO* const di = create_display_info_with_notification_info(ni);
-  if (!di) return FALSE;
-
-  GList* const found = find_showable_position();
-  di->pos = found ? g_list_position(notifications, found) : (gint) g_list_length(notifications);
-
-  const gint vert_count = screen_rect.height / 180;
-  const gint cx = di->pos / vert_count;
-  const gint cy = di->pos % vert_count;
-  di->x = screen_rect.x + screen_rect.width  - cx * 200 - 180;
-  di->y = screen_rect.y + screen_rect.height - cy * 180 + 20;
-  if (di->x < 0) {
-    free_display_info(di);
-    return FALSE;
-  }
-  notifications = g_list_insert_before(notifications, found, di);
+  if (!di) return NULL;
 
   di->popup = gtk_window_new(GTK_WINDOW_POPUP);
+  if (!di->popup) {
+    free_display_info(di);
+    return NULL;
+  }
   gtk_window_set_title(GTK_WINDOW(di->popup), "growl-for-linux");
   gtk_window_set_resizable(GTK_WINDOW(di->popup), FALSE);
   gtk_window_set_decorated(GTK_WINDOW(di->popup), FALSE);
@@ -202,14 +229,15 @@ display_show(NOTIFICATION_INFO* const ni) {
   GtkWidget* const hbox = gtk_hbox_new(FALSE, 5);
   gtk_box_pack_start(GTK_BOX(vbox), hbox, FALSE, TRUE, 0);
 
-  if (di->ni->icon && *di->ni->icon) box_enable_icon(GTK_BOX(hbox), di->ni);
+  GtkWidget* const nullimg = gtk_image_new();
+  gtk_box_pack_start(GTK_BOX(hbox), nullimg, FALSE, FALSE, 0);
 
-  GtkWidget* label = gtk_label_new(di->ni->title);
+  GtkWidget* label = gtk_label_new(NULL);
   gtk_widget_modify_fg(label, GTK_STATE_NORMAL, color_black);
   gtk_widget_modify_font(label, font_sans12_desc);
   gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, FALSE, 0);
 
-  label = gtk_label_new(di->ni->text);
+  label = gtk_label_new(NULL);
   gtk_widget_modify_fg(label, GTK_STATE_NORMAL, color_black);
   gtk_widget_modify_font(label, font_sans8_desc);
   g_signal_connect(G_OBJECT(label), "size-allocate", G_CALLBACK(label_size_allocate), NULL);
@@ -227,12 +255,42 @@ display_show(NOTIFICATION_INFO* const ni) {
   di->timeout = 500;
 
   gtk_window_move(GTK_WINDOW(di->popup), di->x, di->y);
-  gtk_widget_show_all(di->popup);
-
 #ifdef _WIN32
   SetWindowPos(GDK_WINDOW_HWND(di->popup->window), HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
 #endif
 
+  return di;
+}
+
+G_MODULE_EXPORT gboolean
+display_show(NOTIFICATION_INFO* const ni) {
+  DISPLAY_INFO* const di = create_popup_skelton(ni);
+  if (!di) return FALSE;
+
+  di->pos = 0;
+  gint
+  is_differ_pos(gconstpointer p, gconstpointer unused_) {
+    return ((const DISPLAY_INFO*) p)->pos == di->pos++;
+  }
+  GList* const found = g_list_find_custom(notifications, NULL, is_differ_pos);
+  if (found) --di->pos;
+
+  const gint vert_count = screen_rect.height / 180;
+  const gint cx = di->pos / vert_count;
+  const gint cy = di->pos % vert_count;
+  di->x = screen_rect.x + screen_rect.width  - cx * 200 - 180;
+  di->y = screen_rect.y + screen_rect.height - cy * 180 + 20;
+  if (di->x < 0) {
+    free_display_info(di);
+    return FALSE;
+  }
+  notifications = g_list_insert_before(notifications, found, di);
+
+  box_set_icon_if_has(DISPLAY_ICON_FIELD(di), di->ni);
+  gtk_label_set_text(DISPLAY_TITLE_FIELD(di), di->ni->title);
+  gtk_label_set_text(DISPLAY_TEXT_FIELD(di), di->ni->text);
+
+  gtk_widget_show_all(di->popup);
   g_timeout_add(10, display_animation_func, di);
 
   return FALSE;
