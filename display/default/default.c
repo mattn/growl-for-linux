@@ -68,6 +68,7 @@ create_display_info_with_notification_info(NOTIFICATION_INFO* const ni) {
 
 static inline void
 free_display_info(DISPLAY_INFO* const di) {
+  gtk_widget_destroy(di->popup);
   g_free(di->ni->title);
   g_free(di->ni->text);
   g_free(di->ni->icon);
@@ -115,7 +116,6 @@ display_animation_func(gpointer data) {
   if (!di->hover) di->timeout--;
 
   if (di->timeout < 0) {
-    gtk_widget_destroy(di->popup);
     notifications = g_list_remove(notifications, di);
     free_display_info(di);
     return FALSE;
