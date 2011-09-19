@@ -258,7 +258,7 @@ create_popup_skelton(NOTIFICATION_INFO* const ni) {
   }
   gtk_widget_modify_fg(title, GTK_STATE_NORMAL, color_black);
   gtk_widget_modify_font(title, font_sans12_desc);
-  gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, FALSE, 0);
+  gtk_box_pack_start(GTK_BOX(hbox), title, FALSE, FALSE, 0);
 
   GtkWidget* const text = gtk_label_new(NULL);
   if (!text) {
