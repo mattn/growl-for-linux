@@ -157,9 +157,14 @@ DISPLAY_VBOX_NTH_ELEM(const DISPLAY_INFO* const di, const gint n) {
   return wid;
 }
 
+static inline GtkBox*
+DISPLAY_HBOX(const DISPLAY_INFO* const di) {
+  return GTK_BOX(DISPLAY_VBOX_NTH_ELEM(di, 0));
+}
+
 static inline GtkWidget*
 DISPLAY_HBOX_NTH_ELEM(const DISPLAY_INFO* const di, const gint n) {
-  GtkBox* const hbox = GTK_BOX(DISPLAY_VBOX_NTH_ELEM(di, 0));
+  GtkBox* const hbox = DISPLAY_HBOX(di);
   if (!hbox) return NULL;
 
   GList* const phead = gtk_container_get_children(GTK_CONTAINER(hbox));
