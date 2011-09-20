@@ -138,7 +138,7 @@ label_size_allocate(GtkWidget* label, GtkAllocation* allocation, gpointer data) 
 }
 
 static inline GtkWidget*
-DISPLAY_VBOX_NTH_ELEM(DISPLAY_INFO* const di, const gint n) {
+DISPLAY_VBOX_NTH_ELEM(const DISPLAY_INFO* const di, const gint n) {
   GList* const pebox = gtk_container_get_children(GTK_CONTAINER(di->popup));
   if (!pebox) return NULL;
 
@@ -158,7 +158,7 @@ DISPLAY_VBOX_NTH_ELEM(DISPLAY_INFO* const di, const gint n) {
 }
 
 static inline GtkWidget*
-DISPLAY_HBOX_NTH_ELEM(DISPLAY_INFO* const di, const gint n) {
+DISPLAY_HBOX_NTH_ELEM(const DISPLAY_INFO* const di, const gint n) {
   GtkBox* const hbox = GTK_BOX(DISPLAY_VBOX_NTH_ELEM(di, 0));
   if (!hbox) return NULL;
 
@@ -169,17 +169,17 @@ DISPLAY_HBOX_NTH_ELEM(DISPLAY_INFO* const di, const gint n) {
 }
 
 static inline GtkImage*
-DISPLAY_ICON_FIELD(DISPLAY_INFO* const di) {
+DISPLAY_ICON_FIELD(const DISPLAY_INFO* const di) {
   return GTK_IMAGE(DISPLAY_HBOX_NTH_ELEM(di, 0));
 }
 
 static inline GtkLabel*
-DISPLAY_TITLE_FIELD(DISPLAY_INFO* const di) {
+DISPLAY_TITLE_FIELD(const DISPLAY_INFO* const di) {
   return GTK_LABEL(DISPLAY_HBOX_NTH_ELEM(di, 1));
 }
 
 static inline GtkLabel*
-DISPLAY_TEXT_FIELD(DISPLAY_INFO* const di) {
+DISPLAY_TEXT_FIELD(const DISPLAY_INFO* const di) {
   return GTK_LABEL(DISPLAY_VBOX_NTH_ELEM(di, 1));
 }
 
