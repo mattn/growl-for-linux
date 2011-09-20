@@ -175,12 +175,24 @@ DISPLAY_HBOX_NTH_ELEM(const DISPLAY_INFO* const di, const gint n) {
 
 static inline GtkImage*
 DISPLAY_ICON_FIELD(const DISPLAY_INFO* const di) {
-  return GTK_IMAGE(DISPLAY_HBOX_NTH_ELEM(di, 0));
+  GtkBox* const hbox = DISPLAY_HBOX(di);
+  if (!hbox) return NULL;
+
+  GList* const phead = gtk_container_get_children(GTK_CONTAINER(hbox));
+  GtkImage* const img = g_list_length(phead) > 1 ? GTK_IMAGE(g_list_nth_data(phead, 0)) : NULL;
+  g_list_free(phead);
+  return img;
 }
 
 static inline GtkLabel*
 DISPLAY_TITLE_FIELD(const DISPLAY_INFO* const di) {
-  return GTK_LABEL(DISPLAY_HBOX_NTH_ELEM(di, 1));
+  GtkBox* const hbox = DISPLAY_HBOX(di);
+  if (!hbox) return NULL;
+
+  GList* const phead = gtk_container_get_children(GTK_CONTAINER(hbox));
+  GtkLabel* const title = GTK_LABEL(g_list_nth_data(phead, g_list_length(phead) - 1));
+  g_list_free(phead);
+  return title;
 }
 
 static inline GtkLabel*
@@ -189,7 +201,9 @@ DISPLAY_TEXT_FIELD(const DISPLAY_INFO* const di) {
 }
 
 static inline void
-box_set_icon_if_has(GtkImage* const restrict image, const NOTIFICATION_INFO* const restrict ni) {
+box_set_icon_if_has(const DISPLAY_INFO* const di) {
+  if (!di) return;
+  const NOTIFICATION_INFO* const ni = di->ni;
   if (!ni->icon || !*ni->icon) return;
 
   GdkPixbuf* const pixbuf =
@@ -197,10 +211,15 @@ box_set_icon_if_has(GtkImage* const restrict image, const NOTIFICATION_INFO* con
                : pixbuf_from_url)(ni->icon, NULL);
   if (!pixbuf) return;
 
-  GdkPixbuf* const tmp   = gdk_pixbuf_scale_simple(pixbuf, 32, 32, GDK_INTERP_TILES);
-  gtk_image_set_from_pixbuf(image, tmp ? tmp : pixbuf);
+  GdkPixbuf* const tmp = gdk_pixbuf_scale_simple(pixbuf, 32, 32, GDK_INTERP_TILES);
+  GtkWidget* const image = gtk_image_new_from_pixbuf(tmp ? tmp : pixbuf);
+  if (image) {
+    GtkBox* const hbox = DISPLAY_HBOX(di);
+    gtk_box_pack_start(hbox, image, FALSE, FALSE, 0);
+    gtk_box_reorder_child(hbox, DISPLAY_HBOX_NTH_ELEM(di, 0), 1);
+  }
 
-  g_object_unref(tmp);
+  if (tmp) g_object_unref(tmp);
   g_object_unref(pixbuf);
 }
 
@@ -248,13 +267,6 @@ create_popup_skelton(NOTIFICATION_INFO* const ni) {
     return NULL;
   }
   gtk_box_pack_start(GTK_BOX(vbox), hbox, FALSE, TRUE, 0);
-
-  GtkWidget* const nullimg = gtk_image_new();
-  if (!nullimg) {
-    free_display_info(di);
-    return NULL;
-  }
-  gtk_box_pack_start(GTK_BOX(hbox), nullimg, FALSE, FALSE, 0);
 
   GtkWidget* const title = gtk_label_new(NULL);
   if (!title) {
@@ -313,7 +325,7 @@ display_show(NOTIFICATION_INFO* const ni) {
   }
   notifications = g_list_insert_before(notifications, found, di);
 
-  box_set_icon_if_has(DISPLAY_ICON_FIELD(di), di->ni);
+  box_set_icon_if_has(di);
   gtk_label_set_text(DISPLAY_TITLE_FIELD(di), di->ni->title);
   gtk_label_set_text(DISPLAY_TEXT_FIELD(di), di->ni->text);
 
