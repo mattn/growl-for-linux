@@ -110,8 +110,8 @@ display_leave(GtkWidget* widget, GdkEventMotion* event, gpointer user_data) {
   ((DISPLAY_INFO*) user_data)->hover = FALSE;
 }
 
-static inline void
-remove_icon(const DISPLAY_INFO*);
+static inline DISPLAY_INFO*
+reset_display_info(DISPLAY_INFO*);
 
 static gboolean
 display_animation_func(gpointer data) {
@@ -122,8 +122,8 @@ display_animation_func(gpointer data) {
 
   if (di->timeout < 0) {
     notifications = g_list_remove(notifications, di);
-    remove_icon(di);
     popup_collections = g_list_append(popup_collections, di);
+    reset_display_info(di);
     return FALSE;
   }
 
@@ -317,13 +317,16 @@ create_popup_skelton(NOTIFICATION_INFO* const ni) {
   return di;
 }
 
-static inline void
-reset_popup(DISPLAY_INFO* const di) {
+static inline DISPLAY_INFO*
+reset_display_info(DISPLAY_INFO* const di) {
   di->timeout = 500;
   di->pos     = 0;
   di->offset  = 0;
   di->hover   = FALSE;
+  gtk_widget_hide_all(di->popup);
   gtk_window_set_opacity(GTK_WINDOW(di->popup), 0.8);
+  remove_icon(di);
+  return di;
 }
 
 static inline gpointer
@@ -341,15 +344,13 @@ get_popup_skelton(NOTIFICATION_INFO* const ni) {
     di->ni = ni;
     return di;
   }
-  return create_popup_skelton(ni);
+  return reset_display_info(create_popup_skelton(ni));
 }
 
 G_MODULE_EXPORT gboolean
 display_show(NOTIFICATION_INFO* const ni) {
   DISPLAY_INFO* const di = get_popup_skelton(ni);
   if (!di) return FALSE;
-
-  reset_popup(di);
 
   gint
   is_differ_pos(gconstpointer p, gconstpointer unused_) {
