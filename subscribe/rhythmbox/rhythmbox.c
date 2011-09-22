@@ -84,7 +84,6 @@ get_album_art(const char* artist, const char* album) {
   char* body = NULL;
 
   xmlDocPtr doc = NULL;
-  xmlNodeSetPtr nodes = NULL;
   xmlXPathContextPtr ctx = NULL;
   xmlXPathObjectPtr path = NULL;
 
@@ -152,7 +151,7 @@ leave:
 }
 
 static gboolean
-get_rhythmbox_info(gpointer data) {
+get_rhythmbox_info(gpointer GOL_UNUSED_ARG(data)) {
   if (!enable) return FALSE;
 
   DBusGProxy *player = NULL;

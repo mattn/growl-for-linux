@@ -86,19 +86,19 @@ open_url(const gchar* url) {
 }
 
 static void
-display_clicked(GtkWidget* widget, GdkEvent* event, gpointer user_data) {
+display_clicked(GtkWidget* GOL_UNUSED_ARG(widget), GdkEvent* GOL_UNUSED_ARG(event), gpointer user_data) {
   DISPLAY_INFO* di = (DISPLAY_INFO*) user_data;
   if (di->timeout >= 30) di->timeout = 30;
   if (di->ni->url && *di->ni->url) open_url(di->ni->url);
 }
 
 static void
-display_enter(GtkWidget* widget, GdkEventMotion* event, gpointer user_data) {
+display_enter(GtkWidget* GOL_UNUSED_ARG(widget), GdkEventMotion* GOL_UNUSED_ARG(event), gpointer user_data) {
   ((DISPLAY_INFO*) user_data)->hover = TRUE;
 }
 
 static void
-display_leave(GtkWidget* widget, GdkEventMotion* event, gpointer user_data) {
+display_leave(GtkWidget* GOL_UNUSED_ARG(widget), GdkEventMotion* GOL_UNUSED_ARG(event), gpointer user_data) {
   ((DISPLAY_INFO*) user_data)->hover = FALSE;
 }
 

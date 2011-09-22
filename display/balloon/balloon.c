@@ -87,19 +87,19 @@ open_url(const gchar* url) {
 }
 
 static void
-display_clicked(GtkWidget* widget, GdkEvent* event, gpointer user_data) {
+display_clicked(GtkWidget* GOL_UNUSED_ARG(widget), GdkEvent* GOL_UNUSED_ARG(event), gpointer user_data) {
   DISPLAY_INFO* const di = (DISPLAY_INFO*) user_data;
   if (di->timeout >= 30) di->timeout = 30;
   if (di->ni->url && *di->ni->url) open_url(di->ni->url);
 }
 
 static void
-display_enter(GtkWidget* widget, GdkEventMotion* event, gpointer user_data) {
+display_enter(GtkWidget* GOL_UNUSED_ARG(widget), GdkEventMotion* GOL_UNUSED_ARG(event), gpointer user_data) {
   ((DISPLAY_INFO*) user_data)->hover = TRUE;
 }
 
 static void
-display_leave(GtkWidget* widget, GdkEventMotion* event, gpointer user_data) {
+display_leave(GtkWidget* GOL_UNUSED_ARG(widget), GdkEventMotion* GOL_UNUSED_ARG(event), gpointer user_data) {
   ((DISPLAY_INFO*) user_data)->hover = FALSE;
 }
 
@@ -127,7 +127,7 @@ display_animation_func(gpointer data) {
 }
 
 static gboolean
-display_expose(GtkWidget *widget, GdkEventExpose *event, gpointer data) {
+display_expose(GtkWidget *widget, GdkEventExpose *event, gpointer GOL_UNUSED_ARG(data)) {
   gdk_window_clear_area(
     widget->window,
     event->area.x, event->area.y, event->area.width, event->area.height);
@@ -144,14 +144,14 @@ static GList*
 find_showable_position() {
   gint pos = 0;
   gint
-  is_differ_pos(gconstpointer p, gconstpointer unused_) {
+  is_differ_pos(gconstpointer p, gconstpointer GOL_UNUSED_ARG(user_data)) {
     return ((const DISPLAY_INFO*) p)->pos == pos++;
   }
   return  g_list_find_custom(notifications, NULL, is_differ_pos);
 }
 
 static void
-label_size_allocate(GtkWidget* label, GtkAllocation* allocation, gpointer data) {
+label_size_allocate(GtkWidget* label, GtkAllocation* allocation, gpointer GOL_UNUSED_ARG(data)) {
   gtk_widget_set_size_request(label, allocation->width - 2, -1);
 }
 

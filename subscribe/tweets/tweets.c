@@ -47,7 +47,7 @@ delay_show(gpointer data) {
 }
 
 static gboolean
-fetch_tweets(gpointer data) {
+fetch_tweets(gpointer GOL_UNUSED_ARG(data)) {
   if (!enable) return FALSE;
 
   CURL* curl = NULL;
@@ -102,17 +102,14 @@ fetch_tweets(gpointer data) {
     char* id = NULL;
     char* user_id = NULL;
     char* icon = NULL;
-    char* real = NULL;
     char* user_name = NULL;
     char* text = NULL;
-    char* date = NULL;
 
     xmlNodePtr status = nodes->nodeTab[n];
     if (status->type != XML_ATTRIBUTE_NODE && status->type != XML_ELEMENT_NODE && status->type != XML_CDATA_SECTION_NODE) continue;
     status = status->children;
     while(status) {
       if (!strcmp("id", (char*) status->name)) id = (char*) status->children->content;
-      if (!strcmp("created_at", (char*) status->name)) date = (char*) status->children->content;
       if (!strcmp("text", (char*) status->name)) {
         if (status->children) text = (char*) status->children->content;
       }
@@ -121,7 +118,6 @@ fetch_tweets(gpointer data) {
         xmlNodePtr user = status->children;
         while(user) {
           if (!strcmp("id", (char*) user->name)) user_id = XML_CONTENT(user);
-          if (!strcmp("name", (char*) user->name)) real = XML_CONTENT(user);
           if (!strcmp("screen_name", (char*) user->name)) user_name = XML_CONTENT(user);
           if (!strcmp("profile_image_url", (char*) user->name)) {
             icon = XML_CONTENT(user);
