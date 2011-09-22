@@ -31,6 +31,7 @@
 #include "display_default.xpm"
 
 static GList* notifications = NULL;
+static GList* popup_collections = NULL;
 
 static GdkColor inst_color_lightgray_;
 static GdkColor inst_color_black_;
@@ -109,15 +110,20 @@ display_leave(GtkWidget* widget, GdkEventMotion* event, gpointer user_data) {
   ((DISPLAY_INFO*) user_data)->hover = FALSE;
 }
 
+static inline void
+remove_icon(const DISPLAY_INFO*);
+
 static gboolean
 display_animation_func(gpointer data) {
   DISPLAY_INFO* const di = (DISPLAY_INFO*) data;
 
-  if (!di->hover) di->timeout--;
+  if (di->hover) return TRUE; // Do nothing.
+  --di->timeout;
 
   if (di->timeout < 0) {
     notifications = g_list_remove(notifications, di);
-    free_display_info(di);
+    remove_icon(di);
+    popup_collections = g_list_append(popup_collections, di);
     return FALSE;
   }
 
@@ -223,6 +229,20 @@ box_set_icon_if_has(const DISPLAY_INFO* const di) {
   g_object_unref(pixbuf);
 }
 
+static inline void
+remove_icon(const DISPLAY_INFO* const di) {
+  if (!di) return;
+
+  GtkBox* const hbox = DISPLAY_HBOX(di);
+  GList* const children = gtk_container_get_children(GTK_CONTAINER(hbox));
+  if (g_list_length(children) != 1) {
+    GtkWidget* const image = g_list_nth_data(children, 0);
+    gtk_box_reorder_child(hbox, image, -1);
+    gtk_container_remove(GTK_CONTAINER(hbox), image);
+  }
+  g_list_free(children);
+}
+
 static inline DISPLAY_INFO*
 create_popup_skelton(NOTIFICATION_INFO* const ni) {
   DISPLAY_INFO* const di = create_display_info_with_notification_info(ni);
@@ -239,7 +259,6 @@ create_popup_skelton(NOTIFICATION_INFO* const ni) {
   gtk_window_set_keep_above(GTK_WINDOW(di->popup), TRUE);
 
   gtk_window_stick(GTK_WINDOW(di->popup));
-  gtk_window_set_opacity(GTK_WINDOW(di->popup), 0.8);
   gtk_widget_modify_bg(di->popup, GTK_STATE_NORMAL, color_lightgray);
 
   GtkWidget* const ebox = gtk_event_box_new();
@@ -291,9 +310,6 @@ create_popup_skelton(NOTIFICATION_INFO* const ni) {
 
   gtk_widget_set_size_request(di->popup, 180, 1);
 
-  di->timeout = 500;
-
-  gtk_window_move(GTK_WINDOW(di->popup), di->x, di->y);
 #ifdef _WIN32
   SetWindowPos(GDK_WINDOW_HWND(di->popup->window), HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
 #endif
@@ -301,12 +317,40 @@ create_popup_skelton(NOTIFICATION_INFO* const ni) {
   return di;
 }
 
+static inline void
+reset_popup(DISPLAY_INFO* const di) {
+  di->timeout = 500;
+  di->pos     = 0;
+  di->offset  = 0;
+  di->hover   = FALSE;
+  gtk_window_set_opacity(GTK_WINDOW(di->popup), 0.8);
+}
+
+static inline gpointer
+list_pop_front(GList** list) {
+  if (!list) return NULL;
+  const gpointer elem = g_list_nth_data(*list, 0);
+  *list = g_list_remove(*list, elem);
+  return elem;
+}
+
+static inline DISPLAY_INFO*
+get_popup_skelton(NOTIFICATION_INFO* const ni) {
+  DISPLAY_INFO* const di = (DISPLAY_INFO*) list_pop_front(&popup_collections);
+  if (di) {
+    di->ni = ni;
+    return di;
+  }
+  return create_popup_skelton(ni);
+}
+
 G_MODULE_EXPORT gboolean
 display_show(NOTIFICATION_INFO* const ni) {
-  DISPLAY_INFO* const di = create_popup_skelton(ni);
+  DISPLAY_INFO* const di = get_popup_skelton(ni);
   if (!di) return FALSE;
 
-  di->pos = 0;
+  reset_popup(di);
+
   gint
   is_differ_pos(gconstpointer p, gconstpointer unused_) {
     return ((const DISPLAY_INFO*) p)->pos == di->pos++;
@@ -329,6 +373,7 @@ display_show(NOTIFICATION_INFO* const ni) {
   gtk_label_set_text(DISPLAY_TITLE_FIELD(di), di->ni->title);
   gtk_label_set_text(DISPLAY_TEXT_FIELD(di), di->ni->text);
 
+  gtk_window_move(GTK_WINDOW(di->popup), di->x, di->y);
   gtk_widget_show_all(di->popup);
   g_timeout_add(10, display_animation_func, di);
 
@@ -359,6 +404,26 @@ G_MODULE_EXPORT void
 display_term() {
   pango_font_description_free(font_sans12_desc);
   pango_font_description_free(font_sans8_desc);
+
+  void
+  list_free_deep(GList* const list) {
+    void
+    deleter_wrapper(gpointer data, gpointer user_data) {
+      free_display_info((DISPLAY_INFO*) data);
+    }
+    g_list_foreach(list, deleter_wrapper, NULL);
+    g_list_free(list);
+  }
+  list_free_deep(notifications);
+  list_free_deep(popup_collections);
+
+  // FIXME: g_list_free_full will fail symbol lookup.
+  //void
+  //deleter(gpointer data) {
+  //  free_display_info((DISPLAY_INFO*) data);
+  //}
+  //g_list_free_full(notifications, deleter);
+  //g_list_free_full(popup_collections, deleter);
 }
 
 G_MODULE_EXPORT const gchar*
