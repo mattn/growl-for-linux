@@ -32,8 +32,8 @@
 #endif
 
 #include <curl/curl.h>
-#include "../../gol.h"
-#include "../../plugins/from_url.h"
+#include "gol.h"
+#include "plugins/from_url.h"
 #include "balloon.xpm"
 #include "display_balloon.xpm"
 

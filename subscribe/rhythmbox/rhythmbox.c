@@ -30,8 +30,8 @@
 #include <stdlib.h>
 #include <memory.h>
 #include <curl/curl.h>
-#include "../../gol.h"
-#include "../../plugins/memfile.h"
+#include "gol.h"
+#include "plugins/memfile.h"
 
 #define REQUEST_TIMEOUT            (5)
 

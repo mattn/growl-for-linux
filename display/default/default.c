@@ -26,8 +26,8 @@
 # include <gdk/gdkwin32.h>
 #endif
 #include <curl/curl.h>
-#include "../../gol.h"
-#include "../../plugins/from_url.h"
+#include "gol.h"
+#include "plugins/from_url.h"
 #include "display_default.xpm"
 
 static GList* notifications = NULL;

@@ -28,8 +28,8 @@
 #include <stdlib.h>
 #include <memory.h>
 #include <curl/curl.h>
-#include "../../gol.h"
-#include "../../plugins/from_url.h"
+#include "gol.h"
+#include "plugins/from_url.h"
 #include "display_nico2.xpm"
 
 #define lengthof(arr_) (sizeof(arr_) / sizeof(*arr_))
