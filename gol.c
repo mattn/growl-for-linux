@@ -20,6 +20,15 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+#include <stddef.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdarg.h>
+#include <ctype.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
 #include <gtk/gtk.h>
 #ifdef _WIN32
 # include <gdk/gdkwin32.h>
@@ -32,15 +41,6 @@
 # include <netdb.h>
 # include <unistd.h>
 #endif
-#include <stddef.h>
-#include <stdbool.h>
-#include <stdint.h>
-#include <stdarg.h>
-#include <ctype.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <memory.h>
 #include <sqlite3.h>
 #ifdef _WIN32
 # include <io.h>
@@ -49,6 +49,7 @@
 #include <openssl/sha.h>
 #include <openssl/aes.h>
 #include <openssl/des.h>
+
 #include "gol.h"
 
 #ifdef _WIN32
@@ -73,8 +74,6 @@ typedef int sockopt_t;
 #  define SD_BOTH SHUT_RDWR
 # endif
 #endif
-
-#define GOL_PP_JOIN(_left, _right) _left ## _right
 
 #define GNTP_OK_STRING_LITERAL(_version, _action)   \
   "GNTP/" _version " -OK NONE\r\n"                  \
@@ -105,18 +104,18 @@ typedef struct {
   gchar** (*thumbnail)();
 } DISPLAY_PLUGIN;
 
-static gchar* password = NULL;
+static gchar* password;
 static gboolean require_password_for_local_apps = FALSE;
 static gboolean require_password_for_lan_apps = FALSE;
-static sqlite3 *db = NULL;
-static GtkStatusIcon* status_icon = NULL;
-static GtkWidget* popup_menu = NULL;
-static GtkWidget* setting_dialog = NULL;
-static GtkWidget* about_dialog = NULL;
-static GList* display_plugins = NULL;
-static GList* subscribe_plugins = NULL;
-static DISPLAY_PLUGIN* current_display = NULL;
-static gchar* exepath = NULL;
+static sqlite3 *db;
+static GtkStatusIcon* status_icon;
+static GtkWidget* popup_menu;
+static GtkWidget* setting_dialog;
+static GtkWidget* about_dialog;
+static GList* display_plugins;
+static GList* subscribe_plugins;
+static DISPLAY_PLUGIN* current_display;
+static gchar* exepath;
 static SUBSCRIPTOR_CONTEXT sc;
 
 #ifndef LIBDIR
@@ -1695,13 +1694,13 @@ udp_recv_proc(GIOChannel* const source, GIOCondition GOL_UNUSED_ARG(condition), 
         GROWL_NOTIFY_PACKET* packet = (GROWL_NOTIFY_PACKET*) &buf[0];
 #define HASH_DIGEST_CHECK(_hash_algorithm, _password, _data, _datalen) \
 { \
-  unsigned char digest[GOL_PP_JOIN(_hash_algorithm, _DIGEST_LENGTH)] = {0}; \
+  unsigned char digest[GOL_PP_CAT(_hash_algorithm, _DIGEST_LENGTH)] = {0}; \
   const size_t datalen = _datalen - sizeof(digest);\
-  GOL_PP_JOIN(_hash_algorithm, _CTX) ctx;\
-  GOL_PP_JOIN(_hash_algorithm, _Init)(&ctx);\
-  GOL_PP_JOIN(_hash_algorithm, _Update)(&ctx, _data, datalen);\
-  GOL_PP_JOIN(_hash_algorithm, _Update)(&ctx, _password, strlen(_password));\
-  GOL_PP_JOIN(_hash_algorithm, _Final)(digest, &ctx);\
+  GOL_PP_CAT(_hash_algorithm, _CTX) ctx;\
+  GOL_PP_CAT(_hash_algorithm, _Init)(&ctx);\
+  GOL_PP_CAT(_hash_algorithm, _Update)(&ctx, _data, datalen);\
+  GOL_PP_CAT(_hash_algorithm, _Update)(&ctx, _password, strlen(_password));\
+  GOL_PP_CAT(_hash_algorithm, _Final)(digest, &ctx);\
   if (memcmp(digest, _data + datalen, sizeof(digest))) {\
     return TRUE;\
   }\

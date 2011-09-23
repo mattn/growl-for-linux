@@ -20,21 +20,22 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+#include <stdio.h>
+#include <stdlib.h>
+
 #include <gtk/gtk.h>
 #ifdef _WIN32
 # include <gdk/gdkwin32.h>
 #endif
-#include <ctype.h>
-#include <stdlib.h>
-#include <memory.h>
-#include <curl/curl.h>
+
 #include "gol.h"
 #include "plugins/from_url.h"
+
 #include "display_nico2.xpm"
 
 #define lengthof(arr_) (sizeof(arr_) / sizeof(*arr_))
 
-static GList* notifications = NULL;
+static GList* notifications;
 
 static const char* available_colors[] = { "red", "blue", "orange" };
 static GdkColor inst_colors_[ lengthof(available_colors) ];

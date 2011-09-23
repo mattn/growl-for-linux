@@ -30,7 +30,6 @@ typedef struct {
   gchar* text;
   gchar* icon;
   gchar* url;
-  gint timeout;
   gboolean local;
 } NOTIFICATION_INFO;
 
@@ -38,7 +37,7 @@ typedef struct {
   void (*show)(NOTIFICATION_INFO* ni);
 } SUBSCRIPTOR_CONTEXT;
 
-static void
+GOL_INLINE void
 free_notification_info(NOTIFICATION_INFO* const ni) {
   if (!ni) return;
   g_free(ni->title);

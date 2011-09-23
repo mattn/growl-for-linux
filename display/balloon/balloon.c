@@ -21,25 +21,20 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <ctype.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <memory.h>
-
 #include <gtk/gtk.h>
 #ifdef _WIN32
 # include <gdk/gdkwin32.h>
 #endif
 
-#include <curl/curl.h>
 #include "gol.h"
 #include "plugins/from_url.h"
+
 #include "balloon.xpm"
 #include "display_balloon.xpm"
 
-static GList* notifications = NULL;
-static GdkPixmap* pixmap = NULL;
-static GdkBitmap* bitmap = NULL;
+static GList* notifications;
+static GdkPixmap* pixmap;
+static GdkBitmap* bitmap;
 static gint pixmap_width, pixmap_height;
 
 static GdkColor inst_color_white_;

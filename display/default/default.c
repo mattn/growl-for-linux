@@ -20,17 +20,17 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#include <stdio.h>
 #include <gtk/gtk.h>
 #ifdef _WIN32
 # include <gdk/gdkwin32.h>
 #endif
-#include <curl/curl.h>
+
 #include "gol.h"
 #include "plugins/from_url.h"
+
 #include "display_default.xpm"
 
-static GList* notifications = NULL;
+static GList* notifications;
 
 static GdkColor inst_color_lightgray_;
 static GdkColor inst_color_black_;
@@ -65,7 +65,7 @@ open_url(const gchar* url) {
   return (int) ShellExecute(NULL, "open", url, NULL, NULL, SW_SHOW) > 32;
 #elif defined(MACOSX)
   GError* error = NULL;
-  const gchar *argv[] = {"open", (gchar*) url, NULL};
+  const gchar *argv[] = {"open", url, NULL};
   return g_spawn_async(NULL, argv, NULL, G_SPAWN_SEARCH_PATH, NULL, NULL, NULL, &error);
 #else
   GError* error = NULL;
