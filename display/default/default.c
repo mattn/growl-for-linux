@@ -54,19 +54,6 @@ typedef struct {
   gboolean hover;
 } DISPLAY_INFO;
 
-static inline DISPLAY_INFO*
-create_display_info_with_notification_info(NOTIFICATION_INFO* const ni) {
-  if (!ni) return NULL;
-
-  DISPLAY_INFO* const di = g_new0(DISPLAY_INFO, 1);
-  if (!di) {
-    perror("g_new0");
-    return NULL;
-  }
-  di->ni = ni;
-  return di;
-}
-
 static inline void
 free_display_info(DISPLAY_INFO* const di) {
   gtk_widget_destroy(di->popup);
@@ -111,7 +98,7 @@ display_leave(GtkWidget* widget, GdkEventMotion* event, gpointer user_data) {
 }
 
 static inline DISPLAY_INFO*
-reset_display_info(DISPLAY_INFO*);
+reset_display_info(DISPLAY_INFO*, NOTIFICATION_INFO*);
 
 static gboolean
 display_animation_func(gpointer data) {
@@ -123,7 +110,7 @@ display_animation_func(gpointer data) {
   if (di->timeout < 0) {
     notifications = g_list_remove(notifications, di);
     popup_collections = g_list_append(popup_collections, di);
-    reset_display_info(di);
+    reset_display_info(di, NULL);
     return FALSE;
   }
 
@@ -244,8 +231,8 @@ remove_icon(const DISPLAY_INFO* const di) {
 }
 
 static inline DISPLAY_INFO*
-create_popup_skelton(NOTIFICATION_INFO* const ni) {
-  DISPLAY_INFO* const di = create_display_info_with_notification_info(ni);
+create_popup_skelton() {
+  DISPLAY_INFO* const di = g_new0(DISPLAY_INFO, 1);
   if (!di) return NULL;
 
   di->popup = gtk_window_new(GTK_WINDOW_POPUP);
@@ -318,11 +305,19 @@ create_popup_skelton(NOTIFICATION_INFO* const ni) {
 }
 
 static inline DISPLAY_INFO*
-reset_display_info(DISPLAY_INFO* const di) {
+reset_display_info(DISPLAY_INFO* const di, NOTIFICATION_INFO* const ni) {
   di->timeout = 500;
   di->pos     = 0;
   di->offset  = 0;
   di->hover   = FALSE;
+  if (di->ni) {
+    g_free(di->ni->title);
+    g_free(di->ni->text);
+    g_free(di->ni->icon);
+    g_free(di->ni->url);
+    g_free(di->ni);
+  }
+  di->ni = ni;
   gtk_widget_hide_all(di->popup);
   gtk_window_set_opacity(GTK_WINDOW(di->popup), 0.8);
   remove_icon(di);
@@ -344,7 +339,7 @@ get_popup_skelton(NOTIFICATION_INFO* const ni) {
     di->ni = ni;
     return di;
   }
-  return reset_display_info(create_popup_skelton(ni));
+  return reset_display_info(create_popup_skelton(), ni);
 }
 
 G_MODULE_EXPORT gboolean
