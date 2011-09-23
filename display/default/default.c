@@ -55,11 +55,7 @@ typedef struct {
 
 static inline void
 free_display_info(DISPLAY_INFO* const di) {
-  g_free(di->ni->title);
-  g_free(di->ni->text);
-  g_free(di->ni->icon);
-  g_free(di->ni->url);
-  g_free(di->ni);
+  free_notification_info(di->ni);
   g_free(di);
 }
 

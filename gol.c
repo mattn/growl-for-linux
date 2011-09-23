@@ -1321,11 +1321,7 @@ gntp_recv_proc(gpointer user_data) {
         ptr = GNTP_ERROR_STRING_LITERAL("1.0", "Invalid data", "Invalid data");
         send(sock, ptr, strlen(ptr), 0);
 
-        g_free(ni->title);
-        g_free(ni->text);
-        g_free(ni->icon);
-        g_free(ni->url);
-        g_free(ni);
+        free_notification_info(ni);
       }
       g_free(notification_name);
       g_free(notification_display_name);

@@ -21,6 +21,10 @@
 # define GOL_UNUSED_ARG(n) GOL_PP_CAT(GOL_UNUSED_ARG_IMPL_, GOL_PP_CAT(_, n))
 #endif
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef struct {
   gchar* title;
   gchar* text;
@@ -33,6 +37,20 @@ typedef struct {
 typedef struct {
   void (*show)(NOTIFICATION_INFO* ni);
 } SUBSCRIPTOR_CONTEXT;
+
+static void
+free_notification_info(NOTIFICATION_INFO* const ni) {
+  if (!ni) return;
+  g_free(ni->title);
+  g_free(ni->text);
+  g_free(ni->icon);
+  g_free(ni->url);
+  g_free(ni);
+}
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _gol_h_ */
 
