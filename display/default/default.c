@@ -30,8 +30,8 @@
 #include "../../plugins/from_url.h"
 #include "display_default.xpm"
 
-static GList* notifications = NULL;
-static GList* popup_collections = NULL;
+static GList* notifications;
+static GList* popup_collections;
 
 static GdkColor inst_color_lightgray_;
 static GdkColor inst_color_black_;
