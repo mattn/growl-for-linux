@@ -187,7 +187,7 @@ display_show(NOTIFICATION_INFO* const ni) {
   const gint cy = di->pos % vert_count;
   di->x = screen_rect.x + screen_rect.width  - (cx + 1) * 250;
   di->y = screen_rect.y + screen_rect.height - (cy + 1) * 110;
-  if (di->y < 0) {
+  if (di->x < 0) {
     free_display_info(di);
     return FALSE;
   }
