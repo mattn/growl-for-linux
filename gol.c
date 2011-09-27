@@ -400,12 +400,15 @@ display_tree_selection_changed(GtkTreeSelection * const selection, const gpointe
   GtkWidget* const image = (GtkWidget*) get_data_as_object(user_data, "thumbnail");
   gtk_image_clear(GTK_IMAGE(image));
   if (cp->thumbnail) {
-    GdkBitmap* bitmap;
-    GdkPixmap* pixmap = gdk_pixmap_colormap_create_from_xpm_d(
-        NULL, gdk_colormap_get_system(), &bitmap, NULL, cp->thumbnail());
-    gtk_image_set_from_pixmap(GTK_IMAGE(image), pixmap, bitmap);
-    gdk_pixmap_unref(pixmap);
-    gdk_bitmap_unref(bitmap);
+    char ** const raw_xpm = cp->thumbnail();
+    if (raw_xpm) {
+      GdkBitmap* bitmap;
+      GdkPixmap* pixmap = gdk_pixmap_colormap_create_from_xpm_d(
+          NULL, gdk_colormap_get_system(), &bitmap, NULL, raw_xpm);
+      gtk_image_set_from_pixmap(GTK_IMAGE(image), pixmap, bitmap);
+      gdk_pixmap_unref(pixmap);
+      gdk_bitmap_unref(bitmap);
+    }
   }
   g_free(name);
 }
