@@ -31,6 +31,7 @@
 #include "display_default.xpm"
 
 static GList* notifications;
+static GList* popup_collections;
 
 static GdkColor inst_color_lightgray_;
 static GdkColor inst_color_black_;
@@ -55,6 +56,7 @@ typedef struct {
 
 static inline void
 free_display_info(DISPLAY_INFO* const di) {
+  gtk_widget_destroy(di->popup);
   free_notification_info(di->ni);
   g_free(di);
 }
@@ -91,16 +93,20 @@ display_leave(GtkWidget* GOL_UNUSED_ARG(widget), GdkEventMotion* GOL_UNUSED_ARG(
   ((DISPLAY_INFO*) user_data)->hover = FALSE;
 }
 
+static inline DISPLAY_INFO*
+reset_display_info(DISPLAY_INFO*, NOTIFICATION_INFO*);
+
 static gboolean
 display_animation_func(gpointer data) {
   DISPLAY_INFO* const di = (DISPLAY_INFO*) data;
 
-  if (!di->hover) di->timeout--;
+  if (di->hover) return TRUE; // Do nothing.
+  --di->timeout;
 
   if (di->timeout < 0) {
-    gtk_widget_destroy(di->popup);
     notifications = g_list_remove(notifications, di);
-    free_display_info(di);
+    popup_collections = g_list_append(popup_collections, di);
+    reset_display_info(di, NULL);
     return FALSE;
   }
 
@@ -115,56 +121,230 @@ display_animation_func(gpointer data) {
   return TRUE;
 }
 
-static GList*
-find_showable_position() {
-  gint pos = 0;
-  gint
-  is_differ_pos(gconstpointer p, gconstpointer GOL_UNUSED_ARG(user_data)) {
-    return ((const DISPLAY_INFO*) p)->pos == pos++;
-  }
-  return g_list_find_custom(notifications, NULL, is_differ_pos);
-}
-
 static void
 label_size_allocate(GtkWidget* label, GtkAllocation* allocation, gpointer GOL_UNUSED_ARG(data)) {
   gtk_widget_set_size_request(label, allocation->width - 2, -1);
 }
 
-static inline DISPLAY_INFO*
-create_display_info_with_notification_info(NOTIFICATION_INFO* const ni) {
-  if (!ni) return NULL;
+static inline GtkWidget*
+get_container_nth_child(GtkContainer* const cont, const gint n) {
+  if (!cont) return NULL;
 
-  DISPLAY_INFO* const di = g_new0(DISPLAY_INFO, 1);
-  if (!di) {
-    perror("g_new0");
-    return NULL;
+  GtkWidget* widget = NULL;
+  gint       cnt    = 0;
+  void
+  nth_getter(GtkWidget* const wid, gpointer GOL_UNUSED_ARG(user_data)) {
+    if (cnt++ == n) widget = wid;
   }
-  di->ni = ni;
-  return di;
+  gtk_container_foreach(cont, nth_getter, NULL);
+  return widget;
+}
+
+static inline GtkWidget*
+DISPLAY_VBOX_NTH_ELEM(const DISPLAY_INFO* const di, const gint n) {
+  GtkWidget* const ebox = get_container_nth_child(GTK_CONTAINER(di->popup), 0);
+  if (!ebox) return NULL;
+
+  GtkWidget* const vbox = get_container_nth_child(GTK_CONTAINER(ebox), 0);
+  if (!vbox) return NULL;
+
+  return get_container_nth_child(GTK_CONTAINER(vbox), n);
+}
+
+static inline GtkBox*
+DISPLAY_HBOX(const DISPLAY_INFO* const di) {
+  return GTK_BOX(DISPLAY_VBOX_NTH_ELEM(di, 0));
+}
+
+static inline GtkWidget*
+DISPLAY_HBOX_NTH_ELEM(const DISPLAY_INFO* const di, const gint n) {
+  GtkBox* const hbox = DISPLAY_HBOX(di);
+  if (!hbox) return NULL;
+
+  return get_container_nth_child(GTK_CONTAINER(hbox), n);
+}
+
+static inline GtkImage*
+DISPLAY_ICON_FIELD(const DISPLAY_INFO* const di) {
+  return GTK_IMAGE(DISPLAY_HBOX_NTH_ELEM(di, 0));
+}
+
+static inline GtkLabel*
+DISPLAY_TITLE_FIELD(const DISPLAY_INFO* const di) {
+  GtkBox* const hbox = DISPLAY_HBOX(di);
+  if (!hbox) return NULL;
+
+  GList* const phead = gtk_container_get_children(GTK_CONTAINER(hbox));
+  GtkLabel* const title = GTK_LABEL(g_list_nth_data(phead, g_list_length(phead) - 1));
+  g_list_free(phead);
+  return title;
+}
+
+static inline GtkLabel*
+DISPLAY_TEXT_FIELD(const DISPLAY_INFO* const di) {
+  return GTK_LABEL(DISPLAY_VBOX_NTH_ELEM(di, 1));
 }
 
 static inline void
-box_enable_icon(GtkBox* const restrict box, const NOTIFICATION_INFO* const restrict ni) {
+box_set_icon_if_has(const DISPLAY_INFO* const di) {
+  if (!di) return;
+  const NOTIFICATION_INFO* const ni = di->ni;
+  if (!ni->icon || !*ni->icon) return;
+
   GdkPixbuf* const pixbuf =
     (ni->local ? pixbuf_from_url_as_file
                : pixbuf_from_url)(ni->icon, NULL);
   if (!pixbuf) return;
 
-  GdkPixbuf* const tmp   = gdk_pixbuf_scale_simple(pixbuf, 32, 32, GDK_INTERP_TILES);
+  GdkPixbuf* const tmp = gdk_pixbuf_scale_simple(pixbuf, 32, 32, GDK_INTERP_TILES);
   GtkWidget* const image = gtk_image_new_from_pixbuf(tmp ? tmp : pixbuf);
-  gtk_box_pack_start(box, image, FALSE, FALSE, 0);
+  if (image) {
+    GtkBox* const hbox = DISPLAY_HBOX(di);
+    gtk_box_pack_start(hbox, image, FALSE, FALSE, 0);
+    gtk_box_reorder_child(hbox, DISPLAY_HBOX_NTH_ELEM(di, 0), 1);
+  }
 
-  g_object_unref(tmp);
+  if (tmp) g_object_unref(tmp);
   g_object_unref(pixbuf);
+}
+
+static inline void
+remove_icon(const DISPLAY_INFO* const di) {
+  if (!di) return;
+
+  GtkBox* const hbox = DISPLAY_HBOX(di);
+  GList* const children = gtk_container_get_children(GTK_CONTAINER(hbox));
+  if (g_list_length(children) != 1) {
+    GtkWidget* const image = g_list_nth_data(children, 0);
+    gtk_box_reorder_child(hbox, image, -1);
+    gtk_container_remove(GTK_CONTAINER(hbox), image);
+  }
+  g_list_free(children);
+}
+
+static inline DISPLAY_INFO*
+create_popup_skelton() {
+  DISPLAY_INFO* const di = g_new0(DISPLAY_INFO, 1);
+  if (!di) return NULL;
+
+  di->popup = gtk_window_new(GTK_WINDOW_POPUP);
+  if (!di->popup) {
+    free_display_info(di);
+    return NULL;
+  }
+  gtk_window_set_title(GTK_WINDOW(di->popup), "growl-for-linux");
+  gtk_window_set_resizable(GTK_WINDOW(di->popup), FALSE);
+  gtk_window_set_decorated(GTK_WINDOW(di->popup), FALSE);
+  gtk_window_set_keep_above(GTK_WINDOW(di->popup), TRUE);
+
+  gtk_window_stick(GTK_WINDOW(di->popup));
+  gtk_widget_modify_bg(di->popup, GTK_STATE_NORMAL, color_lightgray);
+
+  GtkWidget* const ebox = gtk_event_box_new();
+  if (!ebox) {
+    free_display_info(di);
+    return NULL;
+  }
+  gtk_event_box_set_visible_window(GTK_EVENT_BOX(ebox), FALSE);
+  g_signal_connect(G_OBJECT(ebox), "button-press-event", G_CALLBACK(display_clicked), di);
+  g_signal_connect(G_OBJECT(ebox), "enter-notify-event", G_CALLBACK(display_enter), di);
+  g_signal_connect(G_OBJECT(ebox), "leave-notify-event", G_CALLBACK(display_leave), di);
+  gtk_container_add(GTK_CONTAINER(di->popup), ebox);
+
+  GtkWidget* const vbox = gtk_vbox_new(FALSE, 5);
+  if (!vbox) {
+    free_display_info(di);
+    return NULL;
+  }
+  gtk_container_set_border_width(GTK_CONTAINER(vbox), 5);
+  gtk_container_add(GTK_CONTAINER(ebox), vbox);
+
+  GtkWidget* const hbox = gtk_hbox_new(FALSE, 5);
+  if (!hbox) {
+    free_display_info(di);
+    return NULL;
+  }
+  gtk_box_pack_start(GTK_BOX(vbox), hbox, FALSE, TRUE, 0);
+
+  GtkWidget* const title = gtk_label_new(NULL);
+  if (!title) {
+    free_display_info(di);
+    return NULL;
+  }
+  gtk_widget_modify_fg(title, GTK_STATE_NORMAL, color_black);
+  gtk_widget_modify_font(title, font_sans12_desc);
+  gtk_box_pack_start(GTK_BOX(hbox), title, FALSE, FALSE, 0);
+
+  GtkWidget* const text = gtk_label_new(NULL);
+  if (!text) {
+    free_display_info(di);
+    return NULL;
+  }
+  gtk_widget_modify_fg(text, GTK_STATE_NORMAL, color_black);
+  gtk_widget_modify_font(text, font_sans8_desc);
+  g_signal_connect(G_OBJECT(text), "size-allocate", G_CALLBACK(label_size_allocate), NULL);
+  gtk_label_set_line_wrap(GTK_LABEL(text), TRUE);
+  gtk_label_set_line_wrap_mode(GTK_LABEL(text), PANGO_WRAP_CHAR);
+  gtk_box_pack_start(GTK_BOX(vbox), text, FALSE, FALSE, 0);
+
+  gtk_widget_set_size_request(di->popup, 180, 1);
+
+#ifdef _WIN32
+  SetWindowPos(GDK_WINDOW_HWND(di->popup->window), HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+#endif
+
+  return di;
+}
+
+static inline DISPLAY_INFO*
+reset_display_info(DISPLAY_INFO* const di, NOTIFICATION_INFO* const ni) {
+  di->timeout = 500;
+  di->pos     = 0;
+  di->offset  = 0;
+  di->hover   = FALSE;
+  if (di->ni) {
+    g_free(di->ni->title);
+    g_free(di->ni->text);
+    g_free(di->ni->icon);
+    g_free(di->ni->url);
+    g_free(di->ni);
+  }
+  di->ni = ni;
+  gtk_widget_hide_all(di->popup);
+  gtk_window_set_opacity(GTK_WINDOW(di->popup), 0.8);
+  remove_icon(di);
+  return di;
+}
+
+static inline gpointer
+list_pop_front(GList** list) {
+  if (!list) return NULL;
+  const gpointer elem = g_list_nth_data(*list, 0);
+  *list = g_list_remove(*list, elem);
+  return elem;
+}
+
+static inline DISPLAY_INFO*
+get_popup_skelton(NOTIFICATION_INFO* const ni) {
+  DISPLAY_INFO* const di = (DISPLAY_INFO*) list_pop_front(&popup_collections);
+  if (di) {
+    di->ni = ni;
+    return di;
+  }
+  return reset_display_info(create_popup_skelton(), ni);
 }
 
 G_MODULE_EXPORT gboolean
 display_show(NOTIFICATION_INFO* const ni) {
-  DISPLAY_INFO* const di = create_display_info_with_notification_info(ni);
+  DISPLAY_INFO* const di = get_popup_skelton(ni);
   if (!di) return FALSE;
 
-  GList* const found = find_showable_position();
-  di->pos = found ? g_list_position(notifications, found) : (gint) g_list_length(notifications);
+  gint
+  is_differ_pos(gconstpointer p, gconstpointer GOL_UNUSED_ARG(user_data)) {
+    return ((const DISPLAY_INFO*) p)->pos == di->pos++;
+  }
+  GList* const found = g_list_find_custom(notifications, NULL, is_differ_pos);
+  if (found) --di->pos;
 
   const gint vert_count = screen_rect.height / 180;
   const gint cx = di->pos / vert_count;
@@ -177,58 +357,12 @@ display_show(NOTIFICATION_INFO* const ni) {
   }
   notifications = g_list_insert_before(notifications, found, di);
 
-  di->popup = gtk_window_new(GTK_WINDOW_POPUP);
-  gtk_window_set_title(GTK_WINDOW(di->popup), "growl-for-linux");
-  gtk_window_set_resizable(GTK_WINDOW(di->popup), FALSE);
-  gtk_window_set_decorated(GTK_WINDOW(di->popup), FALSE);
-  gtk_window_set_keep_above(GTK_WINDOW(di->popup), TRUE);
-
-  gtk_window_stick(GTK_WINDOW(di->popup));
-  gtk_window_set_opacity(GTK_WINDOW(di->popup), 0.8);
-  gtk_widget_modify_bg(di->popup, GTK_STATE_NORMAL, color_lightgray);
-
-  GtkWidget* const ebox = gtk_event_box_new();
-  gtk_event_box_set_visible_window(GTK_EVENT_BOX(ebox), FALSE);
-  gtk_container_add(GTK_CONTAINER(di->popup), ebox);
-
-  GtkWidget* const vbox = gtk_vbox_new(FALSE, 5);
-  gtk_container_set_border_width(GTK_CONTAINER(vbox), 5);
-  gtk_container_add(GTK_CONTAINER(ebox), vbox);
-
-  GtkWidget* const hbox = gtk_hbox_new(FALSE, 5);
-  gtk_box_pack_start(GTK_BOX(vbox), hbox, FALSE, TRUE, 0);
-
-  if (di->ni->icon && *di->ni->icon) box_enable_icon(GTK_BOX(hbox), di->ni);
-
-  GtkWidget* label = gtk_label_new(di->ni->title);
-  gtk_widget_modify_fg(label, GTK_STATE_NORMAL, color_black);
-  gtk_widget_modify_font(label, font_sans12_desc);
-  gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, FALSE, 0);
-
-  label = gtk_label_new(di->ni->text);
-  gtk_widget_modify_fg(label, GTK_STATE_NORMAL, color_black);
-  gtk_widget_modify_font(label, font_sans8_desc);
-  g_signal_connect(G_OBJECT(label), "size-allocate", G_CALLBACK(label_size_allocate), NULL);
-  gtk_label_set_line_wrap(GTK_LABEL(label), TRUE);
-  gtk_label_set_line_wrap_mode(GTK_LABEL(label), PANGO_WRAP_CHAR);
-  gtk_box_pack_start(GTK_BOX(vbox), label, FALSE, FALSE, 0);
-
-  gtk_widget_set_size_request(di->popup, 180, 1);
-
-  g_signal_connect(G_OBJECT(ebox), "button-press-event", G_CALLBACK(display_clicked), di);
-  g_signal_connect(G_OBJECT(ebox), "enter-notify-event", G_CALLBACK(display_enter), di);
-  g_signal_connect(G_OBJECT(ebox), "leave-notify-event", G_CALLBACK(display_leave), di);
-
-  di->offset = 0;
-  di->timeout = 500;
+  box_set_icon_if_has(di);
+  gtk_label_set_text(DISPLAY_TITLE_FIELD(di), di->ni->title);
+  gtk_label_set_text(DISPLAY_TEXT_FIELD(di), di->ni->text);
 
   gtk_window_move(GTK_WINDOW(di->popup), di->x, di->y);
   gtk_widget_show_all(di->popup);
-
-#ifdef _WIN32
-  SetWindowPos(GDK_WINDOW_HWND(di->popup->window), HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
-#endif
-
   g_timeout_add(10, display_animation_func, di);
 
   return FALSE;
@@ -258,6 +392,26 @@ G_MODULE_EXPORT void
 display_term() {
   pango_font_description_free(font_sans12_desc);
   pango_font_description_free(font_sans8_desc);
+
+  void
+  list_free_deep(GList* const list) {
+    void
+    deleter_wrapper(gpointer data, gpointer GOL_UNUSED_ARG(user_data)) {
+      free_display_info((DISPLAY_INFO*) data);
+    }
+    g_list_foreach(list, deleter_wrapper, NULL);
+    g_list_free(list);
+  }
+  list_free_deep(notifications);
+  list_free_deep(popup_collections);
+
+  // FIXME: g_list_free_full will fail symbol lookup.
+  //void
+  //deleter(gpointer data) {
+  //  free_display_info((DISPLAY_INFO*) data);
+  //}
+  //g_list_free_full(notifications, deleter);
+  //g_list_free_full(popup_collections, deleter);
 }
 
 G_MODULE_EXPORT const gchar*

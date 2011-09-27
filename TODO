@@ -9,3 +9,4 @@
 * More imitation of Growl For Windows.
 
 * Performance optimization.
+** DISPLAY_* functions in default.c and balloon.c.
