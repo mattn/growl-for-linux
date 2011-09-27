@@ -153,21 +153,23 @@ label_size_allocate(GtkWidget* label, GtkAllocation* allocation, gpointer data) 
 }
 
 static inline GtkWidget*
-get_container_nth_child(GtkContainer* const cont, gint n) {
-  GList* const children = gtk_container_get_children(cont);
-  if (!children) return NULL;
-
-  GtkWidget* const wid = g_list_nth_data(children, n);
-  g_list_free(children);
-  return wid;
+get_container_nth_child(GtkContainer* const cont, const gint n) {
+  GtkWidget* widget = NULL;
+  gint       cnt    = 0;
+  void
+  nth_getter(GtkWidget* const wid, gpointer unused_) {
+    if (cnt++ == n) widget = wid;
+  }
+  gtk_container_foreach(cont, nth_getter, NULL);
+  return widget;
 }
 
 static inline GtkWidget*
 DISPLAY_VBOX_NTH_ELEM(const DISPLAY_INFO* const di, const gint n) {
-  GtkBox* const ebox = GTK_BOX(get_container_nth_child(GTK_CONTAINER(di->popup), 0));
+  GtkWidget* const ebox = get_container_nth_child(GTK_CONTAINER(di->popup), 0);
   if (!ebox) return NULL;
 
-  GtkBox* const vbox = GTK_BOX(get_container_nth_child(GTK_CONTAINER(ebox), 0));
+  GtkWidget* const vbox = get_container_nth_child(GTK_CONTAINER(ebox), 0);
   if (!vbox) return NULL;
 
   return get_container_nth_child(GTK_CONTAINER(vbox), n);
