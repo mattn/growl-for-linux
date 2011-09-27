@@ -131,23 +131,24 @@ label_size_allocate(GtkWidget* label, GtkAllocation* allocation, gpointer data) 
 }
 
 static inline GtkWidget*
-DISPLAY_VBOX_NTH_ELEM(const DISPLAY_INFO* const di, const gint n) {
-  GList* const pebox = gtk_container_get_children(GTK_CONTAINER(di->popup));
-  if (!pebox) return NULL;
+get_container_nth_child(GtkContainer* const cont, gint n) {
+  GList* const children = gtk_container_get_children(cont);
+  if (!children) return NULL;
 
-  GtkBox* const ebox = g_list_nth_data(pebox, 0);
-  GList* const pvbox = gtk_container_get_children(GTK_CONTAINER(ebox));
-  g_list_free(pebox);
-  if (!pvbox) return NULL;
-
-  GtkBox* const vbox = g_list_nth_data(pvbox, 0);
-  GList* const pwid = gtk_container_get_children(GTK_CONTAINER(vbox));
-  g_list_free(pvbox);
-  if (!pwid) return NULL;
-
-  GtkWidget* const wid = g_list_nth_data(pwid, n);
-  g_list_free(pwid);
+  GtkWidget* const wid = g_list_nth_data(children, n);
+  g_list_free(children);
   return wid;
+}
+
+static inline GtkWidget*
+DISPLAY_VBOX_NTH_ELEM(const DISPLAY_INFO* const di, const gint n) {
+  GtkBox* const ebox = GTK_BOX(get_container_nth_child(GTK_CONTAINER(di->popup), 0));
+  if (!ebox) return NULL;
+
+  GtkBox* const vbox = GTK_BOX(get_container_nth_child(GTK_CONTAINER(ebox), 0));
+  if (!vbox) return NULL;
+
+  return get_container_nth_child(GTK_CONTAINER(vbox), n);
 }
 
 static inline GtkBox*
@@ -160,21 +161,12 @@ DISPLAY_HBOX_NTH_ELEM(const DISPLAY_INFO* const di, const gint n) {
   GtkBox* const hbox = DISPLAY_HBOX(di);
   if (!hbox) return NULL;
 
-  GList* const phead = gtk_container_get_children(GTK_CONTAINER(hbox));
-  GtkWidget* const wid = g_list_nth_data(phead, n);
-  g_list_free(phead);
-  return wid;
+  return get_container_nth_child(GTK_CONTAINER(hbox), n);
 }
 
 static inline GtkImage*
 DISPLAY_ICON_FIELD(const DISPLAY_INFO* const di) {
-  GtkBox* const hbox = DISPLAY_HBOX(di);
-  if (!hbox) return NULL;
-
-  GList* const phead = gtk_container_get_children(GTK_CONTAINER(hbox));
-  GtkImage* const img = g_list_length(phead) > 1 ? GTK_IMAGE(g_list_nth_data(phead, 0)) : NULL;
-  g_list_free(phead);
-  return img;
+  return GTK_IMAGE(DISPLAY_HBOX_NTH_ELEM(di, 0));
 }
 
 static inline GtkLabel*
