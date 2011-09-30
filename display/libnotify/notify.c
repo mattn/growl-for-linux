@@ -46,6 +46,7 @@ display_show(const gpointer data) {
   const NOTIFICATION_INFO* const ni = (NOTIFICATION_INFO*) data;
 
   gchar* const newurl = ni->icon ? g_filename_from_uri(ni->icon, NULL, NULL) : NULL;
+  // TODO: libnotify can't handle image URLs.
   NotifyNotification *nt = notify_notification_new(ni->title, ni->text, newurl ? newurl : ni->icon, NULL);
 
   GError* error = NULL;
