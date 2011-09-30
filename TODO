@@ -9,3 +9,5 @@
 * More imitation of Growl For Windows.
 
 * Performance optimization.
+
+* Support http scheme for libnotify.

@@ -31,6 +31,8 @@
 #include "../../gol.h"
 #include "../../plugins/from_url.h"
 
+#include "display_libnotify.xpm"
+
 G_MODULE_EXPORT gboolean
 display_init() {
   return notify_init("Growl for Linux");
@@ -87,10 +89,9 @@ display_description() {
     " and reference manual is <a href=\"http://developer.gnome.org/libnotify/\">here</a>.</span>\n";
 }
 
-// FIXME: Prepare thumbnail xpm image.
 G_MODULE_EXPORT char**
 display_thumbnail() {
-  return NULL;
+  return display_libnotify;
 }
 
 // vim:set et sw=2 ts=2 ai:
