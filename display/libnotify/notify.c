@@ -61,7 +61,7 @@ display_show(gpointer data) {
 
   GdkPixbuf* const pixbuf = !ni->local ? pixbuf_from_url(ni->icon, NULL) : NULL;
   if (pixbuf) {
-    notify_notification_set_image_from_pixbuf(nt, pixbuf);
+    notify_notification_set_icon_from_pixbuf(nt, pixbuf);
     g_object_unref(pixbuf);
   }
 
