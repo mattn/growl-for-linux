@@ -29,6 +29,7 @@
 #include <libnotify/notify.h>
 
 #include "../../gol.h"
+#include "display_libnotify.xpm"
 
 G_MODULE_EXPORT gboolean
 display_init() {
@@ -71,10 +72,9 @@ display_description() {
     "<span>For more detail, see <a href=\"https://launchpad.net/notify-osd\">here</a>.</span>\n";
 }
 
-// FIXME: Prepare thumbnail xpm image.
 G_MODULE_EXPORT char**
 display_thumbnail() {
-  return NULL;
+  return display_libnotify;
 }
 
 // vim:set et sw=2 ts=2 ai:
