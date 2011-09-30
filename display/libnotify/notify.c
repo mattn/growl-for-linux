@@ -29,6 +29,7 @@
 #include <libnotify/notify.h>
 
 #include "../../gol.h"
+#include "../../plugins/from_url.h"
 
 G_MODULE_EXPORT gboolean
 display_init() {
@@ -40,12 +41,27 @@ display_term() {
   notify_uninit();
 }
 
+static gchar*
+get_icon_path_if_local(const NOTIFICATION_INFO* ni) {
+  if (!ni->local) return NULL;
+
+  gchar* const icon_path = ni->icon ? g_filename_from_uri(ni->icon, NULL, NULL) : NULL;
+  return icon_path ? icon_path : g_strdup(ni->icon);
+}
+
 G_MODULE_EXPORT gboolean
 display_show(const gpointer data) {
   const NOTIFICATION_INFO* const ni = (NOTIFICATION_INFO*) data;
 
-  gchar* const newurl = ni->icon ? g_filename_from_uri(ni->icon, NULL, NULL) : NULL;
-  NotifyNotification *nt = notify_notification_new(ni->title, ni->text, newurl ? newurl : ni->icon, NULL);
+  gchar* const icon_path = get_icon_path_if_local(ni);
+  NotifyNotification* const nt = notify_notification_new(ni->title, ni->text, icon_path, NULL);
+  g_free(icon_path);
+
+  GdkPixbuf* const pixbuf = !ni->local ? pixbuf_from_url(ni->icon, NULL) : NULL;
+  if (pixbuf) {
+    notify_notification_set_image_from_pixbuf(nt, pixbuf);
+    g_object_unref(pixbuf);
+  }
 
   GError* error = NULL;
   if (!notify_notification_show(nt, &error))
@@ -54,7 +70,6 @@ display_show(const gpointer data) {
       g_error_free(error);
   }
 
-  //g_free(newurl);
   return FALSE;
 }
 
