@@ -43,15 +43,15 @@ display_term() {
 
 static gchar*
 get_icon_path_if_local(const NOTIFICATION_INFO* ni) {
-  if (!ni->local) return NULL;
+  if (!ni->local || !ni->icon) return NULL;
 
-  gchar* const icon_path = ni->icon ? g_filename_from_uri(ni->icon, NULL, NULL) : NULL;
+  gchar* const icon_path = g_filename_from_uri(ni->icon, NULL, NULL);
   return icon_path ? icon_path : g_strdup(ni->icon);
 }
 
 G_MODULE_EXPORT gboolean
-display_show(const gpointer data) {
-  const NOTIFICATION_INFO* const ni = (NOTIFICATION_INFO*) data;
+display_show(gpointer data) {
+  const NOTIFICATION_INFO* const ni = (const NOTIFICATION_INFO*) data;
 
   gchar* const icon_path = get_icon_path_if_local(ni);
   NotifyNotification* const nt = notify_notification_new(ni->title, ni->text, icon_path, NULL);
@@ -82,8 +82,9 @@ G_MODULE_EXPORT const gchar*
 display_description() {
   return
     "<span size=\"large\"><b>libnotify</b></span>\n"
-    "<span>This is front-end of libnotify.</span>\n"
-    "<span>For more detail, see <a href=\"https://launchpad.net/notify-osd\">here</a>.</span>\n";
+    "<span>This is gateway and delegating notification to libnotify.</span>\n"
+    "<span>For more detail, see <a href=\"https://launchpad.net/notify-osd\">here</a>"
+    " and reference manual is <a href=\"http://developer.gnome.org/libnotify/\">here</a>.</span>\n";
 }
 
 // FIXME: Prepare thumbnail xpm image.
