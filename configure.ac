@@ -23,6 +23,11 @@ PKG_CHECK_MODULES(LIBXML2, libxml-2.0)
 PKG_CHECK_MODULES(OPENSSL, openssl)
 PKG_CHECK_MODULES(SQLITE3, sqlite3)
 PKG_CHECK_MODULES(DBUSGLIB1, dbus-glib-1)
+PKG_CHECK_MODULES(LIBNOTIFY, libnotify,
+                  [ENABLE_LIBNOTIFY="display/libnotify"
+                   AC_SUBST([ENABLE_LIBNOTIFY])
+                   AC_CONFIG_FILES([display/libnotify/Makefile])],
+                  [ENABLE_LIBNOTIFY=""])
 
 # Checks for header files.
 AC_CHECK_HEADERS([arpa/inet.h memory.h netdb.h netinet/in.h stddef.h stdint.h stdlib.h string.h sys/socket.h unistd.h])
