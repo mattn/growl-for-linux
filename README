@@ -17,6 +17,7 @@ Installation:
     * gtk+-2.0
     * sqlite3
     * dbus-glib-1
+    * libnotify(for libnotify display)
     
     If you are developer, then type following.
     
