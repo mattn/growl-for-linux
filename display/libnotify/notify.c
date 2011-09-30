@@ -26,19 +26,35 @@
 # include <gdk/gdkwin32.h>
 #endif
 
+#include <libnotify/notify.h>
+
 #include "../../gol.h"
 
 G_MODULE_EXPORT gboolean
 display_init() {
-  return TRUE;
+  return notify_init("Growl for Linux");
 }
 
 G_MODULE_EXPORT void
 display_term() {
+  notify_uninit();
 }
 
 G_MODULE_EXPORT gboolean
-display_show(gpointer data) {
+display_show(const gpointer data) {
+  const NOTIFICATION_INFO* const ni = (NOTIFICATION_INFO*) data;
+
+  gchar* const newurl = ni->icon ? g_filename_from_uri(ni->icon, NULL, NULL) : NULL;
+  NotifyNotification *nt = notify_notification_new(ni->title, ni->text, newurl ? newurl : ni->icon, NULL);
+
+  GError* error = NULL;
+  if (!notify_notification_show(nt, &error))
+  {
+      g_error("%s: %s", G_STRFUNC, error->message);
+      g_error_free(error);
+  }
+
+  //g_free(newurl);
   return FALSE;
 }
 

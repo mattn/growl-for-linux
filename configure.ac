@@ -24,10 +24,9 @@ PKG_CHECK_MODULES(OPENSSL, openssl)
 PKG_CHECK_MODULES(SQLITE3, sqlite3)
 PKG_CHECK_MODULES(DBUSGLIB1, dbus-glib-1)
 PKG_CHECK_MODULES(LIBNOTIFY, libnotify,
-                  [
-                    ENABLE_LIBNOTIFY="display/libnotify"
-                    AC_SUBST([ENABLE_LIBNOTIFY])
-                    AC_CONFIG_FILES([display/libnotify/Makefile])],
+                  [ENABLE_LIBNOTIFY="display/libnotify"
+                   AC_SUBST([ENABLE_LIBNOTIFY])
+                   AC_CONFIG_FILES([display/libnotify/Makefile])],
                   [ENABLE_LIBNOTIFY=""])
 
 # Checks for header files.
