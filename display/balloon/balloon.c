@@ -33,6 +33,7 @@
 #include "balloon.xpm"
 #include "display_balloon.xpm"
 
+static gchar* param = NULL;
 static GList* notifications = NULL;
 static GdkPixmap* pixmap = NULL;
 static GdkBitmap* bitmap = NULL;
@@ -297,6 +298,17 @@ display_description() {
 G_MODULE_EXPORT char**
 display_thumbnail() {
   return display_balloon;
+}
+
+G_MODULE_EXPORT char*
+display_get_param() {
+  return param;
+}
+
+G_MODULE_EXPORT void
+display_set_param(const gchar* p) {
+  if (param) g_free(param);
+  param = g_strdup(p);
 }
 
 // vim:set et sw=2 ts=2 ai:
