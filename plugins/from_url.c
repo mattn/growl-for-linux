@@ -138,6 +138,8 @@ pixbuf_from_url_impl(const char* ctype, const MEMFILE* raw, GError** error) {
 
 GdkPixbuf*
 pixbuf_from_url(const char* url, GError** error) {
+  if (!url) return NULL;
+
   MEMFILE* mbody;
   MEMFILE* mhead;
   const CURLcode res = memfile_from_url((memfile_from_url_info){

@@ -4,29 +4,32 @@ Growl For Linux
 Introduction:
 -------------
 
-	Growl For Linux is Linux-compatible of Growl. Growl is a notification
-	system for Mac OS X. 
+    Growl For Linux is Linux-compatible of Growl. Growl is a notification
+    system for Mac OS X.
 
 Installation:
 -------------
 
     Growl For Linux require following libraries.
-    
+
     * openssl
     * libcurl
     * gtk+-2.0
     * sqlite3
     * dbus-glib-1
+
+    Following libraries are optional.
+
     * libnotify(for libnotify display)
-    
+
     If you are developer, then type following.
-    
+
         # ./autogen.sh
         # ./configure
         # make && make install
-    
+
     If you are ubuntu user, then type following.
-   
+
         # sudo add-apt-repository ppa:mattn/growl-for-linux
         # sudo apt-get update
         # sudo apt-get install growl-for-linux
@@ -35,14 +38,14 @@ Usage:
 ------
 
     # ./gol
-    
+
     Why "gol" ?, "gol" mean "Growl On Linux". (or ゴルア).
     Currently, This is required.
 
     Notification should be sent with GNTP protocol or Growl Network Protocol.
-	See also:
-	  http://www.growlforwindows.com/gfw/help/gntp.aspx
-	  http://growl.info/documentation/developer/protocol.php
+    See also:
+      http://www.growlforwindows.com/gfw/help/gntp.aspx
+      http://growl.info/documentation/developer/protocol.php
 
     If you want to be show icon in notification, you need to use GNTP protocol.
 
@@ -50,8 +53,8 @@ License:
 --------
 
     Growl For Linux is BSD style license. see also COPYING.
-	This product includes software developed by the OpenSSL Project for use in
-	the OpenSSL Toolkit (http://www.openssl.org/).
+    This product includes software developed by the OpenSSL Project for use in
+    the OpenSSL Toolkit (http://www.openssl.org/).
 
 Author:
 -------
