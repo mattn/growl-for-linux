@@ -20,29 +20,33 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+#include <stddef.h>
+#include <ctype.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
+
 #include <gmodule.h>
 #include <dbus/dbus.h>
 #include <dbus/dbus-glib.h>
 #include <libxml/parser.h>
 #include <libxml/xpath.h>
 #include <libxml/xpathInternals.h>
-#include <ctype.h>
-#include <stdlib.h>
-#include <memory.h>
 #include <curl/curl.h>
-#include "../../gol.h"
-#include "../../plugins/memfile.h"
+
+#include "gol.h"
+#include "plugins/memfile.h"
 
 #define REQUEST_TIMEOUT            (5)
 
-SUBSCRIPTOR_CONTEXT* sc = NULL;
-DBusGConnection *conn = NULL;
-DBusGProxy* proxy = NULL;
-gboolean enable = FALSE;
+static SUBSCRIPTOR_CONTEXT* sc;
+static DBusGConnection *conn;
+static DBusGProxy* proxy;
+static gboolean enable = FALSE;
 
-gchar* last_title = NULL;
-gchar* last_artist = NULL;
-gchar* last_album = NULL;
+static gchar* last_title;
+static gchar* last_artist;
+static gchar* last_album;
 
 #define XML_CONTENT(x) (x->children ? (char*) x->children->content : NULL)
 
@@ -54,11 +58,11 @@ delay_show(gpointer data) {
 }
 
 static char*
- urlencode_alloc(const char* url) {
-  unsigned long int i, len = strlen(url);
-  char* temp = (char*) calloc(len * 3 + 1, sizeof(char));
-  char* ret = temp;
-  for (i = 0; i < len; i++) {
+urlencode_alloc(const char* url) {
+  const size_t len = strlen(url);
+  char* temp = (char*) malloc(len * 3 + 1);
+  char* const ret = temp;
+  for (size_t i = 0; i < len; i++) {
     unsigned char c = (unsigned char) url[i];
     if (strchr("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_.~-", c))
       *temp++ = c;
@@ -84,7 +88,6 @@ get_album_art(const char* artist, const char* album) {
   char* body = NULL;
 
   xmlDocPtr doc = NULL;
-  xmlNodeSetPtr nodes = NULL;
   xmlXPathContextPtr ctx = NULL;
   xmlXPathObjectPtr path = NULL;
 
@@ -114,19 +117,12 @@ get_album_art(const char* artist, const char* album) {
   body = memfstrdup(mbody);
   memfclose(mbody);
 
-  if (res != CURLE_OK) {
-    goto leave;
-  }
-  if (http_status == 304) {
-    goto leave;
-  }
-  if (http_status != 200) {
-    goto leave;
-  }
+  gchar* image_url = NULL;
+  if (res != CURLE_OK || http_status != 200) goto leave;
 
+  // XXX: too deep!!!!!!!!!!!!!!!!!
   doc = body ? xmlParseDoc((xmlChar*) body) : NULL;
   xmlNodePtr node = doc->children;
-  gchar* image_url = NULL;
   if (strcmp((const char*) node->name, "ResultSet")) goto leave;
   for (node = node->children; node; node = node->next) {
     if (strcmp((const char*) node->name, "Result")) continue;
@@ -143,16 +139,17 @@ get_album_art(const char* artist, const char* album) {
   }
 
 leave:
-  if (body) free(body);
+  free(body);
   if (path) xmlXPathFreeObject(path);
   if (ctx) xmlXPathFreeContext(ctx);
   if (doc) xmlFreeDoc(doc);
-   
+
   return image_url;
 }
 
+// FIXME: too long!!!!!!!!!!!!!!!!!!!!!
 static gboolean
-get_rhythmbox_info(gpointer data) {
+get_rhythmbox_info(gpointer GOL_UNUSED_ARG(data)) {
   if (!enable) return FALSE;
 
   DBusGProxy *player = NULL;
@@ -223,8 +220,8 @@ get_rhythmbox_info(gpointer data) {
 
   char *uri;
   if (!dbus_g_proxy_call_with_timeout(
-        player
-        , "getPlayingUri",
+        player,
+        "getPlayingUri",
         5000,
         &error,
         G_TYPE_INVALID,
@@ -252,12 +249,11 @@ get_rhythmbox_info(gpointer data) {
   }
   g_free(uri);
 
-  GValue* value;
-  gchar* title;
-  gchar* artist;
-  gchar* album;
-  
-  value = (GValue*) g_hash_table_lookup(table, "rb:stream-song-title");
+  gchar* title = NULL;
+  gchar* artist = NULL;
+  gchar* album = NULL;
+
+  GValue* value = (GValue*) g_hash_table_lookup(table, "rb:stream-song-title");
   if (value != NULL && G_VALUE_HOLDS_STRING(value)) {
     title = g_strdup(g_value_get_string(value));
   } else {
@@ -287,16 +283,16 @@ get_rhythmbox_info(gpointer data) {
     ni->icon = get_album_art(artist, album);
     g_timeout_add(10, delay_show, ni);
 
-    if (last_title) g_free(last_title);
-    if (last_artist) g_free(last_artist);
-    if (last_album) g_free(last_album);
+    g_free(last_title);
+    g_free(last_artist);
+    g_free(last_album);
     last_title = title;
     last_artist = artist;
     last_album = album;
   } else {
-    if (title) g_free(title);
-    if (artist) g_free(artist);
-    if (album) g_free(album);
+    g_free(title);
+    g_free(artist);
+    g_free(album);
   }
 
   return TRUE;

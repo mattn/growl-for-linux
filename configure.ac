@@ -14,6 +14,12 @@ AC_PROG_INSTALL
 AC_PROG_LIBTOOL
 AM_PROG_CC_C_O
 
+# Enable -Werror.
+AC_ARG_ENABLE([werror], [AS_HELP_STRING([--enable-werror], [enable -Werror])], [werror_flag=yes])
+case ${werror_flag} in
+    yes) CFLAGS="-Werror ${CFLAGS}";;
+esac
+
 # Checks for libraries.
 
 PKG_CHECK_MODULES(GLIB2, glib-2.0)

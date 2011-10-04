@@ -28,8 +28,8 @@
 
 #include <libnotify/notify.h>
 
-#include "../../gol.h"
-#include "../../plugins/from_url.h"
+#include "gol.h"
+#include "plugins/from_url.h"
 
 #include "display_libnotify.xpm"
 

@@ -20,6 +20,15 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+#include <stddef.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdarg.h>
+#include <ctype.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
 #include <gtk/gtk.h>
 #ifdef _WIN32
 # include <gdk/gdkwin32.h>
@@ -32,15 +41,6 @@
 # include <netdb.h>
 # include <unistd.h>
 #endif
-#include <stddef.h>
-#include <stdbool.h>
-#include <stdint.h>
-#include <stdarg.h>
-#include <ctype.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <memory.h>
 #include <sqlite3.h>
 #ifdef _WIN32
 # include <io.h>
@@ -49,6 +49,7 @@
 #include <openssl/sha.h>
 #include <openssl/aes.h>
 #include <openssl/des.h>
+
 #include "gol.h"
 
 #ifdef _WIN32
@@ -73,8 +74,6 @@ typedef int sockopt_t;
 #  define SD_BOTH SHUT_RDWR
 # endif
 #endif
-
-#define GOL_PP_JOIN(_left, _right) _left ## _right
 
 #define GNTP_OK_STRING_LITERAL(_version, _action)   \
   "GNTP/" _version " -OK NONE\r\n"                  \
@@ -105,18 +104,18 @@ typedef struct {
   gchar** (*thumbnail)();
 } DISPLAY_PLUGIN;
 
-static gchar* password = NULL;
+static gchar* password;
 static gboolean require_password_for_local_apps = FALSE;
 static gboolean require_password_for_lan_apps = FALSE;
-static sqlite3 *db = NULL;
-static GtkStatusIcon* status_icon = NULL;
-static GtkWidget* popup_menu = NULL;
-static GtkWidget* setting_dialog = NULL;
-static GtkWidget* about_dialog = NULL;
-static GList* display_plugins = NULL;
-static GList* subscribe_plugins = NULL;
-static DISPLAY_PLUGIN* current_display = NULL;
-static gchar* exepath = NULL;
+static sqlite3 *db;
+static GtkStatusIcon* status_icon;
+static GtkWidget* popup_menu;
+static GtkWidget* setting_dialog;
+static GtkWidget* about_dialog;
+static GList* display_plugins;
+static GList* subscribe_plugins;
+static DISPLAY_PLUGIN* current_display;
+static gchar* exepath;
 static SUBSCRIPTOR_CONTEXT sc;
 
 #ifndef LIBDIR
@@ -191,7 +190,7 @@ unhex(unsigned char c) {
 DISPLAY_PLUGIN*
 find_display_plugin_or(bool(* pred)(const DISPLAY_PLUGIN*), DISPLAY_PLUGIN* const or_dp) {
   gint
-  wrapped_pred(gconstpointer dp, gconstpointer _unused) {
+  wrapped_pred(gconstpointer dp, gconstpointer GOL_UNUSED_ARG(user_data)) {
     return pred((const DISPLAY_PLUGIN*) dp) ? 0 : 1;
   }
   GList* elem = g_list_find_custom(display_plugins, NULL, wrapped_pred);
@@ -206,7 +205,7 @@ find_display_plugin(bool(* pred)(const DISPLAY_PLUGIN*)) {
 SUBSCRIBE_PLUGIN*
 find_subscribe_plugin(bool(* pred)(const SUBSCRIBE_PLUGIN*)) {
   gint
-  wrapped_pred(gconstpointer sp, gconstpointer _unused) {
+  wrapped_pred(gconstpointer sp, gconstpointer GOL_UNUSED_ARG(user_data)) {
     return pred((const SUBSCRIBE_PLUGIN*) sp) ? 0 : 1;
   }
   GList* elem = g_list_find_custom(subscribe_plugins, NULL, wrapped_pred);
@@ -216,7 +215,7 @@ find_subscribe_plugin(bool(* pred)(const SUBSCRIBE_PLUGIN*)) {
 void
 foreach_display_plugin(void(* func)(DISPLAY_PLUGIN*)) {
   void
-  wrapped_func(gpointer dp, gpointer _unused) {
+  wrapped_func(gpointer dp, gpointer GOL_UNUSED_ARG(user_data)) {
     func((DISPLAY_PLUGIN*) dp);
   }
   g_list_foreach(display_plugins, wrapped_func, NULL);
@@ -225,7 +224,7 @@ foreach_display_plugin(void(* func)(DISPLAY_PLUGIN*)) {
 void
 foreach_subscribe_plugin(void(* func)(SUBSCRIBE_PLUGIN*)) {
   void
-  wrapped_func(gpointer sp, gpointer _unused) {
+  wrapped_func(gpointer sp, gpointer GOL_UNUSED_ARG(user_data)) {
     func((SUBSCRIBE_PLUGIN*) sp);
   }
   g_list_foreach(subscribe_plugins, wrapped_func, NULL);
@@ -439,7 +438,7 @@ application_tree_selection_changed(GtkTreeSelection *selection, gpointer user_da
 }
 
 static void
-set_as_default_clicked(GtkWidget* widget, gpointer user_data) {
+set_as_default_clicked(GtkWidget* GOL_UNUSED_ARG(widget), gpointer user_data) {
   GtkTreeSelection* const selection = (GtkTreeSelection*) user_data;
   gchar* name;
   if (!get_tree_model_from_selection(&name, selection)) return;
@@ -457,7 +456,7 @@ set_as_default_clicked(GtkWidget* widget, gpointer user_data) {
 }
 
 static void
-preview_clicked(GtkWidget* widget, gpointer user_data) {
+preview_clicked(GtkWidget* GOL_UNUSED_ARG(widget), gpointer user_data) {
   GtkTreeSelection* selection = (GtkTreeSelection*) user_data;
   gchar* name;
   if (!get_tree_model_from_selection(&name, selection)) return;
@@ -480,7 +479,7 @@ preview_clicked(GtkWidget* widget, gpointer user_data) {
 }
 
 static gboolean
-password_focus_out(GtkWidget* widget, GdkEvent* event, gpointer user_data) {
+password_focus_out(GtkWidget* widget, GdkEvent* GOL_UNUSED_ARG(event), gpointer GOL_UNUSED_ARG(user_data)) {
   g_free(password);
   password = g_strdup(gtk_entry_get_text(GTK_ENTRY(widget)));
   set_config_string("password", password);
@@ -489,7 +488,7 @@ password_focus_out(GtkWidget* widget, GdkEvent* event, gpointer user_data) {
 
 static void
 require_password_for_local_apps_changed(
-    GtkToggleButton *togglebutton, gpointer user_data) {
+    GtkToggleButton *togglebutton, gpointer GOL_UNUSED_ARG(user_data)) {
   require_password_for_local_apps
     = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(togglebutton));
   set_config_bool("require_password_for_local_apps",
@@ -498,7 +497,7 @@ require_password_for_local_apps_changed(
 
 static void
 require_password_for_lan_apps_changed(
-    GtkToggleButton *togglebutton, gpointer user_data) {
+    GtkToggleButton *togglebutton, gpointer GOL_UNUSED_ARG(user_data)) {
   require_password_for_lan_apps
     = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(togglebutton));
   set_config_bool("require_password_for_lan_apps",
@@ -507,7 +506,7 @@ require_password_for_lan_apps_changed(
 
 static void
 subscriber_enable_toggled(
-    GtkCellRendererToggle *cell, gchar* path_str, gpointer user_data) {
+    GtkCellRendererToggle* GOL_UNUSED_ARG(cell), gchar* path_str, gpointer user_data) {
 
   GtkTreeModel* const model = (GtkTreeModel *) user_data;
   GtkTreeIter iter;
@@ -540,7 +539,7 @@ subscriber_enable_toggled(
 }
 
 static void
-notification_tree_selection_changed(GtkTreeSelection *selection, gpointer user_data) {
+notification_tree_selection_changed(GtkTreeSelection* GOL_UNUSED_ARG(selection), gpointer user_data) {
   gchar* app_name;
   GtkWidget* const tree1 = get_data_as_object(user_data, "tree1");
   if (!get_tree_model_from_tree(&app_name, tree1)) return;
@@ -626,7 +625,7 @@ append_new_menu_item_from_stock(
 }
 
 static void
-application_delete(GtkWidget* widget, gpointer user_data) {
+application_delete(GtkWidget* GOL_UNUSED_ARG(widget), gpointer user_data) {
   GtkTreeIter iter1;
   GtkWidget* const tree1 = get_data_as_object(user_data, "tree1");
   GtkTreeSelection* const selection1
@@ -721,7 +720,7 @@ vertical_list_new(const char* const model_name, const char* const tree_name,
 }
 
 static void
-settings_clicked(GtkWidget* widget, GdkEvent* event, gpointer user_data) {
+settings_clicked(GtkWidget* GOL_UNUSED_ARG(widget), GdkEvent* GOL_UNUSED_ARG(event), gpointer GOL_UNUSED_ARG(user_data)) {
   if (setting_dialog) {
       gtk_window_present(GTK_WINDOW(setting_dialog));
       return;
@@ -951,7 +950,7 @@ settings_clicked(GtkWidget* widget, GdkEvent* event, gpointer user_data) {
 }
 
 static void
-about_click(GtkWidget* widget, gpointer user_data) {
+about_click(GtkWidget* GOL_UNUSED_ARG(widget), gpointer GOL_UNUSED_ARG(user_data)) {
   if (about_dialog) {
       gtk_window_present(GTK_WINDOW(about_dialog));
       return;
@@ -992,7 +991,7 @@ about_click(GtkWidget* widget, gpointer user_data) {
 }
 
 static void
-exit_clicked(GtkWidget* widget, GdkEvent* event, gpointer user_data) {
+exit_clicked(GtkWidget* GOL_UNUSED_ARG(widget), GdkEvent* GOL_UNUSED_ARG(event), gpointer GOL_UNUSED_ARG(user_data)) {
   gtk_main_quit();
 }
 
@@ -1321,11 +1320,7 @@ gntp_recv_proc(gpointer user_data) {
         ptr = GNTP_ERROR_STRING_LITERAL("1.0", "Invalid data", "Invalid data");
         send(sock, ptr, strlen(ptr), 0);
 
-        g_free(ni->title);
-        g_free(ni->text);
-        g_free(ni->icon);
-        g_free(ni->url);
-        g_free(ni);
+        free_notification_info(ni);
       }
       g_free(notification_name);
       g_free(notification_display_name);
@@ -1646,7 +1641,7 @@ unload_subscribe_plugins() {
 }
 
 static gboolean
-gntp_accepted(GIOChannel* const source, GIOCondition condition, gpointer user_data) {
+gntp_accepted(GIOChannel* const source, GIOCondition GOL_UNUSED_ARG(condition), gpointer GOL_UNUSED_ARG(user_data)) {
   int fd = g_io_channel_unix_get_fd(source);
   int sock;
   struct sockaddr_in client;
@@ -1684,7 +1679,7 @@ typedef struct {
 } GROWL_NOTIFY_PACKET;
 
 static gboolean
-udp_recv_proc(GIOChannel* const source, GIOCondition condition, gpointer user_data) {
+udp_recv_proc(GIOChannel* const source, GIOCondition GOL_UNUSED_ARG(condition), gpointer GOL_UNUSED_ARG(user_data)) {
   int is_local_app = FALSE;
   int fd = g_io_channel_unix_get_fd(source);
   char buf[BUFSIZ] = {0};
@@ -1699,13 +1694,13 @@ udp_recv_proc(GIOChannel* const source, GIOCondition condition, gpointer user_da
         GROWL_NOTIFY_PACKET* packet = (GROWL_NOTIFY_PACKET*) &buf[0];
 #define HASH_DIGEST_CHECK(_hash_algorithm, _password, _data, _datalen) \
 { \
-  unsigned char digest[GOL_PP_JOIN(_hash_algorithm, _DIGEST_LENGTH)] = {0}; \
+  unsigned char digest[GOL_PP_CAT(_hash_algorithm, _DIGEST_LENGTH)] = {0}; \
   const size_t datalen = _datalen - sizeof(digest);\
-  GOL_PP_JOIN(_hash_algorithm, _CTX) ctx;\
-  GOL_PP_JOIN(_hash_algorithm, _Init)(&ctx);\
-  GOL_PP_JOIN(_hash_algorithm, _Update)(&ctx, _data, datalen);\
-  GOL_PP_JOIN(_hash_algorithm, _Update)(&ctx, _password, strlen(_password));\
-  GOL_PP_JOIN(_hash_algorithm, _Final)(digest, &ctx);\
+  GOL_PP_CAT(_hash_algorithm, _CTX) ctx;\
+  GOL_PP_CAT(_hash_algorithm, _Init)(&ctx);\
+  GOL_PP_CAT(_hash_algorithm, _Update)(&ctx, _data, datalen);\
+  GOL_PP_CAT(_hash_algorithm, _Update)(&ctx, _password, strlen(_password));\
+  GOL_PP_CAT(_hash_algorithm, _Final)(digest, &ctx);\
   if (memcmp(digest, _data + datalen, sizeof(digest))) {\
     return TRUE;\
   }\

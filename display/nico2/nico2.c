@@ -20,21 +20,22 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+#include <stdio.h>
+#include <stdlib.h>
+
 #include <gtk/gtk.h>
 #ifdef _WIN32
 # include <gdk/gdkwin32.h>
 #endif
-#include <ctype.h>
-#include <stdlib.h>
-#include <memory.h>
-#include <curl/curl.h>
-#include "../../gol.h"
-#include "../../plugins/from_url.h"
+
+#include "gol.h"
+#include "plugins/from_url.h"
+
 #include "display_nico2.xpm"
 
 #define lengthof(arr_) (sizeof(arr_) / sizeof(*arr_))
 
-static GList* notifications = NULL;
+static GList* notifications;
 
 static const char* available_colors[] = { "red", "blue", "orange" };
 static GdkColor inst_colors_[ lengthof(available_colors) ];
@@ -62,11 +63,7 @@ typedef struct {
 
 static void
 free_display_info(DISPLAY_INFO* di) {
-  g_free(di->ni->title);
-  g_free(di->ni->text);
-  g_free(di->ni->icon);
-  g_free(di->ni->url);
-  g_free(di->ni);
+  free_notification_info(di->ni);
   g_free(di);
 }
 
@@ -86,19 +83,19 @@ open_url(const gchar* url) {
 }
 
 static void
-display_clicked(GtkWidget* widget, GdkEvent* event, gpointer user_data) {
+display_clicked(GtkWidget* GOL_UNUSED_ARG(widget), GdkEvent* GOL_UNUSED_ARG(event), gpointer user_data) {
   DISPLAY_INFO* di = (DISPLAY_INFO*) user_data;
   if (di->timeout >= 30) di->timeout = 30;
   if (di->ni->url && *di->ni->url) open_url(di->ni->url);
 }
 
 static void
-display_enter(GtkWidget* widget, GdkEventMotion* event, gpointer user_data) {
+display_enter(GtkWidget* GOL_UNUSED_ARG(widget), GdkEventMotion* GOL_UNUSED_ARG(event), gpointer user_data) {
   ((DISPLAY_INFO*) user_data)->hover = TRUE;
 }
 
 static void
-display_leave(GtkWidget* widget, GdkEventMotion* event, gpointer user_data) {
+display_leave(GtkWidget* GOL_UNUSED_ARG(widget), GdkEventMotion* GOL_UNUSED_ARG(event), gpointer user_data) {
   ((DISPLAY_INFO*) user_data)->hover = FALSE;
 }
 

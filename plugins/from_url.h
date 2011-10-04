@@ -30,6 +30,9 @@ memfile_from_url(memfile_from_url_info);
 GdkPixbuf*
 pixbuf_from_url(const char*, GError**);
 
+GdkPixbuf*
+pixbuf_from_url_as_file(const char*, GError**);
+
 #ifdef __cplusplus
 }
 #endif
