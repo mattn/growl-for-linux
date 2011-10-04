@@ -288,7 +288,7 @@ static void
 set_display_parameter(const char* const name, const char* const value) {
   exec_sqlite3("delete from display where name = '%q'", name);
 
-  exec_sqlite3("insert into display(name, value) values('%q', '%q')", name, value);
+  exec_sqlite3("insert into display(name, parameter) values('%q', '%q')", name, value);
 }
 
 static gchar*
@@ -1282,8 +1282,7 @@ gntp_recv_proc(gpointer user_data) {
           notification_name,
           notification_icon ? notification_icon : "",
           notification_enabled,
-          notification_display_name ?
-            notification_display_name : "Default",
+          notification_display_name ?  notification_display_name : "Default",
           FALSE);
 
         g_free(notification_name);
@@ -1354,8 +1353,7 @@ gntp_recv_proc(gpointer user_data) {
         if (sqlite3_step(stmt) == SQLITE_ROW) {
           enable = (gboolean) sqlite3_column_int(stmt, 0);
           if (!notification_display_name)
-              notification_display_name =
-                g_strdup((char*) sqlite3_column_text(stmt, 1));
+            notification_display_name = g_strdup((char*) sqlite3_column_text(stmt, 1));
         }
         sqlite3_finalize(stmt);
         sqlite3_free(sql);
@@ -1539,7 +1537,7 @@ load_config() {
           "enable int not null)",
       "create table display("
           "name text not null primary key,"
-          "parameter text not null)",
+          "parameter text)",
       "insert into notification from select * from _notification",
       "insert into subscriber from select * from _subscriber",
       "insert into display from select * from _display",
@@ -1610,8 +1608,23 @@ load_display_plugins() {
       continue;
     }
     display_plugins = g_list_append(display_plugins, dp);
-    if (dp && dp->name &&
-        !g_strcasecmp(dp->name(), default_display)) current_display = dp;
+    const char* const name = dp->name ? dp->name() : NULL;
+
+    char* const sql = sqlite3_mprintf(
+      "select name, value from display where name = '%q'", name);
+    sqlite3_stmt *stmt = NULL;
+    sqlite3_prepare(db, sql, strlen(sql), &stmt, NULL);
+    const char* dbname = (const char*) sqlite3_column_text(stmt, 0);
+    if (!dbname || g_strcasecmp(name, dbname)) {
+      const char* param = dp->get_param ? dp->get_param() : NULL;
+      exec_sqlite3("insert into display(name, parameter) values('%q', '%q')", name, param ? param : "");
+    } else {
+      if (dp->set_param) dp->set_param((const char*) sqlite3_column_text(stmt, 1));
+    }
+    sqlite3_finalize(stmt);
+
+    if (!g_strcasecmp(name, default_display))
+      current_display = dp;
   }
 
   g_dir_close(dir);
