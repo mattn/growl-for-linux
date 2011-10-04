@@ -51,29 +51,7 @@
 #include <openssl/des.h>
 
 #include "gol.h"
-
-#ifdef _WIN32
-typedef char sockopt_t;
-typedef int socklen_t;
-# ifndef snprintf
-#  define snprintf _snprintf
-# endif
-# ifndef strncasecmp
-#  define strncasecmp(d,s,n) strnicmp(d,s,n)
-# endif
-# ifndef srandom
-#  define srandom(s) srand(s)
-# endif
-# ifndef random
-#  define random() rand()
-# endif
-#else
-# define closesocket(x) close(x)
-typedef int sockopt_t;
-# ifndef SD_BOTH
-#  define SD_BOTH SHUT_RDWR
-# endif
-#endif
+#include "compatibility.h"
 
 #define GNTP_OK_STRING_LITERAL(_version, _action)   \
   "GNTP/" _version " -OK NONE\r\n"                  \
@@ -495,7 +473,7 @@ set_as_default_clicked(GtkWidget* GOL_UNUSED_ARG(widget), gpointer user_data) {
 }
 
 static gboolean
-parameter_focus_out(GtkWidget* widget, GdkEvent* event, gpointer user_data) {
+parameter_focus_out(GtkWidget* GOL_UNUSED_ARG(widget), GdkEvent* GOL_UNUSED_ARG(event), gpointer user_data) {
   GtkTreeSelection* selection = (GtkTreeSelection*) user_data;
   gchar* name;
   if (!get_tree_model_from_selection(&name, selection)) return FALSE;
