@@ -19,6 +19,13 @@
 # ifndef strncasecmp
 #  define strncasecmp(d,s,n) strnicmp(d,s,n)
 # endif
+static char*
+strndup(const char* src, size_t n) {
+  char* ptr = (char*) malloc(n + 1);
+  *(ptr + n) = 0;
+  memcpy(ptr, src, n);
+  return ptr;
+}
 #endif
 
 #define REQUEST_TIMEOUT (5)

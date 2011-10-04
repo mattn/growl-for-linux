@@ -4,6 +4,16 @@
 
 #include "memfile.h"
 
+#ifdef _WIN32
+static char*
+strndup(const char* src, size_t n) {
+  char* ptr = (char*) malloc(n + 1);
+  *(ptr + n) = 0;
+  memcpy(ptr, src, n);
+  return ptr;
+}
+#endif
+
 MEMFILE*
 memfopen() {
   return (MEMFILE*) calloc(1, sizeof(MEMFILE));
