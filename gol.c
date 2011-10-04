@@ -619,7 +619,10 @@ notification_enable_changed(GtkComboBox *combobox, gpointer user_data) {
 
   gchar* name;
   GtkWidget* const tree2 = get_data_as_object(user_data, "tree2");
-  if (!get_tree_model_from_tree(&name, tree2)) return;
+  if (!get_tree_model_from_tree(&name, tree2)) {
+    free(app_name);
+    return;
+  }
 
   const gint enable = gtk_combo_box_get_active(combobox) == 0 ? 1 : 0;
 
@@ -640,7 +643,10 @@ notification_display_changed(GtkComboBox *combobox, gpointer user_data) {
 
   gchar* name;
   GtkWidget* const tree2 = get_data_as_object(user_data, "tree2");
-  if (!get_tree_model_from_tree(&name, tree2)) return;
+  if (!get_tree_model_from_tree(&name, tree2)) {
+    g_free(app_name);
+    return;
+  }
 
   gchar* const display = gtk_combo_box_get_active_text(combobox);
 
@@ -901,9 +907,9 @@ settings_clicked(GtkWidget* GOL_UNUSED_ARG(widget), GdkEvent* GOL_UNUSED_ARG(eve
       gtk_box_pack_start(GTK_BOX(hbox), combobox, FALSE, FALSE, 0);
 
       {
-        char* const sql = "select distinct app_name from notification order by app_name";
+        char sql[] = "select distinct app_name from notification order by app_name";
         sqlite3_stmt *stmt = NULL;
-        sqlite3_prepare(db, sql, strlen(sql), &stmt, NULL);
+        sqlite3_prepare(db, sql, sizeof(sql - 1), &stmt, NULL);
         while (sqlite3_step(stmt) == SQLITE_ROW) {
           list_store_set_after_append(
               GTK_LIST_STORE(model1), 0, sqlite3_column_text(stmt, 0), -1);
