@@ -1568,6 +1568,9 @@ unload_config() {
   if (db) sqlite3_close(db);
 }
 
+static void
+unload_display_plugins();
+
 static gboolean
 load_display_plugins() {
   gchar* const path = g_build_filename(LIBDIR, "display", NULL);
@@ -1593,6 +1596,11 @@ load_display_plugins() {
       continue;
     }
     DISPLAY_PLUGIN* const dp = g_new0(DISPLAY_PLUGIN, 1);
+    if (!dp) {
+      g_module_close(handle);
+      unload_display_plugins();
+      break;
+    }
     dp->handle = handle;
     g_module_symbol(handle, "display_show", (void**) &dp->show);
     g_module_symbol(handle, "display_init", (void**) &dp->init);

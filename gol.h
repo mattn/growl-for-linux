@@ -21,6 +21,20 @@
 # define GOL_UNUSED_ARG(n) GOL_PP_CAT(GOL_UNUSED_ARG_IMPL_, GOL_PP_CAT(_, n))
 #endif
 
+#if defined(DEBUG) && !defined(NDEBUG)
+# define GOL_DEBUG_MESSAGE_TEMPLATE(func, message, ...) \
+  func("%s(%d): %s: " message "%c", __FILE__, __LINE__, __func__, __VA_ARGS__)
+# define gol_debug_message(...) GOL_DEBUG_MESSAGE_TEMPLATE(g_message, __VA_ARGS__, (char) 0)
+# define gol_debug_warning(...) GOL_DEBUG_MESSAGE_TEMPLATE(g_warning, __VA_ARGS__, (char) 0)
+# define gol_debug_critical(...) GOL_DEBUG_MESSAGE_TEMPLATE(g_ciritical, __VA_ARGS__, (char) 0)
+# define gol_debug_debug(...) GOL_DEBUG_MESSAGE_TEMPLATE(g_debug, __VA_ARGS__, (char) 0)
+#else
+# define gol_debug_message(...)
+# define gol_debug_warning(...)
+# define gol_debug_critical(...)
+# define gol_debug_debug(...)
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
