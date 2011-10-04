@@ -219,8 +219,9 @@ exec_sqlite3(const char tsql[], ...) {
 
   char* const sql = sqlite3_vmprintf(tsql, list);
   gol_debug_message("request \"%s\"", sql);
-  if (sqlite3_exec(db, sql, NULL, NULL, NULL) != SQLITE_OK)
+  if (sqlite3_exec(db, sql, NULL, NULL, NULL) != SQLITE_OK) {
     gol_debug_warning("sqlite3 reports an error.\n\t%s", sqlite3_errmsg(db));
+  }
   sqlite3_free(sql);
 
   va_end(list);
