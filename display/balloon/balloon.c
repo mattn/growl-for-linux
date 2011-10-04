@@ -32,6 +32,8 @@
 #include "balloon.xpm"
 #include "display_balloon.xpm"
 
+static gchar* param;
+
 static GList* notifications;
 static GList* popup_collections;
 
@@ -55,7 +57,7 @@ typedef struct {
   gint offset;
   gboolean sticky;
   gboolean hover;
-  struct DISPLAY_INFO_WIDGETS {
+  struct {
     GtkWidget* popup;
     GtkWidget* title;
     GtkWidget* text;
@@ -435,6 +437,17 @@ display_description() {
 G_MODULE_EXPORT char**
 display_thumbnail() {
   return display_balloon;
+}
+
+G_MODULE_EXPORT char*
+display_get_param() {
+  return param;
+}
+
+G_MODULE_EXPORT void
+display_set_param(const gchar* p) {
+  if (param) g_free(param);
+  param = g_strdup(p);
 }
 
 // vim:set et sw=2 ts=2 ai:

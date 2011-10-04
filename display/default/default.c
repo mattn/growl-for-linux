@@ -53,8 +53,7 @@ typedef struct {
   gint offset;
   gboolean sticky;
   gboolean hover;
-  struct DISPLAY_INFO_WIDGETS
-  {
+  struct {
     GtkWidget* popup;
     GtkWidget* title;
     GtkWidget* text;

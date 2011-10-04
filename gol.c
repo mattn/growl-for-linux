@@ -92,6 +92,8 @@ typedef struct {
   const gchar* (*name)();
   const gchar* (*description)();
   gchar** (*thumbnail)();
+  void (*set_param)(const gchar*);
+  gchar* (*get_param)();
 } SUBSCRIBE_PLUGIN;
 
 typedef struct {
@@ -102,6 +104,8 @@ typedef struct {
   const gchar* (*name)();
   const gchar* (*description)();
   gchar** (*thumbnail)();
+  void (*set_param)(const gchar*);
+  gchar* (*get_param)();
 } DISPLAY_PLUGIN;
 
 static gchar* password;
@@ -288,6 +292,28 @@ get_subscriber_enabled(const char* name) {
 }
 
 static gchar*
+get_display_parameter(const char* const name, const char* const def) {
+  gchar* value;
+  void
+  get_string(sqlite3_stmt* const stmt) {
+    value = g_strdup(
+        sqlite3_step(stmt) == SQLITE_ROW
+          ? (char*) sqlite3_column_text(stmt, 0)
+          : def ? def : "");
+  }
+  statement_sqlite3(get_string,
+      "select value from display where name = '%q'", name);
+  return value;
+}
+
+static void
+set_display_parameter(const char* const name, const char* const value) {
+  exec_sqlite3("delete from display where name = '%q'", name);
+
+  exec_sqlite3("insert into display(name, value) values('%q', '%q')", name, value);
+}
+
+static gchar*
 get_config_string(const char* const key, const char* const def) {
   gchar* value;
   void
@@ -343,10 +369,11 @@ static bool
 get_tree_model_from_selection(gchar** const restrict pname, GtkTreeSelection* const restrict selection) {
   GtkTreeIter iter;
   GtkTreeModel* model;
-  if (!gtk_tree_selection_get_selected(selection, &model, &iter)) return false;
+  if (!GTK_IS_TREE_SELECTION(selection)) return FALSE;
+  if (!gtk_tree_selection_get_selected(selection, &model, &iter)) return FALSE;
 
   gtk_tree_model_get(model, &iter, 0, pname, -1);
-  return true;
+  return TRUE;
 }
 
 static bool
@@ -382,6 +409,7 @@ combo_box_set_active_as_object(gpointer user_data, const gchar* const key) {
 static void
 display_tree_selection_changed(GtkTreeSelection * const selection, const gpointer user_data) {
   gchar* name;
+
   if (!get_tree_model_from_selection(&name, selection)) return;
 
   bool
@@ -408,6 +436,15 @@ display_tree_selection_changed(GtkTreeSelection * const selection, const gpointe
       gdk_pixmap_unref(pixmap);
       gdk_bitmap_unref(bitmap);
     }
+  }
+
+  GtkWidget* const entry = (GtkWidget*) get_data_as_object(user_data, "parameter");
+  gtk_entry_set_text(GTK_ENTRY(entry), "");
+  gtk_widget_set_sensitive(entry, FALSE);
+  if (cp->get_param != NULL && cp->set_param != NULL) {
+    const gchar* param = cp->get_param();
+    gtk_entry_set_text(GTK_ENTRY(entry), param ? param : "");
+    gtk_widget_set_sensitive(entry, TRUE);
   }
   g_free(name);
 }
@@ -451,8 +488,31 @@ set_as_default_clicked(GtkWidget* GOL_UNUSED_ARG(widget), gpointer user_data) {
   if (dp) {
     current_display = dp;
     set_config_string("default_display", name);
+    if (current_display->set_param)
+      current_display->set_param(get_display_parameter(name, ""));
   }
   g_free(name);
+}
+
+static gboolean
+parameter_focus_out(GtkWidget* widget, GdkEvent* event, gpointer user_data) {
+  GtkTreeSelection* selection = (GtkTreeSelection*) user_data;
+  gchar* name;
+  if (!get_tree_model_from_selection(&name, selection)) return FALSE;
+
+  bool
+  is_selection_name(const DISPLAY_PLUGIN* dp) {
+    return !g_strcasecmp(dp->name(), name);
+  }
+  DISPLAY_PLUGIN* const dp = find_display_plugin(is_selection_name);
+  if (dp) {
+    GtkWidget* const entry = (GtkWidget*) get_data_as_object(user_data, "parameter");
+    const gchar* param = gtk_entry_get_text(GTK_ENTRY(entry));
+    dp->set_param(param);
+    set_display_parameter(name, param);
+  }
+  g_free(name);
+  return FALSE;
 }
 
 static void
@@ -784,6 +844,17 @@ settings_clicked(GtkWidget* GOL_UNUSED_ARG(widget), GdkEvent* GOL_UNUSED_ARG(eve
         G_CALLBACK(preview_clicked), select);
     gtk_box_pack_end(GTK_BOX(hbox), button, FALSE, FALSE, 0);
 
+    hbox = gtk_hbox_new(FALSE, 5);
+    gtk_box_pack_start(GTK_BOX(vbox), hbox, TRUE, FALSE, 0);
+
+    GtkWidget* entry = gtk_entry_new();
+    g_signal_connect(G_OBJECT(entry), "focus-out-event",
+        G_CALLBACK(parameter_focus_out), NULL);
+    g_object_set_data(G_OBJECT(setting_dialog), "parameter", entry);
+    gtk_box_pack_end(GTK_BOX(hbox), entry, FALSE, FALSE, 0);
+    label = gtk_label_new("Parameter:");
+    gtk_box_pack_end(GTK_BOX(hbox), label, FALSE, FALSE, 0);
+
     void
     append_display_plugins(DISPLAY_PLUGIN* dp) {
       GtkTreeIter iter = list_store_set_after_append(
@@ -1031,7 +1102,7 @@ str_swap(char ** restrict _left, char ** restrict _right)
 static gpointer
 gntp_recv_proc(gpointer user_data) {
   int sock = (int)(intptr_t) user_data;
-  bool is_local_app = false;
+  bool is_local_app = FALSE;
 
   struct sockaddr_in client;
   socklen_t client_len = sizeof(client);
@@ -1039,7 +1110,7 @@ gntp_recv_proc(gpointer user_data) {
   if (!getsockname(sock, (struct sockaddr *) &client, &client_len)) {
     const char* addr = inet_ntoa(((struct sockaddr_in *)(void*)&client)->sin_addr);
     if (addr && !strcmp(addr, "127.0.0.1")) {
-      is_local_app = true;
+      is_local_app = TRUE;
     }
   }
 
@@ -1466,8 +1537,10 @@ load_config() {
     const char* sqls[] = {
       "drop table _notification",
       "drop table _subscriber",
+      "drop table _display",
       "alter table notification rename to _notification",
       "alter table subscriber rename to _subscriber",
+      "alter table display rename to _display",
       "create table notification("
           "app_name text not null,"
           "app_icon text not null,"
@@ -1480,10 +1553,15 @@ load_config() {
       "create table subscriber("
           "name text not null primary key,"
           "enable int not null)",
+      "create table display("
+          "name text not null primary key,"
+          "parameter text not null)",
       "insert into notification from select * from _notification",
-      "insert into subscriber from select * from subscriber",
+      "insert into subscriber from select * from _subscriber",
+      "insert into display from select * from _display",
       "drop table _notification",
       "drop table _subscriber",
+      "drop table _display",
       NULL
     };
     for (const char* const* sql = sqls; *sql; ++sql) {
@@ -1540,6 +1618,8 @@ load_display_plugins() {
     g_module_symbol(handle, "display_name", (void**) &dp->name);
     g_module_symbol(handle, "display_description", (void**) &dp->description);
     g_module_symbol(handle, "display_thumbnail", (void**) &dp->thumbnail);
+    g_module_symbol(handle, "display_set_param", (void**) &dp->set_param);
+    g_module_symbol(handle, "display_get_param", (void**) &dp->get_param);
     if (dp->init && !dp->init()) {
       g_module_close(dp->handle);
       g_free(dp);
@@ -1560,6 +1640,8 @@ load_display_plugins() {
   }
 
   if (!current_display) current_display = g_list_nth_data(display_plugins, 0);
+  if (current_display->set_param)
+    current_display->set_param(get_display_parameter(current_display->name(), ""));
 
   return TRUE;
 }
