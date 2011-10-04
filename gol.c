@@ -218,7 +218,9 @@ exec_sqlite3(const char tsql[], ...) {
   va_start(list, tsql);
 
   char* const sql = sqlite3_vmprintf(tsql, list);
-  sqlite3_exec(db, sql, NULL, NULL, NULL);
+  gol_debug_message("request \"%s\"", sql);
+  if (sqlite3_exec(db, sql, NULL, NULL, NULL) != SQLITE_OK)
+    gol_debug_warning("sqlite3 reports an error.\n\t%s", sqlite3_errmsg(db));
   sqlite3_free(sql);
 
   va_end(list);
@@ -286,6 +288,7 @@ get_display_parameter(const char* const name, const char* const def) {
 
 static void
 set_display_parameter(const char* const name, const char* const value) {
+  gol_debug_message("name: %s, parameter: %s", name, value);
   exec_sqlite3("delete from display where name = '%q'", name);
 
   exec_sqlite3("insert into display(name, parameter) values('%q', '%q')", name, value);
@@ -1569,7 +1572,17 @@ unload_config() {
 }
 
 static void
-unload_display_plugins();
+unload_display_plugins() {
+  void
+  close_plugin(DISPLAY_PLUGIN* dp) {
+    if (dp->term) dp->term();
+    g_module_close(dp->handle);
+    g_free(dp);
+  }
+  foreach_display_plugin(close_plugin);
+  g_list_free(display_plugins);
+  display_plugins = NULL;
+}
 
 static gboolean
 load_display_plugins() {
@@ -1597,6 +1610,7 @@ load_display_plugins() {
     }
     DISPLAY_PLUGIN* const dp = g_new0(DISPLAY_PLUGIN, 1);
     if (!dp) {
+      g_critical("fatal: g_new0(DISPLAY_PLUGIN, 1) failed");
       g_module_close(handle);
       unload_display_plugins();
       break;
@@ -1610,23 +1624,20 @@ load_display_plugins() {
     g_module_symbol(handle, "display_thumbnail", (void**) &dp->thumbnail);
     g_module_symbol(handle, "display_set_param", (void**) &dp->set_param);
     g_module_symbol(handle, "display_get_param", (void**) &dp->get_param);
-    if (dp->init && !dp->init()) {
+    const char* const name = dp->name ? dp->name() : NULL;
+    if (name && dp->init && !dp->init()) {
       g_module_close(dp->handle);
       g_free(dp);
       continue;
     }
-    display_plugins = g_list_append(display_plugins, dp);
-    const char* const name = dp->name ? dp->name() : NULL;
 
-    char* const sql = sqlite3_mprintf(
-      "select name, value from display where name = '%q'", name);
+    display_plugins = g_list_append(display_plugins, dp);
+    gol_debug_message("load display plugins \"%s\".", name);
+
+    char* const sql = sqlite3_mprintf("select name, value from display where name = '%q'", name);
     sqlite3_stmt *stmt = NULL;
     sqlite3_prepare(db, sql, strlen(sql), &stmt, NULL);
-    const char* dbname = (const char*) sqlite3_column_text(stmt, 0);
-    if (!dbname || g_strcasecmp(name, dbname)) {
-      const char* param = dp->get_param ? dp->get_param() : NULL;
-      exec_sqlite3("insert into display(name, parameter) values('%q', '%q')", name, param ? param : "");
-    } else {
+    if (sqlite3_column_text(stmt, 0)) {
       if (dp->set_param) dp->set_param((const char*) sqlite3_column_text(stmt, 1));
     }
     sqlite3_finalize(stmt);
@@ -1652,21 +1663,21 @@ load_display_plugins() {
 }
 
 static void
-unload_display_plugins() {
-  void
-  close_plugin(DISPLAY_PLUGIN* dp) {
-    if (dp->term) dp->term();
-    g_module_close(dp->handle);
-    g_free(dp);
-  }
-  foreach_display_plugin(close_plugin);
-  g_list_free(display_plugins);
-  display_plugins = NULL;
+subscribe_show(NOTIFICATION_INFO* const ni) {
+  g_idle_add((GSourceFunc) current_display->show, ni);
 }
 
 static void
-subscribe_show(NOTIFICATION_INFO* const ni) {
-  g_idle_add((GSourceFunc) current_display->show, ni);
+unload_subscribe_plugins() {
+  void
+  close_plugin(SUBSCRIBE_PLUGIN* sp) {
+    if (sp->term) sp->term();
+    g_module_close(sp->handle);
+    g_free(sp);
+  }
+  foreach_subscribe_plugin(close_plugin);
+  g_list_free(subscribe_plugins);
+  subscribe_plugins = NULL;
 }
 
 static gboolean
@@ -1687,10 +1698,14 @@ load_subscribe_plugins() {
     gchar* const filepath = g_build_filename(path, filename, NULL);
     GModule* const handle = g_module_open(filepath, G_MODULE_BIND_LAZY);
     g_free(filepath);
-    if (!handle) {
-      continue;
-    }
+    if (!handle) continue;
     SUBSCRIBE_PLUGIN* const sp = g_new0(SUBSCRIBE_PLUGIN, 1);
+    if (!sp) {
+      g_critical("fatal: g_new0(SUBSCRIBE_PLUGIN, 1) failed");
+      g_module_close(handle);
+      unload_subscribe_plugins();
+      break;
+    }
     sp->handle = handle;
     g_module_symbol(handle, "subscribe_start", (void**) &sp->start);
     g_module_symbol(handle, "subscribe_stop", (void**) &sp->stop);
@@ -1699,32 +1714,22 @@ load_subscribe_plugins() {
     g_module_symbol(handle, "subscribe_name", (void**) &sp->name);
     g_module_symbol(handle, "subscribe_description", (void**) &sp->description);
     g_module_symbol(handle, "subscribe_thumbnail", (void**) &sp->thumbnail);
-    if (sp->init && !sp->init(&sc)) {
+    const char* const name = sp->name ? sp->name() : NULL;
+    if (name && sp->init && !sp->init(&sc)) {
       g_module_close(sp->handle);
       g_free(sp);
       continue;
     }
-    if (get_subscriber_enabled(sp->name())) sp->start();
+
     subscribe_plugins = g_list_append(subscribe_plugins, sp);
+    gol_debug_message("load subscriber plugins \"%s\".", name);
+    if (get_subscriber_enabled(name)) sp->start();
   }
 
   g_dir_close(dir);
   g_free(path);
 
   return TRUE;
-}
-
-static void
-unload_subscribe_plugins() {
-  void
-  close_plugin(SUBSCRIBE_PLUGIN* sp) {
-    if (sp->term) sp->term();
-    g_module_close(sp->handle);
-    g_free(sp);
-  }
-  foreach_subscribe_plugin(close_plugin);
-  g_list_free(subscribe_plugins);
-  subscribe_plugins = NULL;
 }
 
 static gboolean
