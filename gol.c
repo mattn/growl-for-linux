@@ -1101,6 +1101,72 @@ str_swap(char ** restrict _left, char ** restrict _right)
     *_right   = tmp;
 }
 
+typedef struct {
+  const int   sock;
+  const char* command;
+  const char* application_name;
+  const char* notification_name;
+  const char* notification_display_name;
+} CLIENT_INFO;
+
+static bool
+raise_notification(const CLIENT_INFO ci, NOTIFICATION_INFO* const ni) {
+  const bool valid = ni && ni->title && ni->text;
+
+  gchar* const cmd_result = valid
+    ? g_strdup_printf(GNTP_OK_STRING_LITERAL("1.0", "%s"), ci.command)
+    : g_strdup(GNTP_ERROR_STRING_LITERAL("1.0", "Invalid data", "Invalid data"));
+
+  if (cmd_result) {
+    send(ci.sock, cmd_result, strlen(cmd_result), 0);
+    g_free(cmd_result);
+  } else {
+    g_critical("g_strdup or g_strdup_printf faild.");
+    return false;
+  }
+  if (!valid) return false;
+
+  DISPLAY_PLUGIN* cp = NULL;
+  // Received name.
+  if (ci.notification_display_name) {
+    bool
+    is_ndn(const DISPLAY_PLUGIN* dp) {
+      return !g_strcasecmp(dp->name(), ci.notification_display_name);
+    }
+    cp = find_display_plugin(is_ndn);
+  }
+
+  // Lookup application default notification name.
+  if (!cp) {
+    sqlite3_stmt* const stmt = prepare_sqlite3(
+      "select enable, display from notification"
+      " where app_name = '%q' and name = '%q'",
+      ci.application_name, ci.notification_name);
+    if (sqlite3_step(stmt) == SQLITE_ROW && sqlite3_column_int(stmt, 0)) {
+      const char* const adn = (const char*) sqlite3_column_text(stmt, 1);
+      bool
+      is_adn(const DISPLAY_PLUGIN* dp) {
+        return !g_strcasecmp(dp->name(), adn);
+      }
+      cp = find_display_plugin(is_adn);
+    }
+    sqlite3_finalize(stmt);
+  }
+
+  // Lookup system default notification name.
+  if (!cp) {
+    const char* const sdn = get_config_string("default_display", "Default");
+    bool
+    is_sdn(const DISPLAY_PLUGIN* dp) {
+      return !g_strcasecmp(dp->name(), sdn);
+    }
+    cp = find_display_plugin_or(is_sdn, current_display);
+  }
+
+  g_idle_add((GSourceFunc) cp->show, ni); // call once
+  return true;
+}
+
 static gpointer
 gntp_recv_proc(gpointer user_data) {
   int sock = (int)(intptr_t) user_data;
@@ -1356,43 +1422,15 @@ gntp_recv_proc(gpointer user_data) {
           g_free(value);
         }
       }
+      raise_notification(
+        (CLIENT_INFO){
+          .sock                      = sock,
+          .command                   = command,
+          .application_name          = application_name,
+          .notification_name         = notification_name,
+          .notification_display_name = notification_display_name,
+        }, ni);
 
-      if (ni->title && ni->text) {
-        ptr = g_strdup_printf(GNTP_OK_STRING_LITERAL("1.0", "%s"), command);
-        send(sock, ptr, strlen(ptr), 0);
-
-        gboolean enable = FALSE;
-        char* const sql = sqlite3_mprintf(
-            "select enable, display from notification"
-            " where app_name = '%q' and name = '%q'",
-            application_name, notification_name);
-        sqlite3_stmt *stmt = NULL;
-        sqlite3_prepare(db, sql, strlen(sql), &stmt, NULL);
-        if (sqlite3_step(stmt) == SQLITE_ROW) {
-          enable = (gboolean) sqlite3_column_int(stmt, 0);
-          if (!notification_display_name)
-            notification_display_name = g_strdup((char*) sqlite3_column_text(stmt, 1));
-        }
-        sqlite3_finalize(stmt);
-        sqlite3_free(sql);
-
-        if (enable) {
-          DISPLAY_PLUGIN* cp = current_display;
-          if (notification_display_name) {
-            bool
-            is_notification_display(const DISPLAY_PLUGIN* dp) {
-              return !g_strcasecmp(dp->name(), notification_display_name);
-            }
-            cp = find_display_plugin_or(is_notification_display, cp);
-          }
-          g_idle_add((GSourceFunc) cp->show, ni); // call once
-        }
-      } else {
-        ptr = GNTP_ERROR_STRING_LITERAL("1.0", "Invalid data", "Invalid data");
-        send(sock, ptr, strlen(ptr), 0);
-
-        free_notification_info(ni);
-      }
       g_free(notification_name);
       g_free(notification_display_name);
       g_free(application_name);
