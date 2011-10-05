@@ -1286,22 +1286,35 @@ gntp_recv_proc(gpointer user_data) {
           }
         }
 
-        exec_sqlite3(
-          "delete from notification where app_name = '%q' and name = '%q'",
+        int exist = 0;
+        void
+        get_count(sqlite3_stmt* const stmt) {
+          exist = sqlite3_step(stmt) == SQLITE_ROW
+            ? (gboolean) sqlite3_column_int(stmt, 0)
+            : 0;
+        }
+        statement_sqlite3(get_count,
+          "select count(*) from notification where app_name = '%q' and name = '%q'",
           application_name, notification_name);
 
-        exec_sqlite3(
-          "insert into notification("
-          "app_name, app_icon, name, icon, enable, display, sticky)"
-          " values('%q', '%q', '%q', '%q', %d, '%q', %d)",
-          application_name,
-          application_icon ? application_icon : "",
-          notification_name,
-          notification_icon ? notification_icon : "",
-          notification_enabled,
-          notification_display_name ?
-            notification_display_name : "Default",
-          FALSE);
+        if (!exist) {
+          exec_sqlite3(
+            "delete from notification where app_name = '%q' and name = '%q'",
+            application_name, notification_name);
+
+          exec_sqlite3(
+            "insert into notification("
+            "app_name, app_icon, name, icon, enable, display, sticky)"
+            " values('%q', '%q', '%q', '%q', %d, '%q', %d)",
+            application_name,
+            application_icon ? application_icon : "",
+            notification_name,
+            notification_icon ? notification_icon : "",
+            notification_enabled,
+            notification_display_name ?
+              notification_display_name : "Default",
+            FALSE);
+        }
 
         g_free(notification_name);
         g_free(notification_icon);
