@@ -283,7 +283,7 @@ get_display_parameter(const char* const name, const char* const def) {
           : def ? def : "");
   }
   statement_sqlite3(get_string,
-      "select value from display where name = '%q'", name);
+      "select parameter from display where name = '%q'", name);
   return value;
 }
 
