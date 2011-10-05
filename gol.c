@@ -218,7 +218,7 @@ exec_sqlite3(const char tsql[], ...) {
   va_start(list, tsql);
 
   char* const sql = sqlite3_vmprintf(tsql, list);
-  gol_debug_message("request \"%s\"", sql);
+  gol_debug_message("request \n\t\"%s\"", sql);
   if (sqlite3_exec(db, sql, NULL, NULL, NULL) != SQLITE_OK) {
     gol_debug_warning("sqlite3 reports an error.\n\t%s", sqlite3_errmsg(db));
   }
@@ -227,19 +227,38 @@ exec_sqlite3(const char tsql[], ...) {
   va_end(list);
 }
 
-static void
-statement_sqlite3(void(* stmt_func)(sqlite3_stmt*), const char * const tsql, ...) {
+static sqlite3_stmt *
+vprepare_sqlite3(const char* const tsql, va_list list) {
+  char* const sql = sqlite3_vmprintf(tsql, list);
+  gol_debug_message("request \n\t\"%s\"", sql);
+  sqlite3_stmt* stmt = NULL;
+  if (sqlite3_prepare(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK) {
+    gol_debug_warning("sqlite3 reports an error.\n\t%s", sqlite3_errmsg(db));
+  }
+  sqlite3_free(sql);
+  return stmt;
+}
+
+static sqlite3_stmt *
+prepare_sqlite3(const char* const tsql, ...) {
   va_list list;
   va_start(list, tsql);
 
-  char* const sql = sqlite3_vmprintf(tsql, list);
-  sqlite3_stmt* stmt = NULL;
-  sqlite3_prepare(db, sql, strlen(sql), &stmt, NULL);
+  sqlite3_stmt* const stmt = vprepare_sqlite3(tsql, list);
 
+  va_end(list);
+  return stmt;
+}
+
+static void
+statement_sqlite3(void(* stmt_func)(sqlite3_stmt*), const char* const tsql, ...) {
+  va_list list;
+  va_start(list, tsql);
+
+  sqlite3_stmt* const stmt = vprepare_sqlite3(tsql, list);
   stmt_func(stmt);
 
   sqlite3_finalize(stmt);
-  sqlite3_free(sql);
 
   va_end(list);
 }
@@ -311,19 +330,14 @@ get_config_string(const char* const key, const char* const def) {
 }
 
 static void
-set_config_bool(const char* key, gboolean value) {
+set_config_string(const char* const key, const char* const value) {
   exec_sqlite3("delete from config where key = '%q'", key);
-
-  exec_sqlite3(
-    "insert into config(key, value) values('%q', '%q')",
-    key, value ? "1" : "0");
+  exec_sqlite3("insert into config(key, value) values('%q', '%q')", key, value);
 }
 
 static void
-set_config_string(const char* const key, const char* const value) {
-  exec_sqlite3("delete from config where key = '%q'", key);
-
-  exec_sqlite3("insert into config(key, value) values('%q', '%q')", key, value);
+set_config_bool(const char* key, gboolean value) {
+  set_config_string(key, value ? "1" : "0");
 }
 
 static void
