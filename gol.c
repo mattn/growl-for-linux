@@ -1606,7 +1606,16 @@ unload_config() {
 
 static gboolean
 load_display_plugins() {
-  gchar* const path = g_build_filename(LIBDIR, "display", NULL);
+  gchar* path;
+  gchar* custompath = getenv("GOL_PLUGIN_PATH");
+  if (!custompath)
+  {
+    path = g_build_filename(LIBDIR, "display", NULL);
+  }
+  else 
+  {
+    path = g_build_filename(custompath, "display", NULL);
+  }
   GDir* const dir = g_dir_open(path, 0, NULL);
   if (!dir) {
     perror("open");

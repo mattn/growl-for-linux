@@ -56,7 +56,7 @@ display_show(gpointer data) {
   const NOTIFICATION_INFO* const ni = (const NOTIFICATION_INFO*) data;
 
   gchar* const icon_path = get_icon_path_if_local(ni);
-  NotifyNotification* const nt = notify_notification_new(ni->title, ni->text, icon_path, NULL);
+  NotifyNotification* const nt = notify_notification_new(ni->title, ni->text, icon_path);
   g_free(icon_path);
 
   GdkPixbuf* const pixbuf = !ni->local ? pixbuf_from_url(ni->icon, NULL) : NULL;
