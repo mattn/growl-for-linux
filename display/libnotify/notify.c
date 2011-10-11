@@ -56,15 +56,14 @@ display_show(gpointer data) {
   const NOTIFICATION_INFO* const ni = (const NOTIFICATION_INFO*) data;
 
   gchar* const icon_path = get_icon_path_if_local(ni);
-  NotifyNotification* const nt;
 #ifdef NOTIFY_CHECK_VERSION
 # if NOTIFY_CHECK_VERSION (0, 7, 0)
-  nt = notify_notification_new(ni->title, ni->text, icon_path);
+  NotifyNotification* const nt = notify_notification_new(ni->title, ni->text, icon_path);
 # else
-  nt = notify_notification_new(ni->title, ni->text, icon_path, NULL);
+  NotifyNotification* const nt = notify_notification_new(ni->title, ni->text, icon_path, NULL);
 # endif
 #else
-  nt = notify_notification_new(ni->title, ni->text, icon_path, NULL);
+  NotifyNotification* const nt = notify_notification_new(ni->title, ni->text, icon_path, NULL);
 #endif
   g_free(icon_path);
 
