@@ -157,7 +157,7 @@ read_all(int fd, char** ptr) {
     .tv_usec = 0,
   };
 
-  setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+  setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, (sockopt_t*) &timeout, sizeof(timeout));
 
   const size_t len = BUFSIZ;
   size_t bufferlen = len;
@@ -1130,10 +1130,8 @@ gntp_recv_proc(gpointer user_data) {
 
     char* data = NULL;
     if (!strncmp(ptr, "NONE", 4) && strchr("\r\n ", *(ptr+5))) {
-      if (is_local_app && get_config_bool(
-            "require_password_for_local_apps", FALSE)) goto leave;
-      if (!is_local_app && get_config_bool(
-            "require_password_for_lan_apps", FALSE)) goto leave;
+      if (is_local_app && require_password_for_local_apps) goto leave;
+      if (!is_local_app && require_password_for_lan_apps) goto leave;
       if (!(ptr = crlf_to_term_or_null(ptr))) goto leave;
       const size_t datalen = r - (ptr-top) - 4;
       data = (char*) malloc(datalen+1);
@@ -1783,7 +1781,16 @@ udp_recv_proc(GIOChannel* const source, GIOCondition condition, gpointer user_da
   int is_local_app = FALSE;
   int fd = g_io_channel_unix_get_fd(source);
   char buf[BUFSIZ] = {0};
+  struct sockaddr_in client;
+  socklen_t client_len = sizeof(client);
+  memset(&client, 0, sizeof(client));
 
+  if (!getsockname(fd, (struct sockaddr *) &client, &client_len)) {
+    const char* addr = inet_ntoa(((struct sockaddr_in *)(void*)&client)->sin_addr);
+    if (addr && !strcmp(addr, "127.0.0.1")) {
+      is_local_app = TRUE;
+    }
+  }
   const ssize_t len = recvfrom(fd, buf, sizeof(buf), 0, NULL, NULL);
   if (len > 0) {
     if (buf[0] == 1) {
