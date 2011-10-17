@@ -50,10 +50,8 @@ memfile_from_url(const memfile_from_url_info info) {
   const CURLcode res = curl_easy_perform(curl);
   curl_easy_cleanup(curl);
 
-  if (res == CURLE_OK) {
-    if (info.body)   *info.body   = memfrelease(&body);
-    if (info.header) *info.header = memfrelease(&header);
-  }
+  if (info.body)   *info.body   = memfrelease(&body);
+  if (info.header) *info.header = memfrelease(&header);
   memfclose(body);
   memfclose(header);
 
