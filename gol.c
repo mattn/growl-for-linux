@@ -219,9 +219,8 @@ exec_sqlite3(const char tsql[], ...) {
 
   char* const sql = sqlite3_vmprintf(tsql, list);
   gol_debug_message("request \n\t\"%s\"", sql);
-  if (sqlite3_exec(db, sql, NULL, NULL, NULL) != SQLITE_OK) {
+  if (sqlite3_exec(db, sql, NULL, NULL, NULL) != SQLITE_OK)
     gol_debug_warning("sqlite3 reports an error.\n\t%s", sqlite3_errmsg(db));
-  }
   sqlite3_free(sql);
 
   va_end(list);
@@ -232,9 +231,8 @@ vprepare_sqlite3(const char* const tsql, va_list list) {
   char* const sql = sqlite3_vmprintf(tsql, list);
   gol_debug_message("request \n\t\"%s\"", sql);
   sqlite3_stmt* stmt = NULL;
-  if (sqlite3_prepare(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK) {
+  if (sqlite3_prepare(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK)
     gol_debug_warning("sqlite3 reports an error.\n\t%s", sqlite3_errmsg(db));
-  }
   sqlite3_free(sql);
   return stmt;
 }
