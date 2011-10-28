@@ -923,9 +923,9 @@ settings_clicked(GtkWidget* GOL_UNUSED_ARG(widget), GdkEvent* GOL_UNUSED_ARG(eve
       gtk_box_pack_start(GTK_BOX(hbox), combobox, FALSE, FALSE, 0);
 
       {
-        char sql[] = "select distinct app_name from notification order by app_name";
+        char* const sql = "select distinct app_name from notification order by app_name";
         sqlite3_stmt *stmt = NULL;
-        sqlite3_prepare(db, sql, sizeof(sql - 1), &stmt, NULL);
+        sqlite3_prepare(db, sql, strlen(sql), &stmt, NULL);
         while (sqlite3_step(stmt) == SQLITE_ROW) {
           list_store_set_after_append(
               GTK_LIST_STORE(model1), 0, sqlite3_column_text(stmt, 0), -1);
