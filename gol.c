@@ -459,7 +459,7 @@ application_tree_selection_changed(GtkTreeSelection *selection, gpointer user_da
     }
   }
   statement_sqlite3(append_applications,
-      "select distinct name from notification"
+      "select distinct name from application"
       " where app_name = '%q' order by name", app_name);
 
   g_free(app_name);
@@ -620,7 +620,7 @@ notification_tree_selection_changed(GtkTreeSelection* GOL_UNUSED_ARG(selection),
     }
   }
   statement_sqlite3(create_combo_boxes,
-      "select enable, display from notification"
+      "select enable, display from application"
       " where app_name = '%q' and name = '%q'", app_name, name);
 
   g_free(app_name);
@@ -643,7 +643,7 @@ notification_enable_changed(GtkComboBox *combobox, gpointer user_data) {
   const gint enable = gtk_combo_box_get_active(combobox) == 0 ? 1 : 0;
 
   exec_sqlite3(
-      "update notification set enable = %d"
+      "update application set enable = %d"
       " where app_name = '%q' and name = '%q'",
       enable, app_name, name);
 
@@ -667,7 +667,7 @@ notification_display_changed(GtkComboBox *combobox, gpointer user_data) {
   gchar* const display = gtk_combo_box_get_active_text(combobox);
 
   exec_sqlite3(
-    "update notification set display = '%q'"
+    "update application set display = '%q'"
     " where app_name = '%q' and name = '%q'",
     display, app_name, name);
 
@@ -705,13 +705,13 @@ application_delete(GtkWidget* GOL_UNUSED_ARG(widget), gpointer user_data) {
     gchar* name;
     gtk_tree_model_get(model2, &iter2, 0, &name, -1);
     exec_sqlite3(
-      "delete from notification where app_name = '%q' and name = '%q'",
+      "delete from application where app_name = '%q' and name = '%q'",
       app_name, name);
     g_free(name);
 
     gtk_list_store_remove(GTK_LIST_STORE(model2), &iter2);
   } else {
-    exec_sqlite3("delete from notification where app_name = '%q'", app_name);
+    exec_sqlite3("delete from application where app_name = '%q'", app_name);
     gtk_list_store_remove(GTK_LIST_STORE(model1), &iter1);
     gtk_list_store_clear(GTK_LIST_STORE(model2));
   }
@@ -923,7 +923,7 @@ settings_clicked(GtkWidget* GOL_UNUSED_ARG(widget), GdkEvent* GOL_UNUSED_ARG(eve
       gtk_box_pack_start(GTK_BOX(hbox), combobox, FALSE, FALSE, 0);
 
       {
-        char* const sql = "select distinct app_name from notification order by app_name";
+        char* const sql = "select distinct app_name from application order by app_name";
         sqlite3_stmt *stmt = NULL;
         sqlite3_prepare(db, sql, strlen(sql), &stmt, NULL);
         while (sqlite3_step(stmt) == SQLITE_ROW) {
@@ -1141,7 +1141,7 @@ raise_notification(const CLIENT_INFO ci, NOTIFICATION_INFO* const ni) {
   // Lookup application default notification name.
   if (!cp) {
     sqlite3_stmt* const stmt = prepare_sqlite3(
-      "select enable, display from notification"
+      "select enable, display from application"
       " where app_name = '%q' and name = '%q'",
       ci.application_name, ci.notification_name);
     if (sqlite3_step(stmt) == SQLITE_ROW && sqlite3_column_int(stmt, 0)) {
@@ -1361,16 +1361,16 @@ gntp_recv_proc(gpointer user_data) {
             : 0;
         }
         statement_sqlite3(get_count,
-          "select count(*) from notification where app_name = '%q' and name = '%q'",
+          "select count(*) from application where app_name = '%q' and name = '%q'",
           application_name, notification_name);
 
         if (!exist) {
           exec_sqlite3(
-            "delete from notification where app_name = '%q' and name = '%q'",
+            "delete from application where app_name = '%q' and name = '%q'",
             application_name, notification_name);
 
           exec_sqlite3(
-            "insert into notification("
+            "insert into application("
             "app_name, app_icon, name, icon, enable, display, sticky)"
             " values('%q', '%q', '%q', '%q', %d, '%q', %d)",
             application_name,
@@ -1436,6 +1436,15 @@ gntp_recv_proc(gpointer user_data) {
           g_free(value);
         }
       }
+
+      exec_sqlite3(
+        "insert into notification("
+        "title, text, icon, url, recieved)"
+        " values('%q', '%q', '%q', '%q', current_timestamp)",
+        ni->title, ni->text,
+        ni->icon ? ni->icon : "",
+        ni->url ? ni->url : "");
+
       raise_notification(
         (CLIENT_INFO){
           .sock                      = sock,
@@ -1588,12 +1597,19 @@ load_config() {
   if (strcmp(version, PACKAGE_VERSION)) {
     const char* sqls[] = {
       "drop table _notification",
+      "drop table _application",
       "drop table _subscriber",
       "drop table _display",
-      "alter table notification rename to _notification",
+      "alter table application rename to _application",
       "alter table subscriber rename to _subscriber",
       "alter table display rename to _display",
       "create table notification("
+          "title text not null,"
+          "text text not null,"
+          "icon text,"
+          "url text,"
+          "recieved timestamp not null)",
+      "create table application("
           "app_name text not null,"
           "app_icon text not null,"
           "name text not null,"
@@ -1609,14 +1625,17 @@ load_config() {
           "name text not null primary key,"
           "parameter text)",
       "insert into notification from select * from _notification",
+      "insert into application from select * from _application",
       "insert into subscriber from select * from _subscriber",
       "insert into display from select * from _display",
       "drop table _notification",
+      "drop table _application",
       "drop table _subscriber",
       "drop table _display",
       NULL
     };
     for (const char* const* sql = sqls; *sql; ++sql) {
+printf("%s\n", *sql);
       sqlite3_exec(db, *sql, NULL, NULL, NULL);
     }
     set_config_string("version", PACKAGE_VERSION);
