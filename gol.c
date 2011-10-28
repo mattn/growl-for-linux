@@ -1027,7 +1027,11 @@ about_click(GtkWidget* GOL_UNUSED_ARG(widget), gpointer GOL_UNUSED_ARG(user_data
       return;
   }
 
-  const gchar* authors[2] = {"Yasuhiro Matsumoto <mattn.jp@gmail.com>", NULL};
+  const gchar* authors[3] = {
+    "Yasuhiro Matsumoto <mattn.jp@gmail.com>",
+    "Kohei Takahashi <flast@flast.jp>",
+    NULL
+  };
   gchar* contents = NULL;
   gchar* utf8 = NULL;
   GdkPixbuf* logo = NULL;
