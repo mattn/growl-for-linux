@@ -1012,6 +1012,46 @@ settings_clicked(GtkWidget* GOL_UNUSED_ARG(widget), GdkEvent* GOL_UNUSED_ARG(eve
     foreach_subscribe_plugin(append_subscribe_plugins);
   }
 
+  {
+    GtkWidget* hbox = gtk_hbox_new(FALSE, 5);
+    gtk_container_set_border_width(GTK_CONTAINER(hbox), 10);
+    gtk_notebook_append_page(GTK_NOTEBOOK(notebook),
+        hbox, gtk_label_new("Notifications"));
+
+    GtkListStore* model = (GtkListStore *) gtk_list_store_new(
+        3, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING);
+    GtkWidget* tree_view = gtk_tree_view_new_with_model(GTK_TREE_MODEL(model));
+    GtkTreeSelection* select = gtk_tree_view_get_selection(
+        GTK_TREE_VIEW(tree_view));
+    gtk_tree_selection_set_mode(select, GTK_SELECTION_SINGLE);
+    gtk_box_pack_start(GTK_BOX(hbox), tree_view, TRUE, TRUE, 0);
+
+    gtk_tree_view_append_column(GTK_TREE_VIEW(tree_view),
+        gtk_tree_view_column_new_with_attributes(
+          "Datetime", gtk_cell_renderer_text_new(), "text", 0, NULL));
+    gtk_tree_view_append_column(GTK_TREE_VIEW(tree_view),
+        gtk_tree_view_column_new_with_attributes(
+          "Title", gtk_cell_renderer_text_new(), "text", 1, NULL));
+    gtk_tree_view_append_column(GTK_TREE_VIEW(tree_view),
+        gtk_tree_view_column_new_with_attributes(
+          "Text", gtk_cell_renderer_text_new(), "text", 2, NULL));
+
+    {
+      char* const sql = "select recieved, title, text from notification order by recieved desc";
+      sqlite3_stmt *stmt = NULL;
+      sqlite3_prepare(db, sql, strlen(sql), &stmt, NULL);
+      while (sqlite3_step(stmt) == SQLITE_ROW) {
+        list_store_set_after_append(
+            GTK_LIST_STORE(model),
+            0, sqlite3_column_text(stmt, 0),
+            1, sqlite3_column_text(stmt, 1),
+            2, sqlite3_column_text(stmt, 2),
+            -1);
+      }
+      sqlite3_finalize(stmt);
+    }
+  }
+
   gtk_widget_set_size_request(setting_dialog, 500, 500);
   gtk_widget_show_all(setting_dialog);
   gtk_dialog_run(GTK_DIALOG(setting_dialog));
