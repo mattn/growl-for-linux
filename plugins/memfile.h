@@ -20,7 +20,7 @@ memfcdata(const MEMFILE* mf) {
 }
 
 GOL_INLINE char*
-memfdata(MEMFILE* mf) {
+memfdata(const MEMFILE* mf) {
   return mf ? mf->data : NULL;
 }
 
