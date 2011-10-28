@@ -2,26 +2,12 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "compatibility.h"
 #include "memfile.h"
-
-#ifdef _WIN32
-static char*
-strndup(const char* src, size_t n) {
-  char* ptr = (char*) malloc(n + 1);
-  *(ptr + n) = 0;
-  memcpy(ptr, src, n);
-  return ptr;
-}
-#endif
 
 MEMFILE*
 memfopen() {
-  MEMFILE* mf = (MEMFILE*) malloc(sizeof(MEMFILE));
-  if (mf) {
-    mf->data = NULL;
-    mf->size = 0;
-  }
-  return mf;
+  return (MEMFILE*) calloc(1, sizeof(MEMFILE));
 }
 
 void

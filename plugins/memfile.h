@@ -3,6 +3,8 @@
 
 #include <stddef.h>
 
+#include "gol.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -12,17 +14,17 @@ typedef struct {
   size_t size;  // response size of data
 } MEMFILE;
 
-static const char*
+GOL_INLINE const char*
 memfcdata(const MEMFILE* mf) {
   return mf ? mf->data : NULL;
 }
 
-static char*
+GOL_INLINE char*
 memfdata(MEMFILE* mf) {
   return mf ? mf->data : NULL;
 }
 
-static size_t
+GOL_INLINE size_t
 memfsize(const MEMFILE* mf) {
   return mf ? mf->size : 0;
 }
@@ -30,7 +32,7 @@ memfsize(const MEMFILE* mf) {
 char*
 memfresize(MEMFILE*, size_t);
 
-static MEMFILE*
+GOL_INLINE MEMFILE*
 memfrelease(MEMFILE** pmf) {
   if (!pmf) return NULL;
 

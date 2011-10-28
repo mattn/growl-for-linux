@@ -1,0 +1,3 @@
+* Application settings cannot save and apply it.
+
+* libnotify warn critical error when exiting.

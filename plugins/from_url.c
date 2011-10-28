@@ -12,21 +12,9 @@
 
 #include <curl/curl.h>
 
+#include "compatibility.h"
 #include "memfile.h"
 #include "from_url.h"
-
-#ifdef _WIN32
-# ifndef strncasecmp
-#  define strncasecmp(d,s,n) strnicmp(d,s,n)
-# endif
-static char*
-strndup(const char* src, size_t n) {
-  char* ptr = (char*) malloc(n + 1);
-  *(ptr + n) = 0;
-  memcpy(ptr, src, n);
-  return ptr;
-}
-#endif
 
 #define REQUEST_TIMEOUT (5)
 
@@ -70,13 +58,13 @@ get_http_header_alloc(const char* ptr, const char* key) {
   if (!ptr || !key) return NULL;
 
   const size_t key_length = strlen(key);
-  const char* term;
+  const char* term = NULL;
   for (; *ptr && (term = strpbrk(ptr, "\r\n")); ptr = term + 1) {
     if (ptr[key_length] == ':' && !strncasecmp(ptr, key, key_length))
       break;
   }
   const char* const top = left_trim(ptr + key_length + 1);
-  return top ? strndup(top, (size_t) (term - top)) : NULL;
+  return top ? strndup(top, (size_t)(ptrdiff_t) (term - top)) : NULL;
 }
 
 // Returns Content-Length field or defaults when no available.
@@ -166,6 +154,16 @@ pixbuf_from_url(const char* url, GError** error) {
   free(ctype);
   memfclose(mbody);
 
+  return pixbuf;
+}
+
+GdkPixbuf*
+pixbuf_from_url_as_file(const char* url, GError** error) {
+  gchar* const newurl = g_filename_from_uri(url, NULL, NULL);
+  GError* _error = NULL;
+  GdkPixbuf* const pixbuf = gdk_pixbuf_new_from_file(newurl ? newurl : url, &_error);
+  if (!pixbuf) gerror_set_or_free(error, _error);
+  g_free(newurl);
   return pixbuf;
 }
 

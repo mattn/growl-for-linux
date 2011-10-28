@@ -4,7 +4,7 @@ SUBDIRS = plugins data \
 		  subscribe/tweets subscribe/rhythmbox
 
 bin_PROGRAMS = gol
-gol_SOURCES = gol.c gol.h
+gol_SOURCES = gol.c gol.h compatibility.h
 gol_CFLAGS = $(GTK2_CFLAGS) $(OPENSSL_CFLAGS) $(SQLITE3_CFLAGS) -DDATADIR='"$(pkgdatadir)"' -DLIBDIR='"$(pkglibdir)"'
 gol_LDADD = $(GTK2_LIBS) $(OPENSSL_LIBS) $(SQLITE3_LIBS)
 

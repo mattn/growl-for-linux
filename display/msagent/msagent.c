@@ -28,16 +28,11 @@
 #include <gmodule.h>
 #include <glib.h>
 //#include <curl/curl.h>
-#include "../../gol.h"
+#include "gol.h"
+#include "compatibility.h"
 #include "display_msagent.xpm"
 
 #define REQUEST_TIMEOUT            (5)
-
-#ifdef _WIN32
-# ifndef strncasecmp
-#  define strncasecmp(d,s,n) strnicmp(d,s,n)
-# endif
-#endif
 
 BSTR
 utf8_to_bstr(const char* str) {

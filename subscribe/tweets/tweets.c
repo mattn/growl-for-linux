@@ -20,21 +20,23 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+#include <stddef.h>
+#include <stdlib.h>
+#include <string.h>
+
 #include <gmodule.h>
 #include <libxml/parser.h>
 #include <libxml/xpath.h>
 #include <libxml/xpathInternals.h>
-#include <ctype.h>
-#include <stdlib.h>
-#include <memory.h>
 #include <curl/curl.h>
-#include "../../gol.h"
-#include "../../plugins/memfile.h"
+
+#include "gol.h"
+#include "plugins/memfile.h"
 
 #define REQUEST_TIMEOUT            (5)
 
-SUBSCRIPTOR_CONTEXT* sc = NULL;
-gchar* last_id = NULL;
+static SUBSCRIPTOR_CONTEXT* sc;
+static gchar* last_id;
 gboolean enable = FALSE;
 
 #define XML_CONTENT(x) (x->children ? (char*) x->children->content : NULL)
@@ -47,7 +49,7 @@ delay_show(gpointer data) {
 }
 
 static gboolean
-fetch_tweets(gpointer data) {
+fetch_tweets(gpointer GOL_UNUSED_ARG(data)) {
   if (!enable) return FALSE;
 
   CURL* curl = NULL;
@@ -79,15 +81,7 @@ fetch_tweets(gpointer data) {
   body = memfstrdup(mbody);
   memfclose(mbody);
 
-  if (res != CURLE_OK) {
-    goto leave;
-  }
-  if (http_status == 304) {
-    goto leave;
-  }
-  if (http_status != 200) {
-    goto leave;
-  }
+  if (res != CURLE_OK || http_status != 200) goto leave;
 
   doc = body ? xmlParseDoc((xmlChar*) body) : NULL;
   if (!doc) goto leave;
@@ -96,23 +90,20 @@ fetch_tweets(gpointer data) {
   path = xmlXPathEvalExpression((xmlChar*)"/statuses/status", ctx);
   if (!path || xmlXPathNodeSetIsEmpty(path->nodesetval)) goto leave;
   nodes = path->nodesetval;
-  int n, length = xmlXPathNodeSetGetLength(nodes);
+  const size_t length = xmlXPathNodeSetGetLength(nodes);
   gchar* first_id = NULL;
-  for(n = 0; n < length; n++) {
+  for (size_t n = 0; n < length; n++) {
     char* id = NULL;
     char* user_id = NULL;
     char* icon = NULL;
-    char* real = NULL;
     char* user_name = NULL;
     char* text = NULL;
-    char* date = NULL;
 
     xmlNodePtr status = nodes->nodeTab[n];
     if (status->type != XML_ATTRIBUTE_NODE && status->type != XML_ELEMENT_NODE && status->type != XML_CDATA_SECTION_NODE) continue;
     status = status->children;
     while(status) {
       if (!strcmp("id", (char*) status->name)) id = (char*) status->children->content;
-      if (!strcmp("created_at", (char*) status->name)) date = (char*) status->children->content;
       if (!strcmp("text", (char*) status->name)) {
         if (status->children) text = (char*) status->children->content;
       }
@@ -121,12 +112,9 @@ fetch_tweets(gpointer data) {
         xmlNodePtr user = status->children;
         while(user) {
           if (!strcmp("id", (char*) user->name)) user_id = XML_CONTENT(user);
-          if (!strcmp("name", (char*) user->name)) real = XML_CONTENT(user);
           if (!strcmp("screen_name", (char*) user->name)) user_name = XML_CONTENT(user);
           if (!strcmp("profile_image_url", (char*) user->name)) {
-            icon = XML_CONTENT(user);
-            icon = (char*) g_strchomp((gchar*) icon);
-            icon = (char*) g_strchug((gchar*) icon);
+            icon = (char*) g_strchug(g_strchomp((gchar*) XML_CONTENT(user)));
           }
           user = user->next;
         }
@@ -148,11 +136,11 @@ fetch_tweets(gpointer data) {
   if (first_id) last_id = g_strdup(first_id);
 
 leave:
-  if (body) free(body);
+  free(body);
   if (path) xmlXPathFreeObject(path);
   if (ctx) xmlXPathFreeContext(ctx);
   if (doc) xmlFreeDoc(doc);
-   
+
   g_timeout_add(1000 * length, fetch_tweets, NULL);
   return FALSE;
 }
