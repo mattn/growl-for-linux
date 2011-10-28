@@ -1,8 +1,5 @@
 * GUI for configuration.
 
-* System tray menu.
-  menu item for show setting dialog.
-
 * Stylish display, customizable.
   add support of gmodule
 
