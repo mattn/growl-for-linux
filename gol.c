@@ -28,6 +28,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <getopt.h>
 
 #include <gtk/gtk.h>
 #ifdef _WIN32
@@ -1675,7 +1676,6 @@ load_config() {
       NULL
     };
     for (const char* const* sql = sqls; *sql; ++sql) {
-printf("%s\n", *sql);
       sqlite3_exec(db, *sql, NULL, NULL, NULL);
     }
     set_config_string("version", PACKAGE_VERSION);
@@ -2056,8 +2056,28 @@ destroy_udp_server(GIOChannel* const channel) {
   }
 }
 
+static void
+usage(void) {
+  fprintf(stderr,"Usage: gol [option]\n");
+  fprintf(stderr," -h    : show this help\n");
+  exit(1);
+}
+
 int
 main(int argc, char* argv[]) {
+  int ch;
+  while ((ch = getopt(argc, argv, "h")) != -1) {
+    switch (ch){
+    case 'h':
+      usage();
+      break;
+    default:
+      usage();
+    }
+  }
+  argc -= optind;
+  argv += optind;
+
 #ifdef _WIN32
   WSADATA wsaData;
   WSAStartup(MAKEWORD(2, 2), &wsaData);
