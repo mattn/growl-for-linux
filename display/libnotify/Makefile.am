@@ -5,4 +5,4 @@ libnotify_gol_la_LDFLAGS = -L../../plugins
 libnotify_gol_la_CFLAGS = $(GTK2_CFLAGS) $(LIBNOTIFY_CFLAGS) -I../..
 libnotify_gol_la_LIBADD = $(GTK2_LIBS) $(LIBNOTIFY_LIBS) -lgolplug
 
-EXTRA_DIST = Makefile.w32
+#EXTRA_DIST = Makefile.w32
