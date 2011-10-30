@@ -24,7 +24,8 @@ memfile_from_url(const memfile_from_url_info info) {
   if (!curl) return CURLE_FAILED_INIT;
 
   MEMFILE* body = memfopen();
-  MEMFILE* header = memfopen();
+  double csize = -1;
+  char* ctype = NULL;
 
   curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0);
   curl_easy_setopt(curl, CURLOPT_URL, info.url);
@@ -32,16 +33,21 @@ memfile_from_url(const memfile_from_url_info info) {
   curl_easy_setopt(curl, CURLOPT_TIMEOUT, REQUEST_TIMEOUT);
   curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, info.body_writer);
   curl_easy_setopt(curl, CURLOPT_WRITEDATA, body);
-  curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, info.header_writer);
-  curl_easy_setopt(curl, CURLOPT_HEADERDATA, header);
   curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1);
   const CURLcode res = curl_easy_perform(curl);
-  curl_easy_cleanup(curl);
 
-  if (info.body)   *info.body   = memfrelease(&body);
-  if (info.header) *info.header = memfrelease(&header);
+  if (res == CURLE_OK) {
+    if (curl_easy_getinfo(curl, CURLINFO_CONTENT_LENGTH_DOWNLOAD, &csize) != CURLE_OK)
+      csize = -1;
+    curl_easy_getinfo(curl, CURLINFO_CONTENT_TYPE, &ctype);
+  }
+
+  if (info.csize) *info.csize = csize;
+  if (info.ctype) *info.ctype = ctype ? strdup(ctype) : NULL;
+  if (info.body)  *info.body  = memfrelease(&body);
   memfclose(body);
-  memfclose(header);
+
+  curl_easy_cleanup(curl);
 
   return res;
 }
@@ -127,27 +133,23 @@ pixbuf_from_url(const char* url, GError** error) {
   if (!url) return NULL;
 
   MEMFILE* mbody;
-  MEMFILE* mhead;
+  double csize;
+  char* ctype;
   const CURLcode res = memfile_from_url((memfile_from_url_info){
-    .url           = url,
-    .body          = &mbody,
-    .header        = &mhead,
-    .body_writer   = memfwrite,
-    .header_writer = memfwrite,
+    .url         = url,
+    .body        = &mbody,
+    .body_writer = memfwrite,
+    .csize       = &csize,
+    .ctype       = &ctype,
   });
-  if (res != CURLE_OK || !mbody || !mhead) {
+  if (res != CURLE_OK || !mbody) {
     if (error) *error = g_error_new_literal(G_FILE_ERROR, res, curl_easy_strerror(res));
+    free(ctype);
     memfclose(mbody);
-    memfclose(mhead);
     return NULL;
   }
 
-  char* const head = memfstrdup(mhead);
-  memfclose(mhead);
-
-  char* const ctype = get_http_header_alloc(head, "Content-Type");
-  memfresize(mbody, get_http_content_length(head, memfsize(mbody)));
-  free(head);
+  memfresize(mbody, csize >= 0 ? (size_t) csize : memfsize(mbody));
 
   GdkPixbuf* const pixbuf = pixbuf_from_url_impl(ctype, mbody, error);
 
