@@ -1,5 +1,5 @@
 /* XPM */
-static char *display_default[] = {
+static char *display_fog[] = {
 /* columns rows colors chars-per-pixel */
 "300 250 256 2 ",
 "   c #111722",

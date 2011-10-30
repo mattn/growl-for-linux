@@ -1,6 +1,6 @@
 ACLOCAL_AMFLAGS = -I m4
 SUBDIRS = plugins data \
-		  display/balloon display/default display/nico2 $(ENABLE_LIBNOTIFY) \
+		  display/balloon display/fog display/nico2 $(ENABLE_LIBNOTIFY) \
 		  subscribe/tweets subscribe/rhythmbox
 
 bin_PROGRAMS = gol

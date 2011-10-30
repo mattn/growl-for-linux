@@ -10,4 +10,4 @@
 * Added application to the list while displaying setting dialog.
 
 * Performance optimization.
-** DISPLAY_* functions in default.c and balloon.c.
+** DISPLAY_* functions in fog.c and balloon.c.

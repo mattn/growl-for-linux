@@ -30,7 +30,7 @@
 #include "gol.h"
 #include "plugins/from_url.h"
 
-#include "display_default.xpm"
+#include "display_fog.xpm"
 
 static GList* notifications;
 static GList* popup_collections;
@@ -406,20 +406,20 @@ display_term() {
 
 G_MODULE_EXPORT const gchar*
 display_name() {
-  return "Default";
+  return "Fog";
 }
 
 G_MODULE_EXPORT const gchar*
 display_description() {
   return
-    "<span size=\"large\"><b>Default</b></span>\n"
-    "<span>This is default notification display.</span>\n"
+    "<span size=\"large\"><b>Fog</b></span>\n"
+    "<span>This is fog notification display.</span>\n"
     "<span>Slide-up white box. And fadeout after a while.</span>\n";
 }
 
 G_MODULE_EXPORT char**
 display_thumbnail() {
-  return display_default;
+  return display_fog;
 }
 
 // vim:set et sw=2 ts=2 ai:

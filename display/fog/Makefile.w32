@@ -13,13 +13,13 @@ LDFLAGS=-Lc:/gtk/lib \
   -lsqlite3 \
   -lcurldll
 
-all : libdefault.dll
+all : libfog.dll
 
-libdefault.dll : default.o
-	gcc -shared -g -o libdefault.dll default.o $(LDFLAGS)
+libfog.dll : fog.o
+	gcc -shared -g -o libfog.dll fog.o $(LDFLAGS)
 
-default.o : default.c display_default.xpm
-	gcc -g -Wall -c $(CFLAGS) -o default.o default.c
+fog.o : fog.c display_fog.xpm
+	gcc -g -Wall -c $(CFLAGS) -o fog.o fog.c
 
 clean:
 	-rm *.o *.res *.exe *.dll

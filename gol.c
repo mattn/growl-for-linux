@@ -1198,7 +1198,7 @@ raise_notification(const CLIENT_INFO ci, NOTIFICATION_INFO* const ni) {
 
   // Lookup system default notification name.
   if (!cp) {
-    const char* const sdn = get_config_string("default_display", "Default");
+    const char* const sdn = get_config_string("default_display", "Fog");
     bool
     is_sdn(const DISPLAY_PLUGIN* dp) {
       return !g_strcasecmp(dp->name(), sdn);
@@ -1420,7 +1420,7 @@ gntp_recv_proc(gpointer user_data) {
             notification_icon ? notification_icon : "",
             notification_enabled,
             notification_display_name ?
-              notification_display_name : "Default",
+              notification_display_name : "Fog",
             FALSE);
         }
 
@@ -1720,7 +1720,7 @@ load_display_plugins() {
     return FALSE;
   }
 
-  gchar* const default_display = get_config_string("default_display", "Default");
+  gchar* const default_display = get_config_string("default_display", "Fog");
 
   current_display = NULL;
   const gchar *filename;

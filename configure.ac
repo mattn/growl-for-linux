@@ -55,7 +55,7 @@ AC_CONFIG_FILES([Makefile
                  plugins/Makefile
                  data/Makefile
                  display/balloon/Makefile
-                 display/default/Makefile
+                 display/fog/Makefile
                  display/nico2/Makefile
                  subscribe/tweets/Makefile
                  subscribe/rhythmbox/Makefile
