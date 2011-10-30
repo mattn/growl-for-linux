@@ -2066,6 +2066,11 @@ usage(void) {
 int
 main(int argc, char* argv[]) {
   int ch;
+
+  gchar* program = g_find_program_in_path(argv[0]);
+  exepath = g_path_get_dirname(program);
+  g_free(program);
+
   while ((ch = getopt(argc, argv, "h")) != -1) {
     switch (ch){
     case 'h':
@@ -2084,10 +2089,6 @@ main(int argc, char* argv[]) {
 #endif
   GIOChannel* gntp_io = NULL;
   GIOChannel* udp_io = NULL;
-
-  gchar* program = g_find_program_in_path(argv[0]);
-  exepath = g_path_get_dirname(program);
-  g_free(program);
 
 #ifdef G_THREADS_ENABLED
   g_thread_init(NULL);
