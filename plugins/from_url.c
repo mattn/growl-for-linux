@@ -12,7 +12,6 @@
 
 #include <curl/curl.h>
 
-#include "compatibility.h"
 #include "memfile.h"
 #include "from_url.h"
 
@@ -50,36 +49,6 @@ memfile_from_url(const memfile_from_url_info info) {
   curl_easy_cleanup(curl);
 
   return res;
-}
-
-// remove leading spaces
-static const char*
-left_trim(const char* str) {
-  while (*str && isspace(*str)) ++str;
-  return *str ? str : NULL;
-}
-
-static char*
-get_http_header_alloc(const char* ptr, const char* key) {
-  if (!ptr || !key) return NULL;
-
-  const size_t key_length = strlen(key);
-  const char* term = NULL;
-  for (; *ptr && (term = strpbrk(ptr, "\r\n")); ptr = term + 1) {
-    if (ptr[key_length] == ':' && !strncasecmp(ptr, key, key_length))
-      break;
-  }
-  const char* const top = left_trim(ptr + key_length + 1);
-  return top ? strndup(top, (size_t)(ptrdiff_t) (term - top)) : NULL;
-}
-
-// Returns Content-Length field or defaults when no available.
-static size_t
-get_http_content_length(const char* ptr, const size_t defaults) {
-  char* csize = get_http_header_alloc(ptr, "Content-Length");
-  const size_t size = csize ? (size_t) atol(csize) : defaults;
-  free(csize);
-  return size;
 }
 
 // Some error happened only if returns true.
