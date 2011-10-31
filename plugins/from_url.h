@@ -19,6 +19,7 @@ typedef struct
     const char* url;
     MEMFILE**   body;
     size_t (*body_writer)(const char*, size_t, size_t, void*);
+    long*       code;
     double*     csize;
     char**      ctype;
 } memfile_from_url_info;

@@ -23,6 +23,7 @@ memfile_from_url(const memfile_from_url_info info) {
   if (!curl) return CURLE_FAILED_INIT;
 
   MEMFILE* body = memfopen();
+  long code = 0;
   double csize = -1;
   char* ctype = NULL;
 
@@ -36,11 +37,14 @@ memfile_from_url(const memfile_from_url_info info) {
   const CURLcode res = curl_easy_perform(curl);
 
   if (res == CURLE_OK) {
+    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &code);
+
     if (curl_easy_getinfo(curl, CURLINFO_CONTENT_LENGTH_DOWNLOAD, &csize) != CURLE_OK)
       csize = -1;
     curl_easy_getinfo(curl, CURLINFO_CONTENT_TYPE, &ctype);
   }
 
+  if (info.code)  *info.code  = code;
   if (info.csize) *info.csize = csize;
   if (info.ctype) *info.ctype = ctype ? strdup(ctype) : NULL;
   if (info.body)  *info.body  = memfrelease(&body);
@@ -102,16 +106,18 @@ pixbuf_from_url(const char* url, GError** error) {
   if (!url) return NULL;
 
   MEMFILE* mbody;
+  long code;
   double csize;
   char* ctype;
   const CURLcode res = memfile_from_url((memfile_from_url_info){
     .url         = url,
     .body        = &mbody,
     .body_writer = memfwrite,
+    .code        = &code,
     .csize       = &csize,
     .ctype       = &ctype,
   });
-  if (res != CURLE_OK || !mbody) {
+  if (res != CURLE_OK || code != 200 || !mbody) {
     if (error) *error = g_error_new_literal(G_FILE_ERROR, res, curl_easy_strerror(res));
     free(ctype);
     memfclose(mbody);
