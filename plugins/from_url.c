@@ -12,7 +12,6 @@
 
 #include <curl/curl.h>
 
-#include "compatibility.h"
 #include "memfile.h"
 #include "from_url.h"
 
@@ -24,7 +23,9 @@ memfile_from_url(const memfile_from_url_info info) {
   if (!curl) return CURLE_FAILED_INIT;
 
   MEMFILE* body = memfopen();
-  MEMFILE* header = memfopen();
+  long code = 0;
+  double csize = -1;
+  char* ctype = NULL;
 
   curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0);
   curl_easy_setopt(curl, CURLOPT_URL, info.url);
@@ -32,48 +33,26 @@ memfile_from_url(const memfile_from_url_info info) {
   curl_easy_setopt(curl, CURLOPT_TIMEOUT, REQUEST_TIMEOUT);
   curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, info.body_writer);
   curl_easy_setopt(curl, CURLOPT_WRITEDATA, body);
-  curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, info.header_writer);
-  curl_easy_setopt(curl, CURLOPT_HEADERDATA, header);
   curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1);
   const CURLcode res = curl_easy_perform(curl);
+
+  if (res == CURLE_OK) {
+    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &code);
+
+    if (curl_easy_getinfo(curl, CURLINFO_CONTENT_LENGTH_DOWNLOAD, &csize) != CURLE_OK)
+      csize = -1;
+    curl_easy_getinfo(curl, CURLINFO_CONTENT_TYPE, &ctype);
+  }
+
+  if (info.code)  *info.code  = code;
+  if (info.csize) *info.csize = csize;
+  if (info.ctype) *info.ctype = ctype ? strdup(ctype) : NULL;
+  if (info.body)  *info.body  = memfrelease(&body);
+  memfclose(body);
+
   curl_easy_cleanup(curl);
 
-  if (info.body)   *info.body   = memfrelease(&body);
-  if (info.header) *info.header = memfrelease(&header);
-  memfclose(body);
-  memfclose(header);
-
   return res;
-}
-
-// remove leading spaces
-static const char*
-left_trim(const char* str) {
-  while (*str && isspace(*str)) ++str;
-  return *str ? str : NULL;
-}
-
-static char*
-get_http_header_alloc(const char* ptr, const char* key) {
-  if (!ptr || !key) return NULL;
-
-  const size_t key_length = strlen(key);
-  const char* term = NULL;
-  for (; *ptr && (term = strpbrk(ptr, "\r\n")); ptr = term + 1) {
-    if (ptr[key_length] == ':' && !strncasecmp(ptr, key, key_length))
-      break;
-  }
-  const char* const top = left_trim(ptr + key_length + 1);
-  return top ? strndup(top, (size_t)(ptrdiff_t) (term - top)) : NULL;
-}
-
-// Returns Content-Length field or defaults when no available.
-static size_t
-get_http_content_length(const char* ptr, const size_t defaults) {
-  char* csize = get_http_header_alloc(ptr, "Content-Length");
-  const size_t size = csize ? (size_t) atol(csize) : defaults;
-  free(csize);
-  return size;
 }
 
 // Some error happened only if returns true.
@@ -127,27 +106,25 @@ pixbuf_from_url(const char* url, GError** error) {
   if (!url) return NULL;
 
   MEMFILE* mbody;
-  MEMFILE* mhead;
+  long code;
+  double csize;
+  char* ctype;
   const CURLcode res = memfile_from_url((memfile_from_url_info){
-    .url           = url,
-    .body          = &mbody,
-    .header        = &mhead,
-    .body_writer   = memfwrite,
-    .header_writer = memfwrite,
+    .url         = url,
+    .body        = &mbody,
+    .body_writer = memfwrite,
+    .code        = &code,
+    .csize       = &csize,
+    .ctype       = &ctype,
   });
-  if (res != CURLE_OK || !mbody || !mhead) {
+  if (res != CURLE_OK || code != 200 || !mbody) {
     if (error) *error = g_error_new_literal(G_FILE_ERROR, res, curl_easy_strerror(res));
+    free(ctype);
     memfclose(mbody);
-    memfclose(mhead);
     return NULL;
   }
 
-  char* const head = memfstrdup(mhead);
-  memfclose(mhead);
-
-  char* const ctype = get_http_header_alloc(head, "Content-Type");
-  memfresize(mbody, get_http_content_length(head, memfsize(mbody)));
-  free(head);
+  memfresize(mbody, csize >= 0 ? (size_t) csize : memfsize(mbody));
 
   GdkPixbuf* const pixbuf = pixbuf_from_url_impl(ctype, mbody, error);
 
