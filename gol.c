@@ -378,6 +378,17 @@ get_tree_model_from_tree(gchar** const restrict pname, GtkWidget* const restrict
 }
 
 static GtkTreeIter
+list_store_set_before_prepand(GtkListStore* const list_store, ...) {
+  va_list list;
+  va_start(list, list_store);
+  GtkTreeIter iter;
+  gtk_list_store_prepend(list_store, &iter);
+  gtk_list_store_set_valist(list_store, &iter, list);
+  va_end(list);
+  return iter;
+}
+
+static GtkTreeIter
 list_store_set_after_append(GtkListStore* const list_store, ...) {
   va_list list;
   va_start(list, list_store);
@@ -1021,11 +1032,15 @@ settings_clicked(GtkWidget* GOL_UNUSED_ARG(widget), GdkEvent* GOL_UNUSED_ARG(eve
 
     GtkListStore* model = (GtkListStore *) gtk_list_store_new(
         3, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING);
+    g_object_set_data(G_OBJECT(setting_dialog), "notifications", model);
     GtkWidget* tree_view = gtk_tree_view_new_with_model(GTK_TREE_MODEL(model));
+
     GtkTreeSelection* select = gtk_tree_view_get_selection(
         GTK_TREE_VIEW(tree_view));
     gtk_tree_selection_set_mode(select, GTK_SELECTION_SINGLE);
-    gtk_box_pack_start(GTK_BOX(hbox), tree_view, TRUE, TRUE, 0);
+    GtkWidget* swin = gtk_scrolled_window_new(NULL, NULL);
+    gtk_container_add(GTK_CONTAINER(swin), tree_view);
+    gtk_box_pack_start(GTK_BOX(hbox), swin, TRUE, TRUE, 0);
 
     gtk_tree_view_append_column(GTK_TREE_VIEW(tree_view),
         gtk_tree_view_column_new_with_attributes(
@@ -1485,6 +1500,25 @@ gntp_recv_proc(gpointer user_data) {
         ni->title, ni->text,
         ni->icon ? ni->icon : "",
         ni->url ? ni->url : "");
+      if (setting_dialog) {
+        GtkTreeModel* const model
+          = (GtkTreeModel*) get_data_as_object(setting_dialog, "notifications");
+        gchar* value;
+        void
+        get_current_timestamp(sqlite3_stmt* const stmt) {
+          value = g_strdup(
+              sqlite3_step(stmt) == SQLITE_ROW
+                ? (char*) sqlite3_column_text(stmt, 0)
+                : "");
+        }
+        statement_sqlite3(get_current_timestamp, "select current_timestamp");
+        list_store_set_before_prepand(GTK_LIST_STORE(model),
+            0, value,
+            1, ni->title,
+            2, ni->text,
+            -1);
+        g_free(value);
+      }
 
       raise_notification(
         (CLIENT_INFO){
