@@ -405,10 +405,10 @@ get_data_as_object(gpointer user_data, const gchar* const key) {
 }
 
 static GtkComboBox*
-combo_box_set_active_as_object(gpointer user_data, const gchar* const key) {
+combo_box_set_active_as_object(gpointer user_data, const gchar* const key, const int index) {
   GtkWidget* const cbx = (GtkWidget*) get_data_as_object(user_data, key);
   gtk_widget_set_sensitive(cbx, TRUE);
-  gtk_combo_box_set_active(GTK_COMBO_BOX(cbx), -1);
+  gtk_combo_box_set_active(GTK_COMBO_BOX(cbx), index);
   return GTK_COMBO_BOX(cbx);
 }
 
@@ -614,13 +614,13 @@ notification_tree_selection_changed(GtkTreeSelection* GOL_UNUSED_ARG(selection),
   GtkWidget* const tree2 = get_data_as_object(user_data, "tree2");
   if (!get_tree_model_from_tree(&name, tree2)) return;
 
-  GtkComboBox* const cbx1 = combo_box_set_active_as_object(user_data, "enable");
-  GtkComboBox* const cbx2 = combo_box_set_active_as_object(user_data, "display");
+  int cbx1_index = -1;
+  int cbx2_index = -1;
 
   void
   create_combo_boxes(sqlite3_stmt* const stmt) {
     if (sqlite3_step(stmt) != SQLITE_ROW) return;
-    gtk_combo_box_set_active(cbx1, sqlite3_column_int(stmt, 0) != 0 ? 0 : 1);
+    cbx1_index = sqlite3_column_int(stmt, 0) != 0 ? 0 : 1;
     char* const display = (char*) sqlite3_column_text(stmt, 1);
     bool
     is_display(const DISPLAY_PLUGIN* dp) {
@@ -628,12 +628,15 @@ notification_tree_selection_changed(GtkTreeSelection* GOL_UNUSED_ARG(selection),
     }
     DISPLAY_PLUGIN* const dp = find_display_plugin(is_display);
     if (dp) {
-      gtk_combo_box_set_active(cbx2, g_list_index(display_plugins, dp));
+      cbx2_index = g_list_index(display_plugins, dp);
     }
   }
   statement_sqlite3(create_combo_boxes,
       "select enable, display from application"
       " where app_name = '%q' and name = '%q'", app_name, name);
+
+  GtkComboBox* const cbx1 = combo_box_set_active_as_object(user_data, "enable", cbx1_index);
+  GtkComboBox* const cbx2 = combo_box_set_active_as_object(user_data, "display", cbx2_index);
 
   g_free(app_name);
   g_free(name);
@@ -729,8 +732,8 @@ application_delete(GtkWidget* GOL_UNUSED_ARG(widget), gpointer user_data) {
   }
   g_free(app_name);
 
-  combo_box_set_active_as_object(user_data, "enable");
-  combo_box_set_active_as_object(user_data, "display");
+  combo_box_set_active_as_object(user_data, "enable", -1);
+  combo_box_set_active_as_object(user_data, "display", -1);
 }
 
 static gboolean
