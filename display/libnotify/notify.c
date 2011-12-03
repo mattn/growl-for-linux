@@ -75,6 +75,9 @@ display_show(gpointer data) {
     g_object_unref(pixbuf);
   }
 
+  if (ni->sticky)
+    notify_notification_set_urgency(nt, NOTIFY_URGENCY_CRITICAL);
+
   GError* error = NULL;
   if (!notify_notification_show(nt, &error))
   {
