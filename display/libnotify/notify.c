@@ -78,7 +78,7 @@ display_show(gpointer data) {
   GError* error = NULL;
   if (!notify_notification_show(nt, &error))
   {
-      g_error("%s: %s", G_STRFUNC, error->message);
+      g_warning("%s: %s", G_STRFUNC, error->message);
       g_error_free(error);
   }
 
