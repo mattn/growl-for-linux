@@ -56,16 +56,18 @@ display_show(gpointer data) {
   const NOTIFICATION_INFO* const ni = (const NOTIFICATION_INFO*) data;
 
   gchar* const icon_path = get_icon_path_if_local(ni);
+  gchar* const text = g_markup_escape_text(ni->text, -1);
 #ifdef NOTIFY_CHECK_VERSION
 # if NOTIFY_CHECK_VERSION (0, 7, 0)
-  NotifyNotification* const nt = notify_notification_new(ni->title, ni->text, icon_path);
+  NotifyNotification* const nt = notify_notification_new(ni->title, text, icon_path);
 # else
-  NotifyNotification* const nt = notify_notification_new(ni->title, ni->text, icon_path, NULL);
+  NotifyNotification* const nt = notify_notification_new(ni->title, text, icon_path, NULL);
 # endif
 #else
-  NotifyNotification* const nt = notify_notification_new(ni->title, ni->text, icon_path, NULL);
+  NotifyNotification* const nt = notify_notification_new(ni->title, text, icon_path, NULL);
 #endif
   g_free(icon_path);
+  g_free(text);
 
   GdkPixbuf* const pixbuf = !ni->local ? pixbuf_from_url(ni->icon, NULL) : NULL;
   if (pixbuf) {
@@ -76,7 +78,7 @@ display_show(gpointer data) {
   GError* error = NULL;
   if (!notify_notification_show(nt, &error))
   {
-      g_error("%s: %s", G_STRFUNC, error->message);
+      g_warning("%s: %s", G_STRFUNC, error->message);
       g_error_free(error);
   }
 
