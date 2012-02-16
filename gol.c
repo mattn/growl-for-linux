@@ -2131,6 +2131,8 @@ main(int argc, char* argv[]) {
   g_thread_init(NULL);
 #endif
 
+  g_set_application_name("growl-for-linux");
+
   gtk_init(&argc, &argv);
 
 #ifdef _WIN32
