@@ -109,15 +109,13 @@ static SUBSCRIPTOR_CONTEXT sc;
 #endif
 
 static const char*
-skipsp(const char* str)
-{
+skipsp(const char* str) {
   for (; isspace(*str); ++str);
   return str;
 }
 
 static void*
-safely_realloc(void* ptr, const size_t newsize)
-{
+safely_realloc(void* ptr, const size_t newsize) {
   void* const tmp = realloc(ptr, newsize);
   if (!tmp) {
     perror("realloc");
@@ -129,15 +127,14 @@ safely_realloc(void* ptr, const size_t newsize)
 
 static size_t
 read_all(int fd, char** ptr) {
-  const struct timeval timeout =
-  {
+  const struct timeval timeout = {
     .tv_sec  = 1,
     .tv_usec = 0,
   };
 
   setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, (sockopt_t*) &timeout, sizeof(timeout));
 
-  const size_t len = BUFSIZ;
+  const size_t len = 1024;
   size_t bufferlen = len;
   char* buf = (char*) malloc(bufferlen + 1);
   if (!buf) {
@@ -147,8 +144,20 @@ read_all(int fd, char** ptr) {
 
   char* end = buf;
   ptrdiff_t datalen = 0;
-  for (ssize_t r; (r = recv(fd, end, bufferlen - datalen, 0)) >= 0; ) {
-    if (r == 0) continue;
+  while (1) {
+    ssize_t r = recv(fd, end, bufferlen - datalen, 0);
+    if (r <= 0) {
+#ifdef _WIN32
+      DWORD err = GetLastError();
+      if (err != 0 && err != WSAEWOULDBLOCK) break;
+      Sleep(200);
+#else
+      int err = errno;
+      if (err != 0 && err != EWOULDBLOCK) break;
+      usleep(200000);
+#endif
+      continue;
+    }
     *(end += r) = '\0';
     datalen += r;
     if (r >= 4 && !strncmp(end - 4, "\r\n\r\n", 4)) break;
@@ -765,8 +774,7 @@ static GtkListStore*
 vertical_list_new(const char* const model_name, const char* const tree_name,
     button_pressed_callback_t* const button_pressed_callback,
     GtkWidget* const contextmenu, changed_callback_t* const changed_callback,
-    const GtkWidget* const hbox, const char* const column_attribute_name)
-{
+    const GtkWidget* const hbox, const char* const column_attribute_name) {
   GtkListStore* const model =
     (GtkListStore *) gtk_list_store_new(1, G_TYPE_STRING);
   g_object_set_data(G_OBJECT(setting_dialog), model_name, model);
@@ -988,7 +996,7 @@ settings_clicked(GtkWidget* GOL_UNUSED_ARG(widget), GdkEvent* GOL_UNUSED_ARG(eve
         G_CALLBACK(password_focus_out), NULL);
     gtk_box_pack_start(GTK_BOX(hbox), entry, FALSE, FALSE, 0);
   }
-  
+
   {
     GtkWidget* hbox = gtk_hbox_new(FALSE, 5);
     gtk_container_set_border_width(GTK_CONTAINER(hbox), 10);
@@ -1155,8 +1163,7 @@ cr_to_lf(char* const str) {
 }
 
 static void
-str_swap(char ** restrict _left, char ** restrict _right)
-{
+str_swap(char ** restrict _left, char ** restrict _right) {
     char *tmp = *_left;
     *_left    = *_right;
     *_right   = tmp;
@@ -1246,6 +1253,7 @@ gntp_recv_proc(gpointer user_data) {
   char* ptr = "";
   const size_t r = read_all(sock, &ptr);
   char* const top = ptr;
+
   if (!strncmp(ptr, "GNTP/1.0 ", 9)) {
     ptr += 9;
 
@@ -1365,8 +1373,7 @@ gntp_recv_proc(gpointer user_data) {
         cr_to_lf(line);
 
         const char* const colon = strchr(line, ':');
-        if (colon)
-        {
+        if (colon) {
           char* value = g_strdup(skipsp(colon + 1));
           if (!strncmp(line, "Application-Name:", 17)) {
             str_swap(&value, &application_name);
@@ -1393,8 +1400,7 @@ gntp_recv_proc(gpointer user_data) {
           cr_to_lf(line);
 
           const char* const colon = strchr(line, ':');
-          if (colon)
-          {
+          if (colon) {
             char* value = g_strdup(skipsp(colon + 1));
             if (!strncmp(line, "Notification-Name:", 18)) {
               str_swap(&value, &notification_name);
@@ -1468,8 +1474,7 @@ gntp_recv_proc(gpointer user_data) {
         cr_to_lf(line);
 
         const char* const colon = strchr(line, ':');
-        if (colon)
-        {
+        if (colon) {
           char* value = g_strdup(skipsp(colon + 1));
           if (!strncmp(line, "Application-Name:", 17)) {
             str_swap(&value, &application_name);
@@ -1494,6 +1499,40 @@ gntp_recv_proc(gpointer user_data) {
           }
           g_free(value);
         }
+      }
+
+      {
+        const gchar* const confdir = (const gchar*) g_get_user_config_dir();
+        gchar* const resourcedir = g_build_path(G_DIR_SEPARATOR_S, confdir, "gol", "resource", NULL);
+        if (!g_file_test(resourcedir, G_FILE_TEST_IS_DIR))
+          g_mkdir_with_parents(resourcedir, 0700);
+        while (*ptr) {
+          char* identifier = NULL;
+          long length = 0;
+          while (*ptr) {
+            char* const line = ptr;
+            ptr = crlf_to_term_and_skip(ptr);
+            if (*line == '\0') break;
+            cr_to_lf(line);
+
+            const char* const colon = strchr(line, ':');
+            if (colon) {
+              char* value = g_strdup(skipsp(colon + 1));
+              if (!strncmp(line, "Identifier:", 11))
+                identifier = g_strdup(value);
+              if (identifier && !strncmp(line, "Length:", 7))
+                length = atol(value);
+              g_free(value);
+            }
+          }
+          if (identifier) {
+            gchar* const filename = g_build_filename(resourcedir, identifier, NULL);
+            if (!g_file_test(filename, G_FILE_TEST_IS_REGULAR))
+              g_file_set_contents(filename, ptr, length, NULL);
+            g_free(filename);
+          }
+        }
+        g_free(resourcedir);
       }
 
       exec_sqlite3(
@@ -2007,8 +2046,7 @@ create_udp_server() {
     return NULL;
   }
 
-  const struct sockaddr_in server_addr =
-  {
+  const struct sockaddr_in server_addr = {
     .sin_family      = AF_INET,
     .sin_addr.s_addr = htonl(INADDR_ANY),
     .sin_port        = htons(9887),
@@ -2048,8 +2086,7 @@ create_gntp_server() {
     return NULL;
   }
 
-  const struct sockaddr_in server_addr =
-  {
+  const struct sockaddr_in server_addr = {
     .sin_family      = AF_INET,
     .sin_addr.s_addr = htonl(INADDR_ANY),
     .sin_port        = htons(23053),

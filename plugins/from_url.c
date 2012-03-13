@@ -104,6 +104,14 @@ pixbuf_from_url_impl(const char* ctype, const MEMFILE* raw, GError** error) {
 GdkPixbuf*
 pixbuf_from_url(const char* url, GError** error) {
   if (!url) return NULL;
+  if (!strncmp(url, "x-growl-resource://", 19)) {
+    const gchar* const confdir = (const gchar*) g_get_user_config_dir();
+    gchar* const resourcedir = g_build_path(G_DIR_SEPARATOR_S, confdir, "gol", "resource", NULL);
+    const gchar* const newurl = g_build_filename(resourcedir, url + 19, NULL);
+    GdkPixbuf* pixbuf = pixbuf_from_url_as_file(newurl, error);
+    g_free(resourcedir);
+	return pixbuf;
+  }
 
   MEMFILE* mbody;
   long code;
@@ -136,7 +144,15 @@ pixbuf_from_url(const char* url, GError** error) {
 
 GdkPixbuf*
 pixbuf_from_url_as_file(const char* url, GError** error) {
-  gchar* const newurl = g_filename_from_uri(url, NULL, NULL);
+  if (!url) return NULL;
+  gchar* newurl;
+  if (!strncmp(url, "x-growl-resource://", 19)) {
+    const gchar* const confdir = (const gchar*) g_get_user_config_dir();
+    gchar* const resourcedir = g_build_path(G_DIR_SEPARATOR_S, confdir, "gol", "resource", NULL);
+    newurl = g_build_filename(resourcedir, url + 19, NULL);
+    g_free(resourcedir);
+  } else
+    newurl = g_filename_from_uri(url, NULL, NULL);
   GError* _error = NULL;
   GdkPixbuf* const pixbuf = gdk_pixbuf_new_from_file(newurl ? newurl : url, &_error);
   if (!pixbuf) gerror_set_or_free(error, _error);
