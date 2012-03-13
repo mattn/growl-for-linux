@@ -1,3 +1,7 @@
+2012-03-13 mattn <mattn.jp@gmail.com>
+
+	* support x-growl-resource.
+
 2011-05-06 mattn <mattn.jp@gmail.com>
 
 	* fixed manipulating space character in GNTP.
