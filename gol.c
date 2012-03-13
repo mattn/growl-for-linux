@@ -1235,6 +1235,41 @@ raise_notification(const CLIENT_INFO ci, NOTIFICATION_INFO* const ni) {
   return true;
 }
 
+static void
+parse_identifiers(char* ptr) {
+  const gchar* const confdir = (const gchar*) g_get_user_config_dir();
+  gchar* const resourcedir = g_build_path(G_DIR_SEPARATOR_S, confdir, "gol", "resource", NULL);
+  if (!g_file_test(resourcedir, G_FILE_TEST_IS_DIR))
+    g_mkdir_with_parents(resourcedir, 0700);
+  while (*ptr) {
+    char* identifier = NULL;
+    long length = 0;
+    while (*ptr) {
+      char* const line = ptr;
+      ptr = crlf_to_term_and_skip(ptr);
+      if (*line == '\0') break;
+      cr_to_lf(line);
+
+      const char* const colon = strchr(line, ':');
+      if (colon) {
+        char* value = g_strdup(skipsp(colon + 1));
+        if (!strncmp(line, "Identifier:", 11))
+          identifier = g_strdup(value);
+        if (identifier && !strncmp(line, "Length:", 7))
+          length = atol(value);
+        g_free(value);
+      }
+    }
+    if (identifier) {
+      gchar* const filename = g_build_filename(resourcedir, identifier, NULL);
+      if (!g_file_test(filename, G_FILE_TEST_IS_REGULAR))
+        g_file_set_contents(filename, ptr, length, NULL);
+      g_free(filename);
+    }
+  }
+  g_free(resourcedir);
+}
+
 static gpointer
 gntp_recv_proc(gpointer user_data) {
   int sock = (int)(intptr_t) user_data;
@@ -1452,6 +1487,8 @@ gntp_recv_proc(gpointer user_data) {
         g_free(notification_icon);
         g_free(notification_display_name);
       }
+      parse_identifiers(ptr);
+
       ptr = n == notifications_count
         ? GNTP_OK_STRING_LITERAL("1.0", "REGISTER")
         : GNTP_ERROR_STRING_LITERAL("1.0", "Invalid data", "Invalid data");
@@ -1500,40 +1537,7 @@ gntp_recv_proc(gpointer user_data) {
           g_free(value);
         }
       }
-
-      {
-        const gchar* const confdir = (const gchar*) g_get_user_config_dir();
-        gchar* const resourcedir = g_build_path(G_DIR_SEPARATOR_S, confdir, "gol", "resource", NULL);
-        if (!g_file_test(resourcedir, G_FILE_TEST_IS_DIR))
-          g_mkdir_with_parents(resourcedir, 0700);
-        while (*ptr) {
-          char* identifier = NULL;
-          long length = 0;
-          while (*ptr) {
-            char* const line = ptr;
-            ptr = crlf_to_term_and_skip(ptr);
-            if (*line == '\0') break;
-            cr_to_lf(line);
-
-            const char* const colon = strchr(line, ':');
-            if (colon) {
-              char* value = g_strdup(skipsp(colon + 1));
-              if (!strncmp(line, "Identifier:", 11))
-                identifier = g_strdup(value);
-              if (identifier && !strncmp(line, "Length:", 7))
-                length = atol(value);
-              g_free(value);
-            }
-          }
-          if (identifier) {
-            gchar* const filename = g_build_filename(resourcedir, identifier, NULL);
-            if (!g_file_test(filename, G_FILE_TEST_IS_REGULAR))
-              g_file_set_contents(filename, ptr, length, NULL);
-            g_free(filename);
-          }
-        }
-        g_free(resourcedir);
-      }
+      parse_identifiers(ptr);
 
       exec_sqlite3(
         "insert into notification("
