@@ -129,8 +129,8 @@ safely_realloc(void* ptr, const size_t newsize) {
 static size_t
 read_all(int fd, char** ptr) {
   const struct timeval timeout = {
-    .tv_sec  = 1,
-    .tv_usec = 0,
+    .tv_sec  = 0,
+    .tv_usec = 200,
   };
 
   setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, (sockopt_t*) &timeout, sizeof(timeout));
@@ -145,19 +145,19 @@ read_all(int fd, char** ptr) {
 
   char* end = buf;
   ptrdiff_t datalen = 0;
+  int retry = 3;
   while (1) {
     ssize_t r = recv(fd, end, bufferlen - datalen, 0);
     if (r <= 0) {
+      if (--retry < 0) break; 
 #ifdef _WIN32
       DWORD err = GetLastError();
-      if (err != 0 && err != WSAEWOULDBLOCK) break;
-      Sleep(200);
+      if (err == WSAEWOULDBLOCK || err == WSAEAGAIN) continue;
 #else
       int err = errno;
-      if (err != 0 && err != EWOULDBLOCK) break;
-      usleep(200000);
+      if (err == EWOULDBLOCK || err == EAGAIN) continue; 
 #endif
-      continue;
+      break; 
     }
     *(end += r) = '\0';
     datalen += r;
