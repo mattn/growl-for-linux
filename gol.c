@@ -1311,17 +1311,21 @@ gntp_recv_proc(gpointer user_data) {
       memcpy(data, ptr, datalen);
       data[datalen] = '\0';
     } else {
-      if (strncmp(ptr, "AES:", 4) &&
+      if (strncmp(ptr, "NONE ", 5) &&
+          strncmp(ptr, "AES:", 4) &&
           strncmp(ptr, "DES:", 4) &&
           strncmp(ptr, "3DES:", 5)) goto leave;
 
       const char* const crypt_algorythm = ptr;
-      if (!(ptr = strchr(ptr, ':'))) goto leave;
+      if (!(ptr = strpbrk(ptr, ": "))) goto leave;
       *ptr++ = 0;
 
       char* const iv = ptr;
-      if (!(ptr = strchr(ptr, ' '))) goto leave;
-      *ptr++ = 0;
+      if (strcmp(crypt_algorythm, "NONE")) {
+        if (!(ptr = strchr(ptr, ' '))) goto leave;
+        *ptr++ = 0;
+      }
+      ptr = (char*) skipsp(ptr);
 
       if (strncmp(ptr, "MD5:", 4) &&
           strncmp(ptr, "SHA1:", 5) &&
@@ -1394,6 +1398,8 @@ gntp_recv_proc(gpointer user_data) {
         des_ede3_cbc_encrypt((unsigned char*) ptr, (unsigned char*) data,
             r-(ptr-top)-6, schedule1, schedule2, schedule3,
             (const_DES_cblock*) &iv, DES_DECRYPT);
+      } else {
+        data = strdup(ptr);
       }
     }
 
