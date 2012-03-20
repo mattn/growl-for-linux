@@ -1,3 +1,7 @@
+2012-03-20 mattn <mattn.jp@gmail.com>
+
+	* support non-crypt message with password.
+
 2012-03-13 mattn <mattn.jp@gmail.com>
 
 	* support x-growl-resource.
