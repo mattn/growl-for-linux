@@ -88,11 +88,19 @@ typedef struct {
   gchar* (*get_param)();
 } DISPLAY_PLUGIN;
 
+typedef enum
+{
+  GOL_STATUS_NORMAL = 0,
+  GOL_STATUS_DND,
+} status_t;
+
 static gchar* password;
 static gboolean require_password_for_local_apps = FALSE;
 static gboolean require_password_for_lan_apps = FALSE;
 static sqlite3 *db;
 static GtkStatusIcon* status_icon;
+static GdkPixbuf* status_icon_pixbuf, * status_icon_dnd_pixbuf;
+static status_t gol_status;
 static GtkWidget* popup_menu;
 static GtkWidget* setting_dialog;
 static GtkWidget* about_dialog;
@@ -1195,6 +1203,9 @@ raise_notification(const CLIENT_INFO ci, NOTIFICATION_INFO* const ni) {
   }
   if (!valid) return false;
 
+  if (gol_status == GOL_STATUS_DND)
+    return true;
+
   DISPLAY_PLUGIN* cp = NULL;
   // Received name.
   if (ci.notification_display_name) {
@@ -1655,20 +1666,47 @@ disabled_pixbuf(GdkPixbuf *pixbuf) {
 }
 */
 
+static gboolean
+gol_status_toggle(GtkStatusIcon* status_icon, GdkEvent* event, gpointer user_data) {
+  switch (gol_status)
+  {
+    case GOL_STATUS_NORMAL:
+      gol_status = GOL_STATUS_DND;
+      gtk_status_icon_set_from_pixbuf(status_icon, status_icon_dnd_pixbuf);
+      break;
+    case GOL_STATUS_DND:
+      gol_status = GOL_STATUS_NORMAL;
+      gtk_status_icon_set_from_pixbuf(status_icon, status_icon_pixbuf);
+      break;
+  }
+  return FALSE;
+}
+
 static void
 create_menu() {
+  status_icon = gtk_status_icon_new();
+  gtk_status_icon_set_tooltip(status_icon, "Growl");
+
   {
     // TODO: absolute path
     gchar* const path = g_build_filename(DATADIR, "data", "icon.png", NULL);
-    status_icon = gtk_status_icon_new_from_file(path);
+    status_icon_pixbuf = gdk_pixbuf_new_from_file(path, NULL);
     g_free(path);
-    gtk_status_icon_set_tooltip(status_icon, "Growl");
-    gtk_status_icon_set_visible(status_icon, TRUE);
   }
+  {
+    gchar* const path = g_build_filename(DATADIR, "data", "icon_dnd.png", NULL);
+    status_icon_dnd_pixbuf = gdk_pixbuf_new_from_file(path, NULL);
+    g_free(path);
+  }
+
+  gtk_status_icon_set_from_pixbuf(status_icon, status_icon_pixbuf);
 
   popup_menu = gtk_menu_new();
   g_signal_connect(G_OBJECT(status_icon), "popup-menu",
       G_CALLBACK(status_icon_popup), popup_menu);
+
+  g_signal_connect(G_OBJECT(status_icon), "button-release-event",
+      G_CALLBACK(gol_status_toggle), 0);
 
   append_new_menu_item_from_stock(GTK_MENU_SHELL(popup_menu),
     GTK_STOCK_PREFERENCES, G_CALLBACK(settings_clicked));
@@ -1678,7 +1716,9 @@ create_menu() {
     gtk_separator_menu_item_new());
   append_new_menu_item_from_stock(GTK_MENU_SHELL(popup_menu),
     GTK_STOCK_QUIT, G_CALLBACK(exit_clicked));
+
   gtk_widget_show_all(popup_menu);
+  gtk_status_icon_set_visible(status_icon, TRUE);
 }
 
 static void
@@ -1689,6 +1729,12 @@ destroy_menu() {
   if (status_icon) {
       gtk_status_icon_set_visible(GTK_STATUS_ICON(status_icon), FALSE);
       g_object_unref(G_OBJECT(status_icon));
+  }
+  if (status_icon_pixbuf) {
+    g_object_unref(G_OBJECT(status_icon_pixbuf));
+  }
+  if (status_icon_dnd_pixbuf) {
+    g_object_unref(G_OBJECT(status_icon_dnd_pixbuf));
   }
 }
 
