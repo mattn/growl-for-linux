@@ -1,3 +1,7 @@
+2012-03-25 mattn <mattn.jp@gmail.com>
+
+	* support Do Not Disturb mode.
+
 2012-03-20 mattn <mattn.jp@gmail.com>
 
 	* support non-crypt message with password.
