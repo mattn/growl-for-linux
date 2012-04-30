@@ -2222,7 +2222,9 @@ main(int argc, char* argv[]) {
   GIOChannel* udp_io = NULL;
 
 #ifdef G_THREADS_ENABLED
+#if !GLIB_CHECK_VERSION(2,23,2)
   g_thread_init(NULL);
+#endif
 #endif
 
   g_set_application_name("growl-for-linux");
