@@ -331,6 +331,21 @@ set_display_parameter(const char* const name, const char* const value) {
   exec_sqlite3("insert into display(name, parameter) values('%q', '%q')", name, value);
 }
 
+static gint
+get_config_value(const char* const key, const gint def) {
+  gchar* data;
+  gint value;
+  void
+  get_string(sqlite3_stmt* const stmt) {
+    data = sqlite3_step(stmt) == SQLITE_ROW
+          ? (char*) sqlite3_column_text(stmt, 0): "";
+  }
+  statement_sqlite3(get_string,
+      "select value from config where key = '%q'", key);
+  value = g_ascii_strtoll(data, NULL, 10);
+  return value != 0 ? value : def;
+}
+
 static gchar*
 get_config_string(const char* const key, const char* const def) {
   gchar* value;
@@ -1243,6 +1258,7 @@ raise_notification(const CLIENT_INFO ci, NOTIFICATION_INFO* const ni) {
     cp = find_display_plugin_or(is_sdn, current_display);
   }
 
+  ni->timeout = get_config_value("default_timeout", 5000)/10;
   g_idle_add((GSourceFunc) cp->show, ni); // call once
   return true;
 }

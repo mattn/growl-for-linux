@@ -53,6 +53,7 @@ typedef struct {
   NOTIFICATION_INFO* ni;
   gint pos;
   gint x, y;
+  gint default_timeout;
   gint timeout;
   gint offset;
   gboolean sticky;
@@ -121,7 +122,7 @@ display_animation_func(gpointer data) {
   }
 
   if (di->timeout > 450) {
-    gtk_window_set_opacity(GTK_WINDOW(di->widget.popup), (double) (500-di->timeout)/50.0*0.8);
+    gtk_window_set_opacity(GTK_WINDOW(di->widget.popup), (double) (di->default_timeout-di->timeout)/50.0*0.8);
   }
 
   if (di->timeout < 50) {
@@ -304,7 +305,12 @@ create_popup_skelton() {
 
 static inline DISPLAY_INFO*
 reset_display_info(DISPLAY_INFO* const di, NOTIFICATION_INFO* const ni) {
-  di->timeout = 500;
+  if (ni) {
+    di->default_timeout = ni->timeout;
+    di->timeout = ni->timeout;
+  } else {
+    di->timeout = di->default_timeout;
+  }
   di->offset  = 0;
   di->pos     = 0;
   di->hover   = FALSE;
@@ -328,6 +334,8 @@ static inline DISPLAY_INFO*
 get_popup_skelton(NOTIFICATION_INFO* const ni) {
   DISPLAY_INFO* const di = (DISPLAY_INFO*) list_pop_front(&popup_collections);
   if (di) {
+    di->default_timeout = ni->timeout;
+    di->timeout = ni->timeout;
     di->ni = ni;
     return di;
   }

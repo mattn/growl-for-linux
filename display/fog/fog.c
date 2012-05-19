@@ -49,6 +49,7 @@ typedef struct {
   NOTIFICATION_INFO* ni;
   gint pos;
   gint x, y;
+  gint default_timeout;
   gint timeout;
   gint offset;
   gboolean sticky;
@@ -294,7 +295,12 @@ create_popup_skelton() {
 
 static inline DISPLAY_INFO*
 reset_display_info(DISPLAY_INFO* const di, NOTIFICATION_INFO* const ni) {
-  di->timeout = 500;
+  if (ni) {
+    di->default_timeout = ni->timeout;
+    di->timeout = ni->timeout;
+  } else {
+    di->timeout = di->default_timeout;
+  }
   di->pos     = 0;
   di->offset  = 0;
   di->hover   = FALSE;
@@ -318,6 +324,8 @@ static inline DISPLAY_INFO*
 get_popup_skelton(NOTIFICATION_INFO* const ni) {
   DISPLAY_INFO* const di = (DISPLAY_INFO*) list_pop_front(&popup_collections);
   if (di) {
+    di->default_timeout = ni->timeout;
+    di->timeout = ni->timeout;
     di->ni = ni;
     return di;
   }
