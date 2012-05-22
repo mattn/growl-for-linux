@@ -42,6 +42,14 @@ Usage:
 > Notification should be sent with [GNTP](http://www.growlforwindows.com/gfw/help/gntp.aspx) protocol or [Growl Network Protocol](http://growl.info/documentation/developer/protocol.php).
 > If you want to be show icon in notification, you need to use GNTP protocol.
 
+FAQ:
+----
+
+  * Q. I can't see icon in system tray. I'm using ubuntu linux.
+  * A. Try following.
+  
+>     gsettings set com.canonical.Unity.Panel systray-whitelist "$(gsettings get com.canonical.Unity.Panel systray-whitelist | sed -e "s/]$/, 'growl-for-linux']/")"
+
 License:
 --------
 
