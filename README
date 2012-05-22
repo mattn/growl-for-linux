@@ -49,6 +49,14 @@ Usage:
 
     If you want to be show icon in notification, you need to use GNTP protocol.
 
+FAQ:
+----
+
+  * Q. I can't see icon in system tray. I'm using ubuntu linux.
+  * A. Try following.
+  
+    gsettings set com.canonical.Unity.Panel systray-whitelist "$(gsettings get com.canonical.Unity.Panel systray-whitelist | sed -e "s/]$/, 'growl-for-linux']/")"
+
 License:
 --------
 
