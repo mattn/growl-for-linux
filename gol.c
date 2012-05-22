@@ -462,6 +462,7 @@ display_tree_selection_changed(GtkTreeSelection * const selection, const gpointe
     }
   }
 
+  /*
   GtkWidget* const entry = (GtkWidget*) get_data_as_object(user_data, "parameter");
   gtk_entry_set_text(GTK_ENTRY(entry), "");
   gtk_widget_set_sensitive(entry, FALSE);
@@ -470,6 +471,7 @@ display_tree_selection_changed(GtkTreeSelection * const selection, const gpointe
     gtk_entry_set_text(GTK_ENTRY(entry), param ? param : "");
     gtk_widget_set_sensitive(entry, TRUE);
   }
+  */
   g_free(name);
 }
 
