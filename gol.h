@@ -42,6 +42,7 @@ typedef struct {
   gchar* icon;
   gchar* url;
   gboolean local;
+  gint timeout;
 } NOTIFICATION_INFO;
 
 typedef struct {
