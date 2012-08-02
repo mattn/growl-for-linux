@@ -109,7 +109,8 @@ display_animation_func(gpointer data) {
   DISPLAY_INFO* const di = (DISPLAY_INFO*) data;
 
   if (di->hover) return TRUE; // Do nothing.
-  --di->timeout;
+  if (di->timeout >= 30 || !di->sticky)
+    --di->timeout;
 
   if (di->timeout < 0) {
     notifications = g_list_remove(notifications, di);
