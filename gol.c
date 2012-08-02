@@ -896,6 +896,7 @@ settings_clicked(GtkWidget* GOL_UNUSED_ARG(widget), GdkEvent* GOL_UNUSED_ARG(eve
     hbox = gtk_hbox_new(FALSE, 5);
     gtk_box_pack_start(GTK_BOX(vbox), hbox, TRUE, FALSE, 0);
 
+    /*
     GtkWidget* entry = gtk_entry_new();
     g_signal_connect(G_OBJECT(entry), "focus-out-event",
         G_CALLBACK(parameter_focus_out), NULL);
@@ -903,6 +904,7 @@ settings_clicked(GtkWidget* GOL_UNUSED_ARG(widget), GdkEvent* GOL_UNUSED_ARG(eve
     gtk_box_pack_end(GTK_BOX(hbox), entry, FALSE, FALSE, 0);
     label = gtk_label_new("Parameter:");
     gtk_box_pack_end(GTK_BOX(hbox), label, FALSE, FALSE, 0);
+    */
 
     void
     append_display_plugins(DISPLAY_PLUGIN* dp) {
@@ -1463,6 +1465,7 @@ gntp_recv_proc(gpointer user_data) {
         char* notification_name = NULL;
         char* notification_icon = NULL;
         gboolean notification_enabled = FALSE;
+        gboolean notification_sticky = FALSE;
         char* notification_display_name = NULL;
         while (*ptr) {
           char* const line = ptr;
@@ -1484,6 +1487,9 @@ gntp_recv_proc(gpointer user_data) {
             }
             else if (!strncmp(line, "Notification-Display-Name:", 26)) {
               str_swap(&value, &notification_display_name);
+            }
+            else if (!strncmp(line, "Notification-Sticky:", 20)) {
+              notification_sticky = strcasecmp(value, "true") == 0;
             }
             g_free(value);
           }
@@ -1516,7 +1522,7 @@ gntp_recv_proc(gpointer user_data) {
             notification_enabled,
             notification_display_name ?
               notification_display_name : "Fog",
-            FALSE);
+            notification_sticky);
         }
 
         g_free(notification_name);
@@ -1563,6 +1569,9 @@ gntp_recv_proc(gpointer user_data) {
           }
           else if (!strncmp(line, "Notification-Icon:", 18)) {
             str_swap(&value, &ni->icon);
+          }
+          else if (!strncmp(line, "Notification-Sticky:", 20)) {
+            ni->sticky = strcasecmp(value, "true") == 0;
           }
           else if (!strncmp(line, "Notification-Callback-Target:", 29)) {
             str_swap(&value, &ni->url);

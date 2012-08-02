@@ -41,6 +41,7 @@ typedef struct {
   gchar* text;
   gchar* icon;
   gchar* url;
+  gboolean sticky;
   gboolean local;
   gint timeout;
 } NOTIFICATION_INFO;

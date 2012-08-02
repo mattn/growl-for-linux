@@ -52,7 +52,6 @@ typedef struct {
   gint default_timeout;
   gint timeout;
   gint offset;
-  gboolean sticky;
   gboolean hover;
   struct {
     GtkWidget* popup;
@@ -89,6 +88,7 @@ display_clicked(GtkWidget* GOL_UNUSED_ARG(widget), GdkEvent* GOL_UNUSED_ARG(even
   DISPLAY_INFO* const di = (DISPLAY_INFO*) user_data;
   if (di->timeout >= 30) di->timeout = 30;
   if (di->ni->url && *di->ni->url) open_url(di->ni->url);
+  di->ni->sticky = FALSE;
 }
 
 static void
@@ -109,7 +109,7 @@ display_animation_func(gpointer data) {
   DISPLAY_INFO* const di = (DISPLAY_INFO*) data;
 
   if (di->hover) return TRUE; // Do nothing.
-  if (di->timeout >= 30 || !di->sticky)
+  if (di->timeout >= 30 || !di->ni->sticky)
     --di->timeout;
 
   if (di->timeout < 0) {
