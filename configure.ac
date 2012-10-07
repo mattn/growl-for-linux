@@ -29,7 +29,7 @@ PKG_CHECK_MODULES(LIBXML2, libxml-2.0)
 PKG_CHECK_MODULES(OPENSSL, openssl)
 PKG_CHECK_MODULES(SQLITE3, sqlite3)
 PKG_CHECK_MODULES(DBUSGLIB1, dbus-glib-1)
-PKG_CHECK_MODULES(LIBNOTIFY, libnotify,
+PKG_CHECK_MODULES(NOTIFY, libnotify,
                   [ENABLE_LIBNOTIFY="display/libnotify"
                    AC_SUBST([ENABLE_LIBNOTIFY])
                    AC_CONFIG_FILES([display/libnotify/Makefile])],
