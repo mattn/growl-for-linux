@@ -1,0 +1,1157 @@
+growl-for-linux (0.7.3-2raring) raring; urgency=low
+
+  * backport to dist raring
+
+ -- mattn <mattn.jp@gmail.com>  Tue, 28 May 2013 16:09:00 +0900
+
+growl-for-linux (0.7.3-2quantal) quantal; urgency=low
+
+  * backport to dist quantal
+
+ -- mattn <mattn.jp@gmail.com>  Tue, 28 May 2013 16:07:37 +0900
+
+growl-for-linux (0.7.3-2precise) precise; urgency=low
+
+  * backport to dist precise
+
+ -- mattn <mattn.jp@gmail.com>  Tue, 28 May 2013 16:07:06 +0900
+
+growl-for-linux (0.7.3-2oneiric) oneiric; urgency=low
+
+  * backport to dist oneiric
+
+ -- mattn <mattn.jp@gmail.com>  Tue, 28 May 2013 16:06:35 +0900
+
+growl-for-linux (0.7.3-2natty) natty; urgency=low
+
+  * backport to dist natty
+
+ -- mattn <mattn.jp@gmail.com>  Tue, 28 May 2013 16:06:03 +0900
+
+growl-for-linux (0.7.3-2maverick) maverick; urgency=low
+
+  * backport to dist maverick
+
+ -- mattn <mattn.jp@gmail.com>  Tue, 28 May 2013 16:05:32 +0900
+
+growl-for-linux (0.7.3-2lucid) lucid; urgency=low
+
+  * backport to dist lucid
+
+ -- mattn <mattn.jp@gmail.com>  Tue, 28 May 2013 16:04:58 +0900
+
+growl-for-linux (0.7.2-2raring) raring; urgency=low
+
+  * backport to dist raring
+
+ -- mattn <mattn.jp@gmail.com>  Tue, 28 May 2013 16:00:41 +0900
+
+growl-for-linux (0.7.2-2quantal) quantal; urgency=low
+
+  * backport to dist quantal
+
+ -- mattn <mattn.jp@gmail.com>  Tue, 28 May 2013 16:00:09 +0900
+
+growl-for-linux (0.7.2-2precise) precise; urgency=low
+
+  * backport to dist precise
+
+ -- mattn <mattn.jp@gmail.com>  Tue, 28 May 2013 15:59:37 +0900
+
+growl-for-linux (0.7.2-2oneiric) oneiric; urgency=low
+
+  * backport to dist oneiric
+
+ -- mattn <mattn.jp@gmail.com>  Tue, 28 May 2013 15:59:06 +0900
+
+growl-for-linux (0.7.2-2natty) natty; urgency=low
+
+  * backport to dist natty
+
+ -- mattn <mattn.jp@gmail.com>  Tue, 28 May 2013 15:58:35 +0900
+
+growl-for-linux (0.7.2-2maverick) maverick; urgency=low
+
+  * backport to dist maverick
+
+ -- mattn <mattn.jp@gmail.com>  Tue, 28 May 2013 15:57:58 +0900
+
+growl-for-linux (0.7.2-2lucid) lucid; urgency=low
+
+  * backport to dist lucid
+
+ -- mattn <mattn.jp@gmail.com>  Tue, 28 May 2013 15:56:37 +0900
+
+growl-for-linux (0.7.2-2lucid) lucid; urgency=low
+
+  * backport to dist lucid
+
+ -- mattn <mattn.jp@gmail.com>  Tue, 28 May 2013 15:56:21 +0900
+
+growl-for-linux (0.7.2-2lucid) lucid; urgency=low
+
+  * backport to dist lucid
+
+ -- mattn <mattn.jp@gmail.com>  Tue, 28 May 2013 15:56:00 +0900
+
+growl-for-linux (0.7.2-2lucid) lucid; urgency=low
+
+  * backport to dist lucid
+
+ -- mattn <mattn.jp@gmail.com>  Tue, 28 May 2013 15:54:48 +0900
+
+growl-for-linux (0.7.2-2maverick) maverick; urgency=low
+
+  * backport to dist maverick
+
+ -- mattn <mattn.jp@gmail.com>  Tue, 28 May 2013 15:53:28 +0900
+
+growl-for-linux (0.7.2-2lucid) lucid; urgency=low
+
+  * backport to dist lucid
+
+ -- mattn <mattn.jp@gmail.com>  Tue, 28 May 2013 15:52:02 +0900
+
+growl-for-linux (0.7.2-2maverick) maverick; urgency=low
+
+  * backport to dist maverick
+
+ -- mattn <mattn.jp@gmail.com>  Tue, 28 May 2013 15:51:11 +0900
+
+growl-for-linux (0.7.2-2lucid) lucid; urgency=low
+
+  * backport to dist lucid
+
+ -- mattn <mattn.jp@gmail.com>  Tue, 28 May 2013 15:49:48 +0900
+
+growl-for-linux (0.7.2-2lucid) lucid; urgency=low
+
+  * backport to dist lucid
+
+ -- mattn <mattn.jp@gmail.com>  Tue, 28 May 2013 15:47:01 +0900
+
+growl-for-linux (0.7.2-2lucid) lucid; urgency=low
+
+  * backport to dist lucid
+
+ -- mattn <mattn.jp@gmail.com>  Tue, 28 May 2013 15:46:41 +0900
+
+growl-for-linux (0.7.2-2lucid) lucid; urgency=low
+
+  * backport to dist lucid
+
+ -- mattn <mattn.jp@gmail.com>  Tue, 28 May 2013 15:46:09 +0900
+
+growl-for-linux (0.7.2-2lucid) lucid; urgency=low
+
+  * backport to dist lucid
+
+ -- mattn <mattn.jp@gmail.com>  Tue, 28 May 2013 15:45:21 +0900
+
+growl-for-linux (0.7.2-2lucid) lucid; urgency=low
+
+  * backport to dist lucid
+
+ -- mattn <mattn.jp@gmail.com>  Tue, 28 May 2013 15:44:49 +0900
+
+growl-for-linux (0.7.2-2precise) precise; urgency=low
+
+  * backport to dist precise
+
+ -- mattn <mattn.jp@gmail.com>  Tue, 28 May 2013 15:43:04 +0900
+
+growl-for-linux (0.7.2-2oneiric) oneiric; urgency=low
+
+  * backport to dist oneiric
+
+ -- mattn <mattn.jp@gmail.com>  Tue, 28 May 2013 15:43:03 +0900
+
+growl-for-linux (0.7.2-2natty) natty; urgency=low
+
+  * backport to dist natty
+
+ -- mattn <mattn.jp@gmail.com>  Tue, 28 May 2013 15:42:55 +0900
+
+growl-for-linux (0.7.2-2maverick) maverick; urgency=low
+
+  * backport to dist maverick
+
+ -- mattn <mattn.jp@gmail.com>  Tue, 28 May 2013 15:41:32 +0900
+
+growl-for-linux (0.7.2-2lucid) lucid; urgency=low
+
+  * backport to dist lucid
+
+ -- mattn <mattn.jp@gmail.com>  Tue, 28 May 2013 15:40:04 +0900
+
+growl-for-linux (0.7.2-1raring) raring; urgency=low
+
+  * backport to dist raring
+
+ -- mattn <mattn.jp@gmail.com>  Tue, 28 May 2013 15:35:58 +0900
+
+growl-for-linux (0.7.2-1quantal) quantal; urgency=low
+
+  * backport to dist quantal
+
+ -- mattn <mattn.jp@gmail.com>  Tue, 28 May 2013 15:35:45 +0900
+
+growl-for-linux (0.7.2-1precise) precise; urgency=low
+
+  * backport to dist precise
+
+ -- mattn <mattn.jp@gmail.com>  Tue, 28 May 2013 15:35:32 +0900
+
+growl-for-linux (0.7.2-1oneiric) oneiric; urgency=low
+
+  * backport to dist oneiric
+
+ -- mattn <mattn.jp@gmail.com>  Tue, 28 May 2013 15:35:18 +0900
+
+growl-for-linux (0.7.2-1natty) natty; urgency=low
+
+  * backport to dist natty
+
+ -- mattn <mattn.jp@gmail.com>  Tue, 28 May 2013 15:35:05 +0900
+
+growl-for-linux (0.7.2-1maverick) maverick; urgency=low
+
+  * backport to dist maverick
+
+ -- mattn <mattn.jp@gmail.com>  Tue, 28 May 2013 15:34:52 +0900
+
+growl-for-linux (0.7.2-1lucid) lucid; urgency=low
+
+  * backport to dist lucid
+
+ -- mattn <mattn.jp@gmail.com>  Tue, 28 May 2013 15:34:38 +0900
+
+growl-for-linux (0.7.2-1oneiric) oneiric; urgency=low
+
+  * backport to dist oneiric
+
+ -- mattn <mattn.jp@gmail.com>  Tue, 28 May 2013 15:33:58 +0900
+
+growl-for-linux (0.7.2-1natty) natty; urgency=low
+
+  * backport to dist natty
+
+ -- mattn <mattn.jp@gmail.com>  Tue, 28 May 2013 15:33:57 +0900
+
+growl-for-linux (0.7.2-1maverick) maverick; urgency=low
+
+  * backport to dist maverick
+
+ -- mattn <mattn.jp@gmail.com>  Tue, 28 May 2013 15:33:56 +0900
+
+growl-for-linux (0.7.2-1lucid) lucid; urgency=low
+
+  * backport to dist lucid
+
+ -- mattn <mattn.jp@gmail.com>  Tue, 28 May 2013 15:33:42 +0900
+
+growl-for-linux (0.7.1-1raring) raring; urgency=low
+
+  * backport to dist raring
+
+ -- mattn <mattn@donkey>  Mon, 27 May 2013 00:31:05 +0900
+
+growl-for-linux (0.7.1-1quantal) quantal; urgency=low
+
+  * backport to dist quantal
+
+ -- mattn <mattn@donkey>  Mon, 27 May 2013 00:30:56 +0900
+
+growl-for-linux (0.7.1-1precise) precise; urgency=low
+
+  * backport to dist precise
+
+ -- mattn <mattn@donkey>  Mon, 27 May 2013 00:30:46 +0900
+
+growl-for-linux (0.7.1-1oneiric) oneiric; urgency=low
+
+  * backport to dist oneiric
+
+ -- mattn <mattn@donkey>  Mon, 27 May 2013 00:30:36 +0900
+
+growl-for-linux (0.7.1-1maverick) maverick; urgency=low
+
+  * backport to dist maverick
+
+ -- mattn <mattn@donkey>  Mon, 27 May 2013 00:30:27 +0900
+
+growl-for-linux (0.7.1-1natty) natty; urgency=low
+
+  * backport to dist natty
+
+ -- mattn <mattn@donkey>  Mon, 27 May 2013 00:29:55 +0900
+
+growl-for-linux (0.7.0-raring) raring; urgency=low
+
+  * backport to dist raring
+
+ -- mattn <mattn@donkey>  Sun, 26 May 2013 01:12:21 +0900
+
+growl-for-linux (0.7.0-1raring) raring; urgency=low
+
+  * backport to dist raring
+
+ -- mattn <mattn@donkey>  Sun, 26 May 2013 01:12:04 +0900
+
+growl-for-linux (0.7.0-quantal) quantal; urgency=low
+
+  * backport to dist quantal
+
+ -- mattn <mattn@donkey>  Sun, 14 Oct 2012 01:21:48 +0900
+
+growl-for-linux (0.7.0-precise) precise; urgency=low
+
+  * backport to dist precise
+
+ -- mattn <mattn@donkey>  Sun, 14 Oct 2012 01:21:38 +0900
+
+growl-for-linux (0.7.0-oneiric) oneiric; urgency=low
+
+  * backport to dist oneiric
+
+ -- mattn <mattn@donkey>  Sun, 14 Oct 2012 01:21:27 +0900
+
+growl-for-linux (0.7.0-maverick) maverick; urgency=low
+
+  * backport to dist maverick
+
+ -- mattn <mattn@donkey>  Sun, 14 Oct 2012 01:21:17 +0900
+
+growl-for-linux (0.7.0-natty) natty; urgency=low
+
+  * backport to dist natty
+
+ -- mattn <mattn@donkey>  Sun, 14 Oct 2012 01:21:07 +0900
+
+growl-for-linux (0.7.0-lucid) lucid; urgency=low
+
+  * backport to dist lucid
+
+ -- mattn <mattn@donkey>  Sun, 14 Oct 2012 01:20:54 +0900
+
+growl-for-linux (0.6.9-1precise) precise; urgency=low
+
+  * backport to dist precise
+
+ -- mattn <mattn@donkey>  Fri, 03 Aug 2012 00:35:04 +0900
+
+growl-for-linux (0.6.9-1oneiric) oneiric; urgency=low
+
+  * backport to dist oneiric
+
+ -- mattn <mattn@donkey>  Fri, 03 Aug 2012 00:34:54 +0900
+
+growl-for-linux (0.6.9-1maverick) maverick; urgency=low
+
+  * backport to dist maverick
+
+ -- mattn <mattn@donkey>  Fri, 03 Aug 2012 00:34:45 +0900
+
+growl-for-linux (0.6.9-1natty) natty; urgency=low
+
+  * backport to dist natty
+
+ -- mattn <mattn@donkey>  Fri, 03 Aug 2012 00:34:35 +0900
+
+growl-for-linux (0.6.9-1lucid) lucid; urgency=low
+
+  * backport to dist lucid
+
+ -- mattn <mattn@donkey>  Fri, 03 Aug 2012 00:34:16 +0900
+
+growl-for-linux (0.6.8-1precise) precise; urgency=low
+
+  * backport to dist precise
+
+ -- mattn <mattn@donkey>  Sat, 12 May 2012 23:43:29 +0900
+
+growl-for-linux (0.6.8-1oneiric) oneiric; urgency=low
+
+  * backport to dist oneiric
+
+ -- mattn <mattn@donkey>  Sat, 12 May 2012 23:43:20 +0900
+
+growl-for-linux (0.6.8-1maverick) maverick; urgency=low
+
+  * backport to dist maverick
+
+ -- mattn <mattn@donkey>  Sat, 12 May 2012 23:43:10 +0900
+
+growl-for-linux (0.6.8-1natty) natty; urgency=low
+
+  * backport to dist natty
+
+ -- mattn <mattn@donkey>  Sat, 12 May 2012 23:43:01 +0900
+
+growl-for-linux (0.6.8-1lucid) lucid; urgency=low
+
+  * backport to dist lucid
+
+ -- mattn <mattn@donkey>  Sat, 12 May 2012 23:42:47 +0900
+
+growl-for-linux (0.6.7-1oneiric) oneiric; urgency=low
+
+  * backport to dist oneiric
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Sun, 25 Mar 2012 00:47:05 +0900
+
+growl-for-linux (0.6.7-1maverick) maverick; urgency=low
+
+  * backport to dist maverick
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Sun, 25 Mar 2012 00:46:23 +0900
+
+growl-for-linux (0.6.7-1natty) natty; urgency=low
+
+  * backport to dist natty
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Sun, 25 Mar 2012 00:46:06 +0900
+
+growl-for-linux (0.6.7-1lucid) lucid; urgency=low
+
+  * backport to dist lucid
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Sun, 25 Mar 2012 00:45:40 +0900
+
+growl-for-linux (0.6.6-2oneiric) oneiric; urgency=low
+
+  * backport to dist oneiric
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Tue, 20 Mar 2012 23:43:27 +0900
+
+growl-for-linux (0.6.6-2maverick) maverick; urgency=low
+
+  * backport to dist maverick
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Tue, 20 Mar 2012 23:43:02 +0900
+
+growl-for-linux (0.6.6-2natty) natty; urgency=low
+
+  * backport to dist natty
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Tue, 20 Mar 2012 23:42:29 +0900
+
+growl-for-linux (0.6.6-2lucid) lucid; urgency=low
+
+  * backport to dist lucid
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Tue, 20 Mar 2012 23:42:13 +0900
+
+growl-for-linux (0.6.6-1natty) natty; urgency=low
+
+  * backport to dist natty
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Tue, 20 Mar 2012 23:40:47 +0900
+
+growl-for-linux (0.6.6-1lucid) lucid; urgency=low
+
+  * backport to dist lucid
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Tue, 20 Mar 2012 23:40:33 +0900
+
+growl-for-linux (0.6.6-1natty) natty; urgency=low
+
+  * backport to dist natty
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Tue, 20 Mar 2012 23:38:45 +0900
+
+growl-for-linux (0.6.6-1lucid) lucid; urgency=low
+
+  * backport to dist lucid
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Tue, 20 Mar 2012 23:38:29 +0900
+
+growl-for-linux (0.6.6-2lucid) lucid; urgency=low
+
+  * backport to dist lucid
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Tue, 20 Mar 2012 23:35:17 +0900
+
+growl-for-linux (0.6.6-2lucid) lucid; urgency=low
+
+  * backport to dist lucid
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Tue, 20 Mar 2012 23:34:49 +0900
+
+growl-for-linux (0.6.6-1natty) natty; urgency=low
+
+  * backport to dist natty
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Tue, 20 Mar 2012 23:33:59 +0900
+
+growl-for-linux (0.6.6-1lucid) lucid; urgency=low
+
+  * backport to dist lucid
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Tue, 20 Mar 2012 23:33:31 +0900
+
+growl-for-linux (0.6.5-1oneiric) oneiric; urgency=low
+
+  * backport to dist oneiric
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Sun, 18 Mar 2012 00:15:09 +0900
+
+growl-for-linux (0.6.5-1maverick) maverick; urgency=low
+
+  * backport to dist maverick
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Sun, 18 Mar 2012 00:14:51 +0900
+
+growl-for-linux (0.6.5-1natty) natty; urgency=low
+
+  * backport to dist natty
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Sun, 18 Mar 2012 00:14:30 +0900
+
+growl-for-linux (0.6.5-1lucid) lucid; urgency=low
+
+  * backport to dist lucid
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Sun, 18 Mar 2012 00:14:03 +0900
+
+growl-for-linux (0.6.4-1oneiric) oneiric; urgency=low
+
+  * backport to dist oneiric
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Tue, 13 Mar 2012 23:26:02 +0900
+
+growl-for-linux (0.6.4-1maverick) maverick; urgency=low
+
+  * backport to dist maverick
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Tue, 13 Mar 2012 23:25:43 +0900
+
+growl-for-linux (0.6.4-1natty) natty; urgency=low
+
+  * backport to dist natty
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Tue, 13 Mar 2012 23:25:21 +0900
+
+growl-for-linux (0.6.4-1lucid) lucid; urgency=low
+
+  * backport to dist lucid
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Tue, 13 Mar 2012 23:24:56 +0900
+
+growl-for-linux (0.6.3-1lucid) lucid; urgency=low
+
+  * backport to dist lucid
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Tue, 13 Mar 2012 23:21:09 +0900
+
+growl-for-linux (0.6.3-1oneiric) oneiric; urgency=low
+
+  * backport to dist oneiric
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Tue, 13 Mar 2012 23:20:40 +0900
+
+growl-for-linux (0.6.3-1maverick) maverick; urgency=low
+
+  * backport to dist maverick
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Tue, 13 Mar 2012 23:20:38 +0900
+
+growl-for-linux (0.6.3-1natty) natty; urgency=low
+
+  * backport to dist natty
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Tue, 13 Mar 2012 23:20:35 +0900
+
+growl-for-linux (0.6.3-1lucid) lucid; urgency=low
+
+  * backport to dist lucid
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Tue, 13 Mar 2012 23:20:32 +0900
+
+growl-for-linux (0.6.3-1lucid) lucid; urgency=low
+
+  * backport to dist lucid
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Tue, 13 Mar 2012 23:20:23 +0900
+
+growl-for-linux (0.6.3-1quilt) quilt; urgency=low
+
+  * backport to dist quilt
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Sun, 26 Feb 2012 22:17:46 +0900
+
+growl-for-linux (0.6.3-1oneiric) oneiric; urgency=low
+
+  * backport to dist oneiric
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Sun, 26 Feb 2012 22:17:28 +0900
+
+growl-for-linux (0.6.3-1maverick) maverick; urgency=low
+
+  * backport to dist maverick
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Sun, 26 Feb 2012 22:17:12 +0900
+
+growl-for-linux (0.6.3-1natty) natty; urgency=low
+
+  * backport to dist natty
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Sun, 26 Feb 2012 22:16:49 +0900
+
+growl-for-linux (0.6.3-1lucid) lucid; urgency=low
+
+  * backport to dist lucid
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Sun, 26 Feb 2012 22:16:23 +0900
+
+growl-for-linux (0.6.2-oneiric) oneiric; urgency=low
+
+  * backport to dist oneiric
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Tue, 07 Feb 2012 01:41:42 +0900
+
+growl-for-linux (0.6.2-maverick) maverick; urgency=low
+
+  * backport to dist maverick
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Tue, 07 Feb 2012 01:41:09 +0900
+
+growl-for-linux (0.6.2-natty) natty; urgency=low
+
+  * backport to dist natty
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Tue, 07 Feb 2012 01:40:43 +0900
+
+growl-for-linux (0.6.2-lucid) lucid; urgency=low
+
+  * backport to dist lucid
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Tue, 07 Feb 2012 01:40:19 +0900
+
+growl-for-linux (0.6.1-1oneiric) oneiric; urgency=low
+
+  * backport to dist oneiric
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Thu, 03 Nov 2011 00:18:42 +0900
+
+growl-for-linux (0.6.1-1maverick) maverick; urgency=low
+
+  * backport to dist maverick
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Thu, 03 Nov 2011 00:18:08 +0900
+
+growl-for-linux (0.6.1-1natty) natty; urgency=low
+
+  * backport to dist natty
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Thu, 03 Nov 2011 00:17:38 +0900
+
+growl-for-linux (0.6.1-1lucid) lucid; urgency=low
+
+  * backport to dist lucid
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Thu, 03 Nov 2011 00:17:10 +0900
+
+growl-for-linux (0.6.0-2oneiric) oneiric; urgency=low
+
+  * backport to dist oneiric
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Mon, 31 Oct 2011 01:05:53 +0900
+
+growl-for-linux (0.6.0-2maverick) maverick; urgency=low
+
+  * backport to dist maverick
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Mon, 31 Oct 2011 01:05:33 +0900
+
+growl-for-linux (0.6.0-2natty) natty; urgency=low
+
+  * backport to dist natty
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Mon, 31 Oct 2011 01:05:13 +0900
+
+growl-for-linux (0.6.0-2lucid) lucid; urgency=low
+
+  * backport to dist lucid
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Mon, 31 Oct 2011 01:04:54 +0900
+
+growl-for-linux (0.6.0-1oneiric) oneiric; urgency=low
+
+  * backport to dist oneiric
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Sun, 30 Oct 2011 23:54:58 +0900
+
+growl-for-linux (0.6.0-1maverick) maverick; urgency=low
+
+  * backport to dist maverick
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Sun, 30 Oct 2011 23:54:41 +0900
+
+growl-for-linux (0.6.0-1natty) natty; urgency=low
+
+  * backport to dist natty
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Sun, 30 Oct 2011 23:54:21 +0900
+
+growl-for-linux (0.6.0-1lucid) lucid; urgency=low
+
+  * backport to dist lucid
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Sun, 30 Oct 2011 23:53:46 +0900
+
+growl-for-linux (0.5-3oneiric) oneiric; urgency=low
+
+  * backport to dist oneiric
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Sun, 23 Oct 2011 00:12:48 +0900
+
+growl-for-linux (0.5-3maverick) maverick; urgency=low
+
+  * backport to dist maverick
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Sun, 23 Oct 2011 00:12:26 +0900
+
+growl-for-linux (0.5-3natty) natty; urgency=low
+
+  * backport to dist natty
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Sun, 23 Oct 2011 00:11:58 +0900
+
+growl-for-linux (0.5-3lucid) lucid; urgency=low
+
+  * backport to dist lucid
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Sun, 23 Oct 2011 00:11:34 +0900
+
+growl-for-linux (0.5-2maverick) maverick; urgency=low
+
+  * backport to dist maverick
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Sun, 23 Oct 2011 00:09:20 +0900
+
+growl-for-linux (0.5-2natty) natty; urgency=low
+
+  * backport to dist natty
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Sun, 23 Oct 2011 00:08:49 +0900
+
+growl-for-linux (0.5-2lucid) lucid; urgency=low
+
+  * backport to dist lucid
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Sun, 23 Oct 2011 00:08:15 +0900
+
+growl-for-linux (0.5-1maverick) maverick; urgency=low
+
+  * backport to dist maverick
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Tue, 04 Oct 2011 01:21:18 +0900
+
+growl-for-linux (0.5-1natty) natty; urgency=low
+
+  * backport to dist natty
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Tue, 04 Oct 2011 01:20:54 +0900
+
+growl-for-linux (0.5-1lucid) lucid; urgency=low
+
+  * backport to dist lucid
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Tue, 04 Oct 2011 01:20:52 +0900
+
+growl-for-linux (0.5-1natty) natty; urgency=low
+
+  * backport to dist natty
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Tue, 04 Oct 2011 01:20:18 +0900
+
+growl-for-linux (0.5-1lucid) lucid; urgency=low
+
+  * backport to dist lucid
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Tue, 04 Oct 2011 01:19:46 +0900
+
+growl-for-linux (0.5-lucid) lucid; urgency=low
+
+  * backport to dist lucid
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Tue, 04 Oct 2011 01:19:43 +0900
+
+growl-for-linux (0.5-1lucid) lucid; urgency=low
+
+  * backport to dist lucid
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Tue, 04 Oct 2011 01:19:10 +0900
+
+growl-for-linux (0.5-1lucid) lucid; urgency=low
+
+  * backport to dist lucid
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Tue, 04 Oct 2011 01:18:14 +0900
+
+growl-for-linux (0.5-1lucid) lucid; urgency=low
+
+  * backport to dist lucid
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Tue, 04 Oct 2011 01:17:46 +0900
+
+growl-for-linux (0.5-1lucid) lucid; urgency=low
+
+  * backport to dist lucid
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Tue, 04 Oct 2011 01:17:17 +0900
+
+growl-for-linux (0.4-2maverick) maverick; urgency=low
+
+  * backport to dist maverick
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Thu, 22 Sep 2011 01:25:31 +0900
+
+growl-for-linux (0.4-2natty) natty; urgency=low
+
+  * backport to dist natty
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Thu, 22 Sep 2011 01:24:53 +0900
+
+growl-for-linux (0.4-2lucid) lucid; urgency=low
+
+  * backport to dist lucid
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Thu, 22 Sep 2011 01:24:30 +0900
+
+growl-for-linux (0.4-2lucid) lucid; urgency=low
+
+  * backport to dist lucid
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Thu, 22 Sep 2011 01:23:42 +0900
+
+growl-for-linux (0.4-1maverick) maverick; urgency=low
+
+  * backport to dist maverick
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Thu, 28 Jul 2011 00:57:37 +0900
+
+growl-for-linux (0.4-1natty) natty; urgency=low
+
+  * backport to dist natty
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Thu, 28 Jul 2011 00:57:01 +0900
+
+growl-for-linux (0.4-1lucid) lucid; urgency=low
+
+  * backport to dist lucid
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Thu, 28 Jul 2011 00:56:39 +0900
+
+growl-for-linux (-1maverick) maverick; urgency=low
+
+  * backport to dist maverick
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Thu, 28 Jul 2011 00:56:02 +0900
+
+growl-for-linux (-1natty) natty; urgency=low
+
+  * backport to dist natty
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Thu, 28 Jul 2011 00:55:55 +0900
+
+growl-for-linux (-1lucid) lucid; urgency=low
+
+  * backport to dist lucid
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Thu, 28 Jul 2011 00:55:52 +0900
+
+growl-for-linux (-maverick) maverick; urgency=low
+
+  * backport to dist maverick
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Thu, 28 Jul 2011 00:55:38 +0900
+
+growl-for-linux (-natty) natty; urgency=low
+
+  * backport to dist natty
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Thu, 28 Jul 2011 00:55:26 +0900
+
+growl-for-linux (-lucid) lucid; urgency=low
+
+  * backport to dist lucid
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Thu, 28 Jul 2011 00:55:21 +0900
+
+growl-for-linux (0.4) lucid; urgency=low
+
+  * 0.4
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Thu, 28 Jul 2011 00:49:51 +0900
+
+growl-for-linux (0.3-1maverick) maverick; urgency=low
+
+  * backport to dist maverick
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Sun, 08 May 2011 23:49:40 +0900
+
+growl-for-linux (0.3-1natty) natty; urgency=low
+
+  * backport to dist natty
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Sun, 08 May 2011 23:49:17 +0900
+
+growl-for-linux (0.3-1lucid) lucid; urgency=low
+
+  * backport to dist lucid
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Sun, 08 May 2011 23:48:52 +0900
+
+growl-for-linux (-1maverick) maverick; urgency=low
+
+  * backport to dist maverick
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Sun, 08 May 2011 23:48:11 +0900
+
+growl-for-linux (-1natty) natty; urgency=low
+
+  * backport to dist natty
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Sun, 08 May 2011 23:48:05 +0900
+
+growl-for-linux (-1lucid) lucid; urgency=low
+
+  * backport to dist lucid
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Sun, 08 May 2011 23:47:47 +0900
+
+growl-for-linux (0.2-2maverick) maverick; urgency=low
+
+  * backport to dist maverick
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Sun, 01 May 2011 03:26:48 +0900
+
+growl-for-linux (0.2-2natty) natty; urgency=low
+
+  * backport to dist natty
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Sun, 01 May 2011 03:26:26 +0900
+
+growl-for-linux (0.2-2lucid) lucid; urgency=low
+
+  * backport to dist lucid
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Sun, 01 May 2011 03:26:09 +0900
+
+growl-for-linux (0.2-2lucid) lucid; urgency=low
+
+  * backport to dist lucid
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Sun, 01 May 2011 03:25:44 +0900
+
+growl-for-linux (0.2-1karmic) karmic; urgency=low
+
+  * backport to dist karmic
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Sun, 01 May 2011 02:15:00 +0900
+
+growl-for-linux (0.2-1maverick) maverick; urgency=low
+
+  * backport to dist maverick
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Sun, 01 May 2011 02:14:43 +0900
+
+growl-for-linux (0.2-1natty) natty; urgency=low
+
+  * backport to dist natty
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Sun, 01 May 2011 02:14:23 +0900
+
+growl-for-linux (0.2-1lucid) lucid; urgency=low
+
+  * backport to dist lucid
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Sun, 01 May 2011 02:13:58 +0900
+
+growl-for-linux (0.1-5maverick) maverick; urgency=low
+
+  * backport to dist maverick
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Mon, 25 Apr 2011 02:34:52 +0900
+
+growl-for-linux (0.1-5lucid) lucid; urgency=low
+
+  * backport to dist lucid
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Mon, 25 Apr 2011 02:34:36 +0900
+
+growl-for-linux (0.1-4maverick) lucid; urgency=low
+
+  * backport to dist maverick
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Mon, 25 Apr 2011 02:25:10 +0900
+
+growl-for-linux (0.1-4lucid) lucid; urgency=low
+
+  * backport to dist lucid
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Mon, 25 Apr 2011 02:24:54 +0900
+
+growl-for-linux (0.1-4maverick) lucid; urgency=low
+
+  * backport to dist maverick
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Mon, 25 Apr 2011 02:24:32 +0900
+
+growl-for-linux (0.1-4lucid) lucid; urgency=low
+
+  * backport to dist lucid
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Mon, 25 Apr 2011 02:24:24 +0900
+
+growl-for-linux (0.1-4maverick) lucid; urgency=low
+
+  * backport to dist maverick
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Mon, 25 Apr 2011 02:20:05 +0900
+
+growl-for-linux (0.1-4lucid) lucid; urgency=low
+
+  * backport to dist lucid
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Mon, 25 Apr 2011 02:19:35 +0900
+
+growl-for-linux (0.1-4karmic) lucid; urgency=low
+
+  * backport to dist karmic
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Mon, 25 Apr 2011 02:19:27 +0900
+
+growl-for-linux (0.1-4maverick) lucid; urgency=low
+
+  * backport to dist maverick
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Mon, 25 Apr 2011 02:18:44 +0900
+
+growl-for-linux (0.1-4lucid) lucid; urgency=low
+
+  * backport to dist lucid
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Mon, 25 Apr 2011 02:18:31 +0900
+
+growl-for-linux (0.1-4karmic) lucid; urgency=low
+
+  * backport to dist karmic
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Mon, 25 Apr 2011 02:18:24 +0900
+
+growl-for-linux (0.1-4karmic) lucid; urgency=low
+
+  * backport to dist karmic
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Mon, 25 Apr 2011 02:18:11 +0900
+
+growl-for-linux (0.1-4maverick) lucid; urgency=low
+
+  * backport to dist maverick
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Mon, 25 Apr 2011 02:16:36 +0900
+
+growl-for-linux (0.1-4lucid) lucid; urgency=low
+
+  * backport to dist lucid
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Mon, 25 Apr 2011 02:16:25 +0900
+
+growl-for-linux (0.1-4karmic) lucid; urgency=low
+
+  * backport to dist karmic
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Mon, 25 Apr 2011 02:16:14 +0900
+
+growl-for-linux (0.1-4maverick) lucid; urgency=low
+
+  * backport to dist maverick
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Mon, 25 Apr 2011 02:15:35 +0900
+
+growl-for-linux (0.1-4lucid) lucid; urgency=low
+
+  * backport to dist lucid
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Mon, 25 Apr 2011 02:15:23 +0900
+
+growl-for-linux (0.1-4karmic) lucid; urgency=low
+
+  * backport to dist karmic
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Mon, 25 Apr 2011 02:14:57 +0900
+
+growl-for-linux (0.1-4karmic) lucid; urgency=low
+
+  * backport to dist karmic
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Mon, 25 Apr 2011 02:14:25 +0900
+
+growl-for-linux (0.1-4karmic) lucid; urgency=low
+
+  * backport to dist karmic
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Mon, 25 Apr 2011 02:13:37 +0900
+
+growl-for-linux (0.1-4karmic) lucid; urgency=low
+
+  * backport to dist karmic
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Mon, 25 Apr 2011 02:10:52 +0900
+
+growl-for-linux (0.1-karmic) lucid; urgency=low
+
+  * backport to dist karmic
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Mon, 25 Apr 2011 02:09:58 +0900
+
+growl-for-linux (0.1-maverick) lucid; urgency=low
+
+  * backport to dist maverick
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Mon, 25 Apr 2011 02:08:28 +0900
+
+growl-for-linux (0.1-lucid) lucid; urgency=low
+
+  * backport to dist lucid
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Mon, 25 Apr 2011 02:08:15 +0900
+
+growl-for-linux (0.1-karmic) lucid; urgency=low
+
+  * backport to dist karmic
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Mon, 25 Apr 2011 02:08:06 +0900
+
+growl-for-linux (-karmic) lucid; urgency=low
+
+  * backport to dist karmic
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Mon, 25 Apr 2011 02:05:49 +0900
+
+growl-for-linux (0.1-3) lucid; urgency=low
+
+  * Add dependency to desktop-file-utils. 
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Mon, 25 Apr 2011 01:30:27 +0900
+
+growl-for-linux (0.1-2) lucid; urgency=low
+
+  * Update dependency. 
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Mon, 25 Apr 2011 01:21:09 +0900
+
+growl-for-linux (0.1-1) lucid; urgency=low
+
+  * For ubuntu lucid.
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Mon, 25 Apr 2011 01:10:35 +0900
+
+growl-for-linux (0.1-1) lucid; urgency=low
+
+  * Initial release.
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Sun, 24 Apr 2011 01:35:52 +0900
