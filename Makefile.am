@@ -6,7 +6,7 @@ SUBDIRS = plugins data \
 bin_PROGRAMS = gol
 gol_SOURCES = gol.c gol.h compatibility.h
 gol_CFLAGS = $(GTK2_CFLAGS) $(OPENSSL_CFLAGS) $(SQLITE3_CFLAGS) -DDATADIR='"$(pkgdatadir)"' -DLIBDIR='"$(pkglibdir)"'
-gol_LDADD = $(GTK2_LIBS) $(OPENSSL_LIBS) $(SQLITE3_LIBS)
+gol_LDADD = $(GTK2_LIBS) $(OPENSSL_LIBS) $(SQLITE3_LIBS) $(GMODULE2_LIBS)
 
 EXTRA_DIST = gol.rc Makefile.w32 README.mkd TODO data/gol.desktop VERSION
 
