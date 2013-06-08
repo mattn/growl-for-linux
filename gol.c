@@ -55,6 +55,10 @@
 #include "gol.h"
 #include "compatibility.h"
 
+#ifdef HAVE_APP_INDICATOR
+#include <libappindicator/app-indicator.h>
+#endif
+
 #define GNTP_OK_STRING_LITERAL(_version, _action)   \
   "GNTP/" _version " -OK NONE\r\n"                  \
   "Response-Action: " _action "\r\n\r\n"            \
@@ -98,7 +102,11 @@ static gchar* password;
 static gboolean require_password_for_local_apps = FALSE;
 static gboolean require_password_for_lan_apps = FALSE;
 static sqlite3 *db;
+#ifdef HAVE_APP_INDICATOR
+static AppIndicator* indicator;
+#else
 static GtkStatusIcon* status_icon;
+#endif
 static GdkPixbuf* status_icon_pixbuf, * status_icon_dnd_pixbuf;
 static status_t gol_status;
 static GtkWidget* popup_menu;
@@ -1693,6 +1701,58 @@ disabled_pixbuf(GdkPixbuf *pixbuf) {
 }
 */
 
+#ifdef HAVE_APP_INDICATOR
+static void
+gol_status_toggle(GtkMenuItem* menu_item, gpointer user_data) {
+  switch (gol_status)
+  {
+    case GOL_STATUS_NORMAL:
+      gol_status = GOL_STATUS_DND;
+      app_indicator_set_status(indicator, APP_INDICATOR_STATUS_ACTIVE);
+      gtk_menu_item_set_label(menu_item, "Switch to on");
+      break;
+    case GOL_STATUS_DND:
+      gol_status = GOL_STATUS_NORMAL;
+      app_indicator_set_status(indicator, APP_INDICATOR_STATUS_ATTENTION);
+      gtk_menu_item_set_label(menu_item, "Switch to off");
+      break;
+  }
+}
+static void
+create_menu() {
+  gchar* theme_path;
+  GtkWidget* menu_item;
+
+  indicator = app_indicator_new("Growl", "icon_dnd",
+                                 APP_INDICATOR_CATEGORY_APPLICATION_STATUS);
+  theme_path = g_build_filename(DATADIR, "data", NULL);
+  app_indicator_set_icon_theme_path(indicator, theme_path);
+  g_free(theme_path);
+
+  popup_menu = gtk_menu_new();
+  menu_item = gtk_menu_item_new_with_label("Switch to off");
+  gtk_menu_shell_append(GTK_MENU_SHELL(popup_menu), menu_item);
+  gtk_menu_shell_append(GTK_MENU_SHELL(popup_menu),
+    gtk_separator_menu_item_new());
+  append_new_menu_item_from_stock(GTK_MENU_SHELL(popup_menu),
+    GTK_STOCK_PREFERENCES, G_CALLBACK(settings_clicked));
+  append_new_menu_item_from_stock(GTK_MENU_SHELL(popup_menu),
+    GTK_STOCK_ABOUT, G_CALLBACK(about_click));
+  gtk_menu_shell_append(GTK_MENU_SHELL(popup_menu),
+    gtk_separator_menu_item_new());
+  append_new_menu_item_from_stock(GTK_MENU_SHELL(popup_menu),
+    GTK_STOCK_QUIT, G_CALLBACK(exit_clicked));
+  app_indicator_set_menu(indicator, GTK_MENU(popup_menu));
+
+  g_signal_connect(G_OBJECT(menu_item), "activate",
+    G_CALLBACK(gol_status_toggle), NULL);
+
+  app_indicator_set_status(indicator, APP_INDICATOR_STATUS_ATTENTION);
+  app_indicator_set_icon_full(indicator, "icon_dnd", NULL);
+  app_indicator_set_attention_icon_full(indicator, "icon", NULL);
+  gtk_widget_show_all(popup_menu);
+}
+#else
 static gboolean
 gol_status_toggle(GtkStatusIcon* status_icon, GdkEvent* event, gpointer user_data) {
   switch (gol_status)
@@ -1747,16 +1807,19 @@ create_menu() {
   gtk_widget_show_all(popup_menu);
   gtk_status_icon_set_visible(status_icon, TRUE);
 }
+#endif
 
 static void
 destroy_menu() {
   if (popup_menu) {
       gtk_widget_destroy(popup_menu);
   }
+#ifndef HAVE_APP_INDICATOR
   if (status_icon) {
       gtk_status_icon_set_visible(GTK_STATUS_ICON(status_icon), FALSE);
       g_object_unref(G_OBJECT(status_icon));
   }
+#endif
   if (status_icon_pixbuf) {
     g_object_unref(G_OBJECT(status_icon_pixbuf));
   }

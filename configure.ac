@@ -36,6 +36,26 @@ PKG_CHECK_MODULES(NOTIFY, libnotify,
                    AC_CONFIG_FILES([display/libnotify/Makefile])],
                   [ENABLE_LIBNOTIFY=""])
 
+APPINDICATOR_REQUIRED=0.4.92
+AC_ARG_ENABLE(appindicator,
+              AS_HELP_STRING([--enable-appindicator[=@<:@no/auto/yes@:>@]],
+                             [Build support for application indicators ]),
+              [enable_appindicator=$enableval],
+              [enable_appindicator="auto"])
+if test x$enable_appindicator = xauto ; then
+        PKG_CHECK_EXISTS([appindicator-0.1 >= $APPINDICATOR_REQUIRED],
+                         enable_appindicator="yes",
+                         enable_appindicator="no")
+fi
+if test x$enable_appindicator = xyes ; then
+        PKG_CHECK_EXISTS([appindicator-0.1 >= $APPINDICATOR_REQUIRED],,
+                         AC_MSG_ERROR([appindicator-0.1 is not installed]))
+        PKG_CHECK_MODULES(APP_INDICATOR,
+                          appindicator-0.1 >= $APPINDICATOR_REQUIRED)
+        AC_DEFINE(HAVE_APP_INDICATOR, [1], [Have AppIndicator])
+fi
+AM_CONDITIONAL(HAVE_APP_INDICATOR, test x"$enable_appindicator" = xyes)
+
 # Checks for header files.
 AC_CHECK_HEADERS([arpa/inet.h memory.h netdb.h netinet/in.h stddef.h stdint.h stdlib.h string.h sys/socket.h unistd.h])
 
