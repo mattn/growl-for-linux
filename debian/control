@@ -2,12 +2,12 @@ Source: growl-for-linux
 Section: gnome
 Priority: optional
 Maintainer: Yasuhiro Matsumoto <mattn.jp@gmail.com>
-Build-Depends: debhelper (>= 7), autotools-dev, libglib2.0-dev, libgtk2.0-dev, libcurl4-openssl-dev, libxml2-dev, libsqlite3-dev, libdbus-glib-1-dev, desktop-file-utils
+Build-Depends: debhelper (>= 7), autotools-dev, libglib2.0-dev, libgtk2.0-dev, libnotify-dev, libappindicator-dev, libcurl4-openssl-dev, libxml2-dev, libsqlite3-dev, libdbus-glib-1-dev, desktop-file-utils
 Standards-Version: 3.8.4
 Homepage: http://mattn.github.com/growl-for-linux
 
 Package: growl-for-linux
 Architecture: any
-Depends: libglib2.0-0, libgtk2.0-0, libcurl3, libxml2, libsqlite3-0, libdbus-glib-1-2, libc6, ${misc:Depends}
+Depends: libglib2.0-0, libgtk2.0-0, libnotify, libappindicator, libcurl3, libxml2, libsqlite3-0, libdbus-glib-1-2, libc6, ${misc:Depends}
 Description: Linux compatible of Growl
  Growl For Linux is Linux-compatible of Growl. Growl is a notification system for Mac OS X. 
