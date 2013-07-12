@@ -24,7 +24,8 @@ do
   debchange -b --newversion ${VERSION}-${SERIES}${distro} --distribution $distro "backport to dist ${distro}"
   cp -r ../debian $WORKDIR/${PACKAGE}-$VERSION/.
   cd $WORKDIR/${PACKAGE}-$VERSION/
-  debuild -k0x08ACFD38 -S -sa
+  #debuild -k0x08ACFD38 -S -sa
+  debuild -k0x9109A571 -S -sa
   dput -f ppa:$LPUSER/$PACKAGE $WORKDIR/${PACKAGE}_${VERSION}-${SERIES}${distro}_source.changes
   rm -rf $WORKDIR
 done
