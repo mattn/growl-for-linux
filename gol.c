@@ -582,6 +582,7 @@ preview_clicked(GtkWidget* GOL_UNUSED_ARG(widget), gpointer user_data) {
         "This is a preview of the '%s' display.", dp->name());
     ni->icon = g_build_filename(DATADIR, "data", "mattn.png", NULL);
     ni->local = TRUE;
+    ni->timeout = get_config_value("default_timeout", 5000)/10;
     g_idle_add((GSourceFunc) dp->show, ni);
   }
   g_free(name);
@@ -2013,6 +2014,7 @@ load_display_plugins() {
 
 static void
 subscribe_show(NOTIFICATION_INFO* const ni) {
+  ni->timeout = get_config_value("default_timeout", 5000)/10;
   g_idle_add((GSourceFunc) current_display->show, ni);
 }
 
@@ -2176,6 +2178,7 @@ udp_recv_proc(GIOChannel* const source, GIOCondition GOL_UNUSED_ARG(condition), 
               + ntohs(packet->title_length)],
                   ntohs(packet->description_length));
         ni->local = TRUE;
+        ni->timeout = get_config_value("default_timeout", 5000)/10;
         g_idle_add((GSourceFunc) current_display->show, ni); // call once
       }
     }
