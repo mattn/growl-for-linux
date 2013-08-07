@@ -1,4 +1,4 @@
-AC_PREREQ([2.65])
+AC_PREREQ([2.63])
 AC_INIT([growl-for-linux], [esyscmd([cat VERSION | tr -d '\n'])], [mattn.jp@gmail.com])
 AC_CONFIG_SRCDIR([gol.c])
 AC_CONFIG_MACRO_DIR([m4])
