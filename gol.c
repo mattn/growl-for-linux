@@ -461,7 +461,7 @@ display_tree_selection_changed(GtkTreeSelection * const selection, const gpointe
 
   bool
   is_selection_name(const DISPLAY_PLUGIN* dp) {
-    return !g_strcasecmp(dp->name(), name);
+    return !g_ascii_strcasecmp(dp->name(), name);
   }
   DISPLAY_PLUGIN* const cp = find_display_plugin_or(is_selection_name, current_display);
 
@@ -531,7 +531,7 @@ set_as_default_clicked(GtkWidget* GOL_UNUSED_ARG(widget), gpointer user_data) {
 
   bool
   is_selection_name(const DISPLAY_PLUGIN* dp) {
-    return !g_strcasecmp(dp->name(), name);
+    return !g_ascii_strcasecmp(dp->name(), name);
   }
   DISPLAY_PLUGIN* const dp = find_display_plugin(is_selection_name);
   if (dp) {
@@ -551,7 +551,7 @@ parameter_focus_out(GtkWidget* GOL_UNUSED_ARG(widget), GdkEvent* GOL_UNUSED_ARG(
 
   bool
   is_selection_name(const DISPLAY_PLUGIN* dp) {
-    return !g_strcasecmp(dp->name(), name);
+    return !g_ascii_strcasecmp(dp->name(), name);
   }
   DISPLAY_PLUGIN* const dp = find_display_plugin(is_selection_name);
   if (dp) {
@@ -572,7 +572,7 @@ preview_clicked(GtkWidget* GOL_UNUSED_ARG(widget), gpointer user_data) {
 
   bool
   is_selection_name(const DISPLAY_PLUGIN* dp) {
-    return !g_strcasecmp(dp->name(), name);
+    return !g_ascii_strcasecmp(dp->name(), name);
   }
   DISPLAY_PLUGIN* const dp = find_display_plugin(is_selection_name);
   if (dp) {
@@ -637,7 +637,7 @@ subscriber_enable_toggled(
 
   bool
   is_model_name(const SUBSCRIBE_PLUGIN* sp) {
-    return !g_strcasecmp(sp->name(), name);
+    return !g_ascii_strcasecmp(sp->name(), name);
   }
   SUBSCRIBE_PLUGIN* const sp = find_subscribe_plugin(is_model_name);
   if (sp) {
@@ -668,7 +668,7 @@ notification_tree_selection_changed(GtkTreeSelection* GOL_UNUSED_ARG(selection),
     char* const display = (char*) sqlite3_column_text(stmt, 1);
     bool
     is_display(const DISPLAY_PLUGIN* dp) {
-      return !g_strcasecmp(dp->name(), display);
+      return !g_ascii_strcasecmp(dp->name(), display);
     }
     DISPLAY_PLUGIN* const dp = find_display_plugin(is_display);
     if (dp) {
@@ -1239,7 +1239,7 @@ raise_notification(const CLIENT_INFO ci, NOTIFICATION_INFO* const ni) {
   if (ci.notification_display_name) {
     bool
     is_ndn(const DISPLAY_PLUGIN* dp) {
-      return !g_strcasecmp(dp->name(), ci.notification_display_name);
+      return !g_ascii_strcasecmp(dp->name(), ci.notification_display_name);
     }
     cp = find_display_plugin(is_ndn);
   }
@@ -1254,7 +1254,7 @@ raise_notification(const CLIENT_INFO ci, NOTIFICATION_INFO* const ni) {
       const char* const adn = (const char*) sqlite3_column_text(stmt, 1);
       bool
       is_adn(const DISPLAY_PLUGIN* dp) {
-        return !g_strcasecmp(dp->name(), adn);
+        return !g_ascii_strcasecmp(dp->name(), adn);
       }
       cp = find_display_plugin(is_adn);
     }
@@ -1266,7 +1266,7 @@ raise_notification(const CLIENT_INFO ci, NOTIFICATION_INFO* const ni) {
     const char* const sdn = get_config_string("default_display", "Fog");
     bool
     is_sdn(const DISPLAY_PLUGIN* dp) {
-      return !g_strcasecmp(dp->name(), sdn);
+      return !g_ascii_strcasecmp(dp->name(), sdn);
     }
     cp = find_display_plugin_or(is_sdn, current_display);
   }
@@ -1992,7 +1992,7 @@ load_display_plugins() {
     }
     sqlite3_finalize(stmt);
 
-    if (!g_strcasecmp(name, default_display))
+    if (!g_ascii_strcasecmp(name, default_display))
       current_display = dp;
   }
 
