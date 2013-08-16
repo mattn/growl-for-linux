@@ -2096,7 +2096,12 @@ gntp_accepted(GIOChannel* const source, GIOCondition GOL_UNUSED_ARG(condition), 
   }
 
 #ifdef G_THREADS_ENABLED
+# if !GLIB_CHECK_VERSION(2, 32, 0)
   g_thread_create(gntp_recv_proc, (gpointer)(intptr_t) sock, FALSE, NULL);
+# else
+  GThread *tid = g_thread_try_new("accept", gntp_recv_proc, (gpointer)(intptr_t) sock, NULL);
+  g_thread_unref(tid); // detach immediately
+# endif
 #else
   gntp_recv_proc((gpointer) sock);
 #endif
