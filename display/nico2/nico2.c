@@ -29,6 +29,7 @@
 #endif
 
 #include "gol.h"
+#include "compatibility.h"
 #include "plugins/from_url.h"
 
 #include "display_nico2.xpm"

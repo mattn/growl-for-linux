@@ -6,6 +6,7 @@
 #include <string.h>
 
 #include "gol.h"
+#include <gtk/gtk.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -41,6 +42,11 @@ typedef int sockopt_t;
 # endif
 
 #endif // _WIN32
+
+#if !GTK_CHECK_VERSION(2, 20, 0)
+// Workaround for GTK < 2.20
+#  define gdk_screen_get_primary_monitor(GdkScreen) (0)
+#endif
 
 #ifdef __cplusplus
 }

@@ -1,4 +1,4 @@
-AC_PREREQ([2.65])
+AC_PREREQ([2.63])
 AC_INIT([growl-for-linux], [esyscmd([cat VERSION | tr -d '\n'])], [mattn.jp@gmail.com])
 AC_CONFIG_SRCDIR([gol.c])
 AC_CONFIG_MACRO_DIR([m4])
@@ -23,6 +23,7 @@ esac
 # Checks for libraries.
 
 PKG_CHECK_MODULES(GLIB2, glib-2.0)
+PKG_CHECK_MODULES(GTHREAD2, gthread-2.0)
 PKG_CHECK_MODULES(GTK2, gtk+-2.0)
 PKG_CHECK_MODULES(GMODULE2, gmodule-2.0)
 PKG_CHECK_MODULES(LIBCURL, libcurl)
