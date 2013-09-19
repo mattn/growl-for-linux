@@ -1,7 +1,7 @@
 #!/bin/bash
 VERSION=`cat ../VERSION`
 AUTHOR='mattn <mattn.jp@gmail.com>'
-SERIES=2
+SERIES=1
 PACKAGE=growl-for-linux
 Ubuntus=('lucid' 'maverick' 'natty' 'oneiric' 'precise' 'quantal' 'raring')
 LPUSER=mattn
