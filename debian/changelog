@@ -1,3 +1,59 @@
+growl-for-linux (0.7.7-2raring) raring; urgency=low
+
+  * Separate display/libnotify to growl-for-linux-display-notify
+  * Separate subscribe/rhythmbox to growl-for-linux-subscribe-rhythmbox
+  * Do not install subscribe/tweets due to which is deprecated
+
+ -- Kohei Takahashi <flast@flast.jp>  Sun, 22 Sep 2013 02:06:52 +0900
+
+growl-for-linux (0.7.7-2quantal) quantal; urgency=low
+
+  * Separate display/libnotify to growl-for-linux-display-notify
+  * Separate subscribe/rhythmbox to growl-for-linux-subscribe-rhythmbox
+  * Do not install subscribe/tweets due to which is deprecated
+
+ -- Kohei Takahashi <flast@flast.jp>  Sun, 22 Sep 2013 02:06:52 +0900
+
+growl-for-linux (0.7.7-2precise) precise; urgency=low
+
+  * Separate display/libnotify to growl-for-linux-display-notify
+  * Separate subscribe/rhythmbox to growl-for-linux-subscribe-rhythmbox
+  * Do not install subscribe/tweets due to which is deprecated
+
+ -- Kohei Takahashi <flast@flast.jp>  Sun, 22 Sep 2013 02:06:52 +0900
+
+growl-for-linux (0.7.7-2oneiric) oneiric; urgency=low
+
+  * Separate display/libnotify to growl-for-linux-display-notify
+  * Separate subscribe/rhythmbox to growl-for-linux-subscribe-rhythmbox
+  * Do not install subscribe/tweets due to which is deprecated
+
+ -- Kohei Takahashi <flast@flast.jp>  Sun, 22 Sep 2013 02:06:52 +0900
+
+growl-for-linux (0.7.7-2natty) natty; urgency=low
+
+  * Separate display/libnotify to growl-for-linux-display-notify
+  * Separate subscribe/rhythmbox to growl-for-linux-subscribe-rhythmbox
+  * Do not install subscribe/tweets due to which is deprecated
+
+ -- Kohei Takahashi <flast@flast.jp>  Sun, 22 Sep 2013 02:06:52 +0900
+
+growl-for-linux (0.7.7-2maverick) maverick; urgency=low
+
+  * Separate display/libnotify to growl-for-linux-display-notify
+  * Separate subscribe/rhythmbox to growl-for-linux-subscribe-rhythmbox
+  * Do not install subscribe/tweets due to which is deprecated
+
+ -- Kohei Takahashi <flast@flast.jp>  Sun, 22 Sep 2013 02:06:52 +0900
+
+growl-for-linux (0.7.7-2lucid) lucid; urgency=low
+
+  * Separate display/libnotify to growl-for-linux-display-notify
+  * Separate subscribe/rhythmbox to growl-for-linux-subscribe-rhythmbox
+  * Do not install subscribe/tweets due to which is deprecated
+
+ -- Kohei Takahashi <flast@flast.jp>  Sun, 22 Sep 2013 02:06:52 +0900
+
 growl-for-linux (0.7.7-1raring) raring; urgency=low
 
   * backport to dist raring

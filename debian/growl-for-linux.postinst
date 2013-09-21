@@ -1,0 +1,11 @@
+#!/bin/sh
+set -e
+
+case "$1" in
+
+  configure)
+    mkdir -p /usr/lib/growl-for-linux/display
+    mkdir -p /usr/lib/growl-for-linux/subscribe
+    ;;
+
+esac
