@@ -1,3 +1,45 @@
+growl-for-linux (0.7.7-1raring) raring; urgency=low
+
+  * backport to dist raring
+
+ -- mattn <mattn@donkey>  Sat, 21 Sep 2013 14:36:57 +0900
+
+growl-for-linux (0.7.7-1quantal) quantal; urgency=low
+
+  * backport to dist quantal
+
+ -- mattn <mattn@donkey>  Sat, 21 Sep 2013 14:36:42 +0900
+
+growl-for-linux (0.7.7-1precise) precise; urgency=low
+
+  * backport to dist precise
+
+ -- mattn <mattn@donkey>  Sat, 21 Sep 2013 14:36:25 +0900
+
+growl-for-linux (0.7.7-1oneiric) oneiric; urgency=low
+
+  * backport to dist oneiric
+
+ -- mattn <mattn@donkey>  Sat, 21 Sep 2013 14:36:09 +0900
+
+growl-for-linux (0.7.7-1natty) natty; urgency=low
+
+  * backport to dist natty
+
+ -- mattn <mattn@donkey>  Sat, 21 Sep 2013 14:35:53 +0900
+
+growl-for-linux (0.7.7-1maverick) maverick; urgency=low
+
+  * backport to dist maverick
+
+ -- mattn <mattn@donkey>  Sat, 21 Sep 2013 14:35:36 +0900
+
+growl-for-linux (0.7.7-1lucid) lucid; urgency=low
+
+  * backport to dist lucid
+
+ -- mattn <mattn@donkey>  Sat, 21 Sep 2013 14:35:11 +0900
+
 growl-for-linux (0.7.6-1raring) raring; urgency=low
 
   * backport to dist raring
