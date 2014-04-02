@@ -1,3 +1,57 @@
+growl-for-linux (0.7.8-1saucy) saucy; urgency=low
+
+  * backport to dist saucy
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Thu, 03 Apr 2014 01:11:25 +0900
+
+growl-for-linux (0.7.8-1raring) raring; urgency=low
+
+  * backport to dist raring
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Thu, 03 Apr 2014 01:10:59 +0900
+
+growl-for-linux (0.7.8-1quantal) quantal; urgency=low
+
+  * backport to dist quantal
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Thu, 03 Apr 2014 01:10:39 +0900
+
+growl-for-linux (0.7.8-1precise) precise; urgency=low
+
+  * backport to dist precise
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Thu, 03 Apr 2014 01:10:13 +0900
+
+growl-for-linux (0.7.8-1oneiric) oneiric; urgency=low
+
+  * backport to dist oneiric
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Thu, 03 Apr 2014 01:09:53 +0900
+
+growl-for-linux (0.7.8-1natty) natty; urgency=low
+
+  * backport to dist natty
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Thu, 03 Apr 2014 01:09:29 +0900
+
+growl-for-linux (0.7.8-1maverick) maverick; urgency=low
+
+  * backport to dist maverick
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Thu, 03 Apr 2014 01:09:03 +0900
+
+growl-for-linux (0.7.8-1lucid) lucid; urgency=low
+
+  * backport to dist lucid
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Thu, 03 Apr 2014 01:08:33 +0900
+
+growl-for-linux (-1lucid) lucid; urgency=low
+
+  * backport to dist lucid
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Thu, 03 Apr 2014 01:08:16 +0900
+
 growl-for-linux (0.7.7-1raring) raring; urgency=low
 
   * backport to dist raring
