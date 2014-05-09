@@ -3,7 +3,7 @@ VERSION=`cat ../VERSION`
 AUTHOR='mattn <mattn.jp@gmail.com>'
 SERIES=1
 PACKAGE=growl-for-linux
-Ubuntus=('lucid' 'precise' 'quantal' 'saucy')
+Ubuntus=('lucid' 'precise' 'quantal' 'saucy' 'trusty')
 LPUSER=mattn
 WORKDIR=/tmp/launchpad
 
