@@ -1,3 +1,33 @@
+growl-for-linux (0.8.1-1trusty) trusty; urgency=medium
+
+  * backport to dist trusty
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Sun, 11 May 2014 00:07:58 +0900
+
+growl-for-linux (0.8.1-1saucy) saucy; urgency=medium
+
+  * backport to dist saucy
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Sun, 11 May 2014 00:07:35 +0900
+
+growl-for-linux (0.8.1-1quantal) quantal; urgency=medium
+
+  * backport to dist quantal
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Sun, 11 May 2014 00:07:13 +0900
+
+growl-for-linux (0.8.1-1precise) precise; urgency=medium
+
+  * backport to dist precise
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Sun, 11 May 2014 00:06:50 +0900
+
+growl-for-linux (0.8.1-1lucid) lucid; urgency=medium
+
+  * backport to dist lucid
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Sun, 11 May 2014 00:06:25 +0900
+
 growl-for-linux (0.8.0-1trusty) trusty; urgency=medium
 
   * backport to dist trusty
