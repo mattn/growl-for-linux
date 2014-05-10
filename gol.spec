@@ -1,7 +1,7 @@
 Name:		growl-for-linux
 Provides:	gol
 Version:	0.7.9
-Release:	1%{?dist}
+Release:	2%{?dist}
 Summary:	Linux compatible Growl
 Group:		GNOME Desktop
 License:	BSD style license
@@ -35,8 +35,8 @@ make install DESTDIR=%{buildroot}
 %{_bindir}/gol
 %{_datadir}/growl-for-linux/data/*
 %{_datadir}/applications/gol.desktop
-%{_libdir}/growl-for-linux/display
-%{_libdir}/growl-for-linux/subscribe
+%dir %{_libdir}/growl-for-linux/display
+%dir %{_libdir}/growl-for-linux/subscribe
 %{_libdir}/growl-for-linux/display/libballoon.so*
 %{_libdir}/growl-for-linux/display/libfog.so*
 %{_libdir}/growl-for-linux/display/libnico2.so*
@@ -77,5 +77,8 @@ Growl for Linux subscribe plugin
 
 
 %changelog
+* Sat May 10 2014 Kohei Takahashi <flast@flast.jp> - 0.7.9-2
+- Fix unexpected plugin packaging
+
 * Sat May 10 2014 Kohei Takahashi <flast@flast.jp> - 0.7.9-1
 - First release for RPM package
