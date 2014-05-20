@@ -20,6 +20,9 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+#ifdef _WIN32
+# include <ws2tcpip.h>
+#endif
 #include <stddef.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -34,7 +37,6 @@
 #include <gtk/gtk.h>
 #ifdef _WIN32
 # include <gdk/gdkwin32.h>
-# include <ws2tcpip.h>
 #else
 # include <sys/socket.h>
 # include <netinet/tcp.h>
@@ -1756,6 +1758,9 @@ create_menu() {
 #else
 static gboolean
 gol_status_toggle(GtkStatusIcon* status_icon, GdkEvent* event, gpointer user_data) {
+  if (event->button.button != 1)
+    return FALSE;
+
   switch (gol_status)
   {
     case GOL_STATUS_NORMAL:
