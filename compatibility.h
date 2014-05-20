@@ -21,6 +21,10 @@ typedef int socklen_t;
 #  define strncasecmp strnicmp
 # endif
 
+# ifndef WSAEAGAIN
+#  define WSAEAGAIN EAGAIN
+# endif
+
 GOL_INLINE char*
 strndup(const char* src, size_t n) {
   const size_t srclen = strlen(src);
