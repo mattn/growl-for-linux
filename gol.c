@@ -288,6 +288,20 @@ statement_sqlite3(void(* stmt_func)(sqlite3_stmt*), const char* const tsql, ...)
   va_end(list);
 }
 
+static GdkPixbuf*
+pixbuf_from_datadir(const gchar* filename, GError** error) {
+  if (!filename) {
+    g_set_error(error, G_FILE_ERROR, G_FILE_ERROR_INVAL, "filename should not be NULL");
+    return NULL;
+  }
+
+  gchar* const path = g_build_filename(DATADIR, "data", filename, NULL);
+  GdkPixbuf* const pixbuf = gdk_pixbuf_new_from_file(path, error);
+  g_free(path);
+
+  return pixbuf;
+}
+
 static gboolean
 get_config_bool(const char* key, gboolean def) {
   gboolean ret;
@@ -1110,14 +1124,12 @@ about_click(GtkWidget* GOL_UNUSED_ARG(widget), gpointer GOL_UNUSED_ARG(user_data
       return;
   }
 
-  const gchar* authors[3] = {
+  const gchar* authors[] = {
     "Yasuhiro Matsumoto <mattn.jp@gmail.com>",
     "Kohei Takahashi <flast@flast.jp>",
     NULL
   };
   gchar* contents = NULL;
-  gchar* utf8 = NULL;
-  GdkPixbuf* logo = NULL;
 
   about_dialog = gtk_about_dialog_new();
   gtk_about_dialog_set_name(GTK_ABOUT_DIALOG(about_dialog), "Growl For Linux");
@@ -1128,20 +1140,19 @@ about_click(GtkWidget* GOL_UNUSED_ARG(widget), gpointer GOL_UNUSED_ARG(user_data
   gtk_about_dialog_set_authors(GTK_ABOUT_DIALOG(about_dialog), authors);
   gtk_about_dialog_set_version(GTK_ABOUT_DIALOG(about_dialog), PACKAGE_VERSION);
   if (g_file_get_contents("COPYING", &contents, NULL, NULL)) {
-    utf8 = g_locale_to_utf8(contents, -1, NULL, NULL, NULL);
+    gchar* utf8 = g_locale_to_utf8(contents, -1, NULL, NULL, NULL);
     g_free(contents);
     contents = NULL;
     gtk_about_dialog_set_license(GTK_ABOUT_DIALOG(about_dialog), utf8);
     g_free(utf8);
-    utf8 = NULL;
   }
   gtk_about_dialog_set_website(GTK_ABOUT_DIALOG(about_dialog),
       "http://mattn.kaoriya.net/");
-  gchar* const path = g_build_filename(DATADIR, "data", "growl4linux.jpg", NULL);
-  logo = gdk_pixbuf_new_from_file(path, NULL);
-  g_free(path);
-  gtk_about_dialog_set_logo (GTK_ABOUT_DIALOG(about_dialog), logo);
-  g_object_unref(G_OBJECT(logo));
+  {
+    GdkPixbuf* logo = pixbuf_from_datadir("growl4linux.jpg", NULL);
+    gtk_about_dialog_set_logo (GTK_ABOUT_DIALOG(about_dialog), logo);
+    g_object_unref(G_OBJECT(logo));
+  }
   gtk_window_set_position(GTK_WINDOW(about_dialog), GTK_WIN_POS_CENTER);
   gtk_dialog_run(GTK_DIALOG(about_dialog));
   gtk_widget_destroy(about_dialog);
@@ -1775,17 +1786,9 @@ create_menu() {
   status_icon = gtk_status_icon_new();
   gtk_status_icon_set_tooltip(status_icon, "Growl");
 
-  {
-    // TODO: absolute path
-    gchar* const path = g_build_filename(DATADIR, "data", "icon.png", NULL);
-    status_icon_pixbuf = gdk_pixbuf_new_from_file(path, NULL);
-    g_free(path);
-  }
-  {
-    gchar* const path = g_build_filename(DATADIR, "data", "icon_dnd.png", NULL);
-    status_icon_dnd_pixbuf = gdk_pixbuf_new_from_file(path, NULL);
-    g_free(path);
-  }
+  // TODO: absolute path
+  status_icon_pixbuf = pixbuf_from_datadir("icon.png", NULL);
+  status_icon_dnd_pixbuf = pixbuf_from_datadir("icon_dnd.png", NULL);
 
   gtk_status_icon_set_from_pixbuf(status_icon, status_icon_pixbuf);
 
