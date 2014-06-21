@@ -380,27 +380,6 @@ set_config_bool(const char* key, gboolean value) {
   set_config_string(key, value ? "1" : "0");
 }
 
-static void
-my_gtk_status_icon_position_menu(
-    GtkMenu* const menu, gint* const x, gint* const y,
-    gboolean* const push_in, const gpointer user_data) {
-  gtk_status_icon_position_menu(menu, x, y, push_in, user_data);
-#ifdef _WIN32
-  RECT rect;
-  SystemParametersInfo(SPI_GETWORKAREA, 0, &rect, 0);
-  const gint h = GTK_WIDGET(menu)->requisition.height;
-  if (*y + h > rect.bottom) *y -= h;
-#endif
-}
-
-static void
-status_icon_popup(
-    GtkStatusIcon* const status_icon, const guint button,
-    const guint32 activate_time, const gpointer menu) {
-  gtk_menu_popup(GTK_MENU(menu), NULL, NULL,
-      my_gtk_status_icon_position_menu, status_icon, button, activate_time);
-}
-
 static bool
 get_tree_model_from_selection(gchar** const restrict pname, GtkTreeSelection* const restrict selection) {
   GtkTreeIter iter;
@@ -679,8 +658,8 @@ notification_tree_selection_changed(GtkTreeSelection* GOL_UNUSED_ARG(selection),
       "select enable, display from application"
       " where app_name = '%q' and name = '%q'", app_name, name);
 
-  GtkComboBox* const cbx1 = combo_box_set_active_as_object(user_data, "enable", cbx1_index);
-  GtkComboBox* const cbx2 = combo_box_set_active_as_object(user_data, "display", cbx2_index);
+  combo_box_set_active_as_object(user_data, "enable", cbx1_index);
+  combo_box_set_active_as_object(user_data, "display", cbx2_index);
 
   g_free(app_name);
   g_free(name);
@@ -1704,7 +1683,7 @@ disabled_pixbuf(GdkPixbuf *pixbuf) {
 
 #ifdef HAVE_APP_INDICATOR
 static void
-gol_status_toggle(GtkMenuItem* menu_item, gpointer user_data) {
+gol_status_toggle(GtkMenuItem* menu_item, gpointer GOL_UNUSED_ARG(user_data)) {
   switch (gol_status)
   {
     case GOL_STATUS_NORMAL:
@@ -1768,6 +1747,27 @@ gol_status_toggle(GtkStatusIcon* status_icon, GdkEvent* event, gpointer user_dat
       break;
   }
   return FALSE;
+}
+
+static void
+my_gtk_status_icon_position_menu(
+    GtkMenu* const menu, gint* const x, gint* const y,
+    gboolean* const push_in, const gpointer user_data) {
+  gtk_status_icon_position_menu(menu, x, y, push_in, user_data);
+#ifdef _WIN32
+  RECT rect;
+  SystemParametersInfo(SPI_GETWORKAREA, 0, &rect, 0);
+  const gint h = GTK_WIDGET(menu)->requisition.height;
+  if (*y + h > rect.bottom) *y -= h;
+#endif
+}
+
+static void
+status_icon_popup(
+    GtkStatusIcon* const status_icon, const guint button,
+    const guint32 activate_time, const gpointer menu) {
+  gtk_menu_popup(GTK_MENU(menu), NULL, NULL,
+      my_gtk_status_icon_position_menu, status_icon, button, activate_time);
 }
 
 static void
