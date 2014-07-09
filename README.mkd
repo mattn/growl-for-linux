@@ -1,46 +1,46 @@
 Growl For Linux
 ===============
 
-> ![Growl For Linux](https://github.com/mattn/growl-for-linux/raw/master/data/growl4linux.jpg "Growl For Linux")
+![Growl For Linux](https://github.com/mattn/growl-for-linux/raw/master/data/growl4linux.jpg "Growl For Linux")
 
 Introduction:
 -------------
 
-> Growl For Linux is Linux-compatible of Growl. Growl is a notification system for Mac OS X. 
+Growl For Linux is Linux-compatible of Growl. Growl is a notification system for Mac OS X. 
 
 Installation:
 -------------
 
-> Growl For Linux require following libraries.
-> 
-> * openssl
-> * libcurl
-> * gtk+-2.0
-> * sqlite3
-> * dbus-glib-1
-> 
-> If you are developer, then type following.
-> 
->     # ./autogen.sh
->     # ./configure
->     # make && make install
-> 
-> If you are ubuntu user, then type following.
+Growl For Linux require following libraries.
 
->     # sudo add-apt-repository ppa:mattn/growl-for-linux
->     # sudo apt-get update
->     # sudo apt-get install growl-for-linux
+* openssl
+* libcurl
+* gtk+-2.0
+* sqlite3
+* dbus-glib-1
+
+If you are developer, then type following.
+
+    # ./autogen.sh
+    # ./configure
+    # make && make install
+
+If you are ubuntu user, then type following.
+
+    # sudo add-apt-repository ppa:mattn/growl-for-linux
+    # sudo apt-get update
+    # sudo apt-get install growl-for-linux
 
 Usage:
 ------
 
->     # ./gol
-> 
-> Why "gol" ?, "gol" mean "Growl On Linux". (or ゴルア).
-> Currently, This is required.
+    # ./gol
 
-> Notification should be sent with [GNTP](http://www.growlforwindows.com/gfw/help/gntp.aspx) protocol or [Growl Network Protocol](http://growl.info/documentation/developer/protocol.php).
-> If you want to be show icon in notification, you need to use GNTP protocol.
+Why "gol" ?, "gol" mean "Growl On Linux". (or ゴルア).
+Currently, This is required.
+
+Notification should be sent with [GNTP](http://www.growlforwindows.com/gfw/help/gntp.aspx) protocol or [Growl Network Protocol](http://growl.info/documentation/developer/protocol.php).
+If you want to be show icon in notification, you need to use GNTP protocol.
 
 FAQ:
 ----
@@ -48,41 +48,41 @@ FAQ:
   * Q. I can't see icon in system tray. I'm using ubuntu linux.
   * A. Try following.
   
->     gsettings set com.canonical.Unity.Panel systray-whitelist "$(gsettings get com.canonical.Unity.Panel systray-whitelist | sed -e "s/]$/, 'growl-for-linux']/")"
+    gsettings set com.canonical.Unity.Panel systray-whitelist "$(gsettings get com.canonical.Unity.Panel systray-whitelist | sed -e "s/]$/, 'growl-for-linux']/")"
 
 License:
 --------
 
-> Growl For Linux is BSD style license. see also COPYING.
-> This product includes software developed by the OpenSSL Project for use in the OpenSSL Toolkit (http://www.openssl.org/).
+Growl For Linux is BSD style license. see also COPYING.
+This product includes software developed by the OpenSSL Project for use in the OpenSSL Toolkit (http://www.openssl.org/).
 
 Author:
 -------
 
-> Yasuhiro Matsumoto <mattn.jp@gmail.com>
+Yasuhiro Matsumoto <mattn.jp@gmail.com>
 
-> Kohei Takahashi <flast@flast.jp>
+Kohei Takahashi <flast@flast.jp>
 
 Screenshot:
 -----------
  
-> ![Working on Linux](https://github.com/mattn/growl-for-linux/raw/master/data/screenshot.png "Working on Linux")
+![Working on Linux](https://github.com/mattn/growl-for-linux/raw/master/data/screenshot.png "Working on Linux")
 
 Display Style:
 --------------
 
 * Default
 
-> ![Default Style](https://github.com/mattn/growl-for-linux/raw/master/data/display_default.png "Default Style")
+![Default Style](https://github.com/mattn/growl-for-linux/raw/master/data/display_default.png "Default Style")
 
 
 * Balloon
 
-> ![Balloon Style](https://github.com/mattn/growl-for-linux/raw/master/data/display_balloon.png "Balloon Style")
+![Balloon Style](https://github.com/mattn/growl-for-linux/raw/master/data/display_balloon.png "Balloon Style")
 
 
 * Nico2
 
-> ![Nico2 Style](https://github.com/mattn/growl-for-linux/raw/master/data/display_nico2.png "Nico2 Style")
+![Nico2 Style](https://github.com/mattn/growl-for-linux/raw/master/data/display_nico2.png "Nico2 Style")
 
 
