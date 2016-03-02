@@ -1094,7 +1094,7 @@ settings_clicked(GtkWidget* GOL_UNUSED_ARG(widget), GdkEvent* GOL_UNUSED_ARG(eve
           "Text", gtk_cell_renderer_text_new(), "text", 2, NULL));
 
     {
-      char* const sql = "select recieved, title, text from notification order by recieved desc";
+      char* const sql = "select received, title, text from notification order by received desc";
       sqlite3_stmt *stmt = NULL;
       sqlite3_prepare(db, sql, strlen(sql), &stmt, NULL);
       while (sqlite3_step(stmt) == SQLITE_ROW) {
@@ -1585,7 +1585,7 @@ gntp_recv_proc(gpointer user_data) {
 
       exec_sqlite3(
         "insert into notification("
-        "title, text, icon, url, recieved)"
+        "title, text, icon, url, received)"
         " values('%q', '%q', '%q', '%q', current_timestamp)",
         ni->title, ni->text,
         ni->icon ? ni->icon : "",
@@ -1876,7 +1876,7 @@ load_config() {
           "text text not null,"
           "icon text,"
           "url text,"
-          "recieved timestamp not null)",
+          "received timestamp not null)",
       "create table application("
           "app_name text not null,"
           "app_icon text not null,"
