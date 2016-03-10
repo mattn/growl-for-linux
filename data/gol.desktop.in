@@ -4,6 +4,7 @@ Terminal=false
 Name=Growl For Linux
 Comment=Growl Desktop Notification System For Linux
 Categories=GNOME;GTK;Utility;
+Keywords=Notifications;Banner;Message;Tray;Popup;
 Exec=@prefix@/bin/gol
 Icon=@prefix@/share/growl-for-linux/data/icon.png
 X-GNOME-Autostart-enabled=true
