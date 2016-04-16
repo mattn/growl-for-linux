@@ -1216,7 +1216,7 @@ raise_notification(const CLIENT_INFO ci, NOTIFICATION_INFO* const ni) {
     send(ci.sock, cmd_result, strlen(cmd_result), 0);
     g_free(cmd_result);
   } else {
-    g_critical("g_strdup or g_strdup_printf faild.");
+    g_critical("g_strdup or g_strdup_printf failed.");
     return false;
   }
   if (!valid) return false;
