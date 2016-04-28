@@ -20,6 +20,9 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+#ifdef _WIN32
+# include <ws2tcpip.h>
+#endif
 #include <stddef.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -34,7 +37,6 @@
 #include <gtk/gtk.h>
 #ifdef _WIN32
 # include <gdk/gdkwin32.h>
-# include <ws2tcpip.h>
 #else
 # include <sys/socket.h>
 # include <netinet/tcp.h>
@@ -168,7 +170,7 @@ read_all(int fd, char** ptr) {
       if (--retry < 0) break; 
 #ifdef _WIN32
       DWORD err = GetLastError();
-      if (err == WSAEWOULDBLOCK || err == WSAEAGAIN) continue;
+      if (err == WSAEWOULDBLOCK) continue;
 #else
       int err = errno;
       if (err == EWOULDBLOCK || err == EAGAIN) continue; 
@@ -2216,6 +2218,7 @@ create_udp_server() {
   }
 
   fd_set fdset;
+  FD_ZERO(&fdset);
   FD_SET(fd, &fdset);
   GIOChannel* const channel = g_io_channel_unix_new(fd);
   g_io_add_watch(channel, G_IO_IN | G_IO_ERR, udp_recv_proc, NULL);
@@ -2262,6 +2265,7 @@ create_gntp_server() {
   }
 
   fd_set fdset;
+  FD_ZERO(&fdset);
   FD_SET(fd, &fdset);
   GIOChannel* const channel = g_io_channel_unix_new(fd);
   g_io_add_watch(channel, G_IO_IN | G_IO_ERR, gntp_accepted, NULL);
