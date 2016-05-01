@@ -841,7 +841,7 @@ settings_clicked(GtkWidget* GOL_UNUSED_ARG(widget), GdkEvent* GOL_UNUSED_ARG(eve
   setting_dialog = gtk_dialog_new_with_buttons(
       "Settings", NULL, GTK_DIALOG_MODAL,
       GTK_STOCK_CLOSE, GTK_RESPONSE_CLOSE, NULL);
-  gchar* const path = g_build_filename(DATADIR, "data", "icon.png", NULL);
+  gchar* const path = g_build_filename(DATADIR, "data", "icon256.png", NULL);
   gtk_window_set_icon_from_file(GTK_WINDOW(setting_dialog), path, NULL);
   g_free(path);
   gtk_window_set_position(GTK_WINDOW(setting_dialog), GTK_WIN_POS_CENTER);
@@ -1151,7 +1151,7 @@ about_click(GtkWidget* GOL_UNUSED_ARG(widget), gpointer GOL_UNUSED_ARG(user_data
   gtk_about_dialog_set_website(GTK_ABOUT_DIALOG(about_dialog),
       "http://mattn.kaoriya.net/");
   {
-    GdkPixbuf* logo = pixbuf_from_datadir("growl4linux.jpg", NULL);
+    GdkPixbuf* logo = pixbuf_from_datadir("icon.png", NULL);
     gtk_about_dialog_set_logo (GTK_ABOUT_DIALOG(about_dialog), logo);
     g_object_unref(G_OBJECT(logo));
   }
