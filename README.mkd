@@ -1,8 +1,6 @@
 Growl For Linux
 ===============
 
-![Growl For Linux](https://github.com/mattn/growl-for-linux/raw/master/data/growl4linux.jpg "Growl For Linux")
-
 Introduction:
 -------------
 
