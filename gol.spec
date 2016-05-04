@@ -1,14 +1,14 @@
 Name:		growl-for-linux
 Provides:	gol
-Version:	0.7.9
-Release:	2%{?dist}
+Version:	0.8.4
+Release:	1%{?dist}
 Summary:	Linux compatible Growl
 Group:		GNOME Desktop
 License:	BSD style license
 URL:		http://mattn.github.com/growl-for-linux
-Source0:	https://github.com/mattn/growl-for-linux/archive/%{version}.tar.gz
+Source0:	https://github.com/mattn/growl-for-linux/archive/growl-for-linux-%{version}.tar.gz
 
-BuildRequires:	autoconf libtool glib2-devel gtk2-devel dbus-glib-devel libxml2-devel libcurl-devel sqlite-devel libnotify-devel libappindicator-devel
+BuildRequires:	autoconf libtool glib2-devel gtk2-devel dbus-glib-devel libxml2-devel libcurl-devel sqlite-devel libnotify-devel libappindicator-devel openssl-devel
 Requires:	glib2 gtk2 dbus-glib libxml2 libcurl sqlite
 
 %description
@@ -77,6 +77,9 @@ Growl for Linux subscribe plugin
 
 
 %changelog
+* Wed May 4 2016 Kohei Takahashi <flast@flast.jp> - 0.8.4-1
+- Increase version number
+
 * Sat May 10 2014 Kohei Takahashi <flast@flast.jp> - 0.7.9-2
 - Fix unexpected plugin packaging
 
