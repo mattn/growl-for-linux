@@ -199,7 +199,7 @@ display_description() {
     "<span>This is MSAgent notification display using Microsoft Agent</span>\n";
 }
 
-G_MODULE_EXPORT char**
+G_MODULE_EXPORT const char**
 display_thumbnail() {
   return display_msagent;
 }

@@ -1,5 +1,5 @@
 /* XPM */
-static char *display_nico2[] = {
+static const char *display_nico2[] = {
 /* columns rows colors chars-per-pixel */
 "300 250 256 2 ",
 "   c #0F0C06",

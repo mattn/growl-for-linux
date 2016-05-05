@@ -1,5 +1,5 @@
 /* XPM */
-static char *display_msagent[] = {
+static const char *display_msagent[] = {
 /* columns rows colors chars-per-pixel */
 "350 250 153 2 ",
 "   c black",

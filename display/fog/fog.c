@@ -308,7 +308,7 @@ reset_display_info(DISPLAY_INFO* const di, NOTIFICATION_INFO* const ni) {
   di->hover   = FALSE;
   free_notification_info(di->ni);
   di->ni = ni;
-  gtk_widget_hide_all(di->widget.popup);
+  gtk_widget_hide(di->widget.popup);
   gtk_window_set_opacity(GTK_WINDOW(di->widget.popup), 0.8);
   remove_icon(di);
   return di;
@@ -427,7 +427,7 @@ display_description() {
     "<span>Slide-up white box. And fadeout after a while.</span>\n";
 }
 
-G_MODULE_EXPORT char**
+G_MODULE_EXPORT const char**
 display_thumbnail() {
   return display_fog;
 }

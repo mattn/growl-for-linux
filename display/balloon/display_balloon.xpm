@@ -1,5 +1,5 @@
 /* XPM */
-static char *display_balloon[] = {
+static const char *display_balloon[] = {
 /* columns rows colors chars-per-pixel */
 "300 250 256 2 ",
 "   c #0B0906",

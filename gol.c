@@ -35,6 +35,7 @@
 #include <errno.h>
 
 #include <gtk/gtk.h>
+#include <gdk-pixbuf/gdk-pixbuf.h>
 #ifdef _WIN32
 # include <gdk/gdkwin32.h>
 #else
@@ -89,7 +90,7 @@ typedef struct {
   gboolean (*term)();
   const gchar* (*name)();
   const gchar* (*description)();
-  gchar** (*thumbnail)();
+  const gchar** (*thumbnail)();
   void (*set_param)(const gchar*);
   gchar* (*get_param)();
 } DISPLAY_PLUGIN;
@@ -469,14 +470,11 @@ display_tree_selection_changed(GtkTreeSelection * const selection, const gpointe
   GtkWidget* const image = (GtkWidget*) get_data_as_object(user_data, "thumbnail");
   gtk_image_clear(GTK_IMAGE(image));
   if (cp->thumbnail) {
-    char ** const raw_xpm = cp->thumbnail();
+    const char ** const raw_xpm = cp->thumbnail();
     if (raw_xpm) {
-      GdkBitmap* bitmap;
-      GdkPixmap* pixmap = gdk_pixmap_colormap_create_from_xpm_d(
-          NULL, gdk_colormap_get_system(), &bitmap, NULL, raw_xpm);
-      gtk_image_set_from_pixmap(GTK_IMAGE(image), pixmap, bitmap);
-      gdk_pixmap_unref(pixmap);
-      gdk_bitmap_unref(bitmap);
+      GdkPixbuf* pixbuf = gdk_pixbuf_new_from_xpm_data(raw_xpm);
+      gtk_image_set_from_pixbuf(GTK_IMAGE(image), pixbuf);
+      g_object_unref(pixbuf);
     }
   }
 

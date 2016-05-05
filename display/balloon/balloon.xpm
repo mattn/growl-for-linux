@@ -1,5 +1,5 @@
 /* XPM */
-static char * balloon[] = {
+static const char * balloon[] = {
 "250 110 3 1",
 " 	c None",
 ".	c #FFFFFF",

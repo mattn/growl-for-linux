@@ -22,6 +22,8 @@
  */
 
 #include <gtk/gtk.h>
+#include <gdk/gdk.h>
+#include <gdk-pixbuf/gdk-pixbuf.h>
 #ifdef _WIN32
 # include <gdk/gdkwin32.h>
 #endif
@@ -38,9 +40,8 @@ static gchar* param;
 static GList* notifications;
 static GList* popup_collections;
 
-static GdkPixmap* pixmap;
-static GdkBitmap* bitmap;
-static gint pixmap_width, pixmap_height;
+static GdkPixbuf* pixbuf;
+static gint pixbuf_width, pixbuf_height;
 
 static GdkColor inst_color_white_;
 static const GdkColor* const color_white = &inst_color_white_;
@@ -138,12 +139,13 @@ display_expose(GtkWidget *widget, GdkEventExpose *event, gpointer GOL_UNUSED_ARG
   gdk_window_clear_area(
     widget->window,
     event->area.x, event->area.y, event->area.width, event->area.height);
-  gdk_draw_pixmap(
+  gdk_draw_pixbuf(
     widget->window,
     widget->style->fg_gc[GTK_STATE_NORMAL],
-    pixmap,
+    pixbuf,
     0, 0,
-    0, 0, pixmap_width, pixmap_height);
+    0, 0, pixbuf_width, pixbuf_height,
+    GDK_RGB_DITHER_NORMAL, 0, 0);
   return FALSE;
 }
 
@@ -318,7 +320,7 @@ reset_display_info(DISPLAY_INFO* const di, NOTIFICATION_INFO* const ni) {
   di->hover   = FALSE;
   free_notification_info(di->ni);
   di->ni = ni;
-  gtk_widget_hide_all(di->widget.popup);
+  gtk_widget_hide(di->widget.popup);
   gtk_window_set_opacity(GTK_WINDOW(di->widget.popup), 0);
   remove_icon(di);
   return di;
@@ -375,12 +377,13 @@ display_show(NOTIFICATION_INFO* const ni) {
   gtk_widget_show_all(di->widget.popup);
   g_timeout_add(10, display_animation_func, di);
 
-  if (pixmap == NULL) {
-     pixmap = gdk_pixmap_create_from_xpm_d(di->widget.popup->window, &bitmap, NULL, balloon);
+  if (pixbuf == NULL) {
+     pixbuf = gdk_pixbuf_new_from_xpm_data(balloon);
+     pixbuf_width = gdk_pixbuf_get_width(pixbuf);
+     pixbuf_height = gdk_pixbuf_get_height(pixbuf);
   }
-  gdk_drawable_get_size(pixmap, &pixmap_width, &pixmap_height);
-  gtk_widget_set_size_request(di->widget.popup, pixmap_width, pixmap_height);
-  gdk_window_shape_combine_mask(di->widget.popup->window, bitmap, 0, 0);
+  gtk_widget_set_size_request(di->widget.popup, pixbuf_width, pixbuf_height);
+  //gdk_window_shape_combine_mask(di->widget.popup->window, bitmap, 0, 0);
   g_signal_connect(G_OBJECT(di->widget.popup), "expose-event", G_CALLBACK(display_expose), di);
 
   return FALSE;
@@ -444,7 +447,7 @@ display_description() {
     "<span>Fade-in black box. And fadeout after a while.</span>\n";
 }
 
-G_MODULE_EXPORT char**
+G_MODULE_EXPORT const char**
 display_thumbnail() {
   return display_balloon;
 }

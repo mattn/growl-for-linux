@@ -102,7 +102,7 @@ display_description() {
     " and reference manual is <a href=\"http://developer.gnome.org/libnotify/\">here</a>.</span>\n";
 }
 
-G_MODULE_EXPORT char**
+G_MODULE_EXPORT const char**
 display_thumbnail() {
   return display_libnotify;
 }

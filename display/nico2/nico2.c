@@ -259,7 +259,7 @@ display_description() {
     "<span>Slide notification from right to left similar to nico nico douga.</span>\n";
 }
 
-G_MODULE_EXPORT char**
+G_MODULE_EXPORT const char**
 display_thumbnail() {
   return display_nico2;
 }

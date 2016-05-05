@@ -1,5 +1,5 @@
 /* XPM */
-static char * display_libnotify[] = {
+static const char * display_libnotify[] = {
 "300 242 12072 3",
 "   	c None",
 ".  	c #635445",
