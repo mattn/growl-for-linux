@@ -3,7 +3,7 @@ AC_INIT([growl-for-linux], m4_esyscmd([cat VERSION | tr -d '\n']), [mattn.jp@gma
 AC_CONFIG_SRCDIR([gol.c])
 AC_CONFIG_MACRO_DIR([m4])
 
-AM_INIT_AUTOMAKE
+AM_INIT_AUTOMAKE([foreign])
 
 # Smart output for automake.
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
