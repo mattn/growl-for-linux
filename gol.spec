@@ -32,7 +32,7 @@ make install DESTDIR=%{buildroot}
 
 %files
 %defattr(-,root,root,-)
-%doc NEWS README README.mkd TODO
+%doc README README.mkd TODO
 %{_bindir}/gol
 %{_datadir}/%{name}/data/*
 %{_datadir}/applications/gol.desktop
