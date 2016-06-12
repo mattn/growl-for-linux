@@ -1151,8 +1151,8 @@ about_click(GtkWidget* GOL_UNUSED_ARG(widget), gpointer GOL_UNUSED_ARG(user_data
   gtk_about_dialog_set_website(GTK_ABOUT_DIALOG(about_dialog),
       "http://mattn.kaoriya.net/");
   {
-    GdkPixbuf* logo = pixbuf_from_datadir("icon.png", NULL);
-    gtk_about_dialog_set_logo (GTK_ABOUT_DIALOG(about_dialog), logo);
+    GdkPixbuf* logo = pixbuf_from_datadir("icon256.png", NULL);
+    gtk_about_dialog_set_logo(GTK_ABOUT_DIALOG(about_dialog), logo);
     g_object_unref(G_OBJECT(logo));
   }
   gtk_window_set_position(GTK_WINDOW(about_dialog), GTK_WIN_POS_CENTER);
