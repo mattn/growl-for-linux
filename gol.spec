@@ -6,7 +6,7 @@ Summary:	Linux compatible Growl
 Group:		GNOME Desktop
 License:	BSD style license
 URL:		http://mattn.github.com/growl-for-linux
-Source0:	https://github.com/mattn/growl-for-linux/archive/growl-for-linux-%{version}.tar.gz
+Source0:	https://github.com/mattn/growl-for-linux/archive/%{version}.tar.gz
 
 BuildRequires:	autoconf libtool glib2-devel gtk2-devel dbus-glib-devel libxml2-devel libcurl-devel sqlite-devel libnotify-devel libappindicator-devel openssl-devel
 Requires:	glib2 gtk2 dbus-glib libxml2 libcurl sqlite
