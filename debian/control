@@ -4,7 +4,7 @@ Priority: optional
 Maintainer: Yasuhiro Matsumoto <mattn.jp@gmail.com>
 Build-Depends: debhelper (>= 7), autotools-dev, libglib2.0-dev, libgtk2.0-dev, libnotify-dev, libappindicator-dev, libcurl4-openssl-dev, libxml2-dev, libsqlite3-dev, libdbus-glib-1-dev, desktop-file-utils
 Standards-Version: 3.8.4
-Homepage: http://mattn.github.com/growl-for-linux
+Homepage: https://mattn.github.io/growl-for-linux/
 
 Package: growl-for-linux
 Architecture: any
