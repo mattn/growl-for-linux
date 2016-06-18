@@ -1,6 +1,6 @@
 Name:		growl-for-linux
 Provides:	gol
-Version:	0.8.4
+Version:	0.8.5
 Release:	1%{?dist}
 Summary:	Linux compatible Growl
 Group:		GNOME Desktop
@@ -78,6 +78,9 @@ Growl for Linux subscribe plugin
 
 
 %changelog
+
+* Sun Jun 19 2016 Kohei Takahashi <mattn.jp@gmail.com> - 0.8.5-1
+- Increase version number
 
 * Wed May 4 2016 Kohei Takahashi <flast@flast.jp> - 0.8.4-1
 - Increase version number
