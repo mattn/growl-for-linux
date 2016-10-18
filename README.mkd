@@ -16,6 +16,8 @@ Growl For Linux require following libraries.
 * gtk+-2.0
 * sqlite3
 * dbus-glib-1
+* libxml2
+* libcurl4
 
 If you are developer, then type following.
 
