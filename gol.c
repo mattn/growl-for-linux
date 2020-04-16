@@ -57,8 +57,8 @@
 #include "gol.h"
 #include "compatibility.h"
 
-#ifdef HAVE_APP_INDICATOR
-#include <libappindicator/app-indicator.h>
+#ifdef HAVE_AYATANA_APPINDICATOR
+#include <libayatana-appindicator/app-indicator.h>
 #endif
 
 #define GNTP_OK_STRING_LITERAL(_version, _action)   \
@@ -104,7 +104,7 @@ static gchar* password;
 static gboolean require_password_for_local_apps = FALSE;
 static gboolean require_password_for_lan_apps = FALSE;
 static sqlite3 *db;
-#ifdef HAVE_APP_INDICATOR
+#ifdef HAVE_AYATANA_APPINDICATOR
 static AppIndicator* indicator;
 #else
 static GtkStatusIcon* status_icon;
@@ -1694,7 +1694,7 @@ disabled_pixbuf(GdkPixbuf *pixbuf) {
 }
 */
 
-#ifdef HAVE_APP_INDICATOR
+#ifdef HAVE_AYATANA_APPINDICATOR
 static void
 gol_status_toggle(GtkMenuItem* menu_item, gpointer GOL_UNUSED_ARG(user_data)) {
   switch (gol_status)
@@ -1820,7 +1820,7 @@ destroy_menu() {
   if (popup_menu) {
       gtk_widget_destroy(popup_menu);
   }
-#ifndef HAVE_APP_INDICATOR
+#ifndef HAVE_AYATANA_APPINDICATOR
   if (status_icon) {
       gtk_status_icon_set_visible(GTK_STATUS_ICON(status_icon), FALSE);
       g_object_unref(G_OBJECT(status_icon));
