@@ -285,9 +285,9 @@ get_rhythmbox_info(gpointer GOL_UNUSED_ARG(data)) {
   }
 
   if (title && artist && album &&
-          (!last_title  || strcmp(last_title, title)) &&
-          (!last_artist || strcmp(last_artist, artist)) &&
-          (!last_album  || strcmp(last_album, album))) {
+          ((!last_title  || strcmp(last_title, title)) ||
+           (!last_artist || strcmp(last_artist, artist)) ||
+           (!last_album  || strcmp(last_album, album)))) {
     NOTIFICATION_INFO* ni = g_new0(NOTIFICATION_INFO, 1);
     ni->title = g_strdup(title);
     ni->text = g_strdup_printf("%s\n%s", album, artist);
