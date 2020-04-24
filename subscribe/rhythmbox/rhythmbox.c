@@ -27,8 +27,7 @@
 #include <stdio.h>
 
 #include <gmodule.h>
-#include <dbus/dbus.h>
-#include <dbus/dbus-glib.h>
+#include <gio/gio.h>
 #include <libxml/parser.h>
 #include <libxml/xpath.h>
 #include <libxml/xpathInternals.h>
@@ -40,8 +39,8 @@
 #define REQUEST_TIMEOUT            (5)
 
 static SUBSCRIPTOR_CONTEXT* sc;
-static DBusGConnection *conn;
-static DBusGProxy* proxy;
+static GDBusConnection *conn;
+static GDBusProxy* proxy;
 static gboolean enable = FALSE;
 
 static gchar* last_title;
@@ -152,131 +151,143 @@ static gboolean
 get_rhythmbox_info(gpointer GOL_UNUSED_ARG(data)) {
   if (!enable) return FALSE;
 
-  DBusGProxy *player = NULL;
-  DBusGProxy *shell = NULL;
+  GDBusProxy *player = NULL;
   GError *error = NULL;
 
   if (!conn) {
-    conn = dbus_g_bus_get(DBUS_BUS_SESSION, &error);
+    conn = g_bus_get_sync(G_BUS_TYPE_SESSION, NULL, &error);
     if (error) g_error_free(error);
     if (!conn) return FALSE;
   }
 
   if (!proxy) {
-    proxy = dbus_g_proxy_new_for_name(
+    proxy = g_dbus_proxy_new_sync(
         conn,
+        G_DBUS_PROXY_FLAGS_NONE,
+        NULL,
         "org.freedesktop.DBus",
         "/org/freedesktop/DBus",
-        "org.freedesktop.DBus");
+        "org.freedesktop.DBus",
+        NULL,
+        &error);
     if (error) g_error_free(error);
     if (!proxy) return FALSE;
   }
 
   gboolean exists = FALSE;
-  if (dbus_g_proxy_call_with_timeout(
-        proxy,
-        "NameHasOwner",
-        5000,
-        &error,
-        G_TYPE_STRING,
-        "org.gnome.Rhythmbox",
-        G_TYPE_INVALID,
-        G_TYPE_BOOLEAN,
-        &exists,
-        G_TYPE_INVALID)) {
+  GVariant *parameters = g_variant_new("(s)", "org.gnome.Rhythmbox3");
+  g_variant_ref(parameters);
+  GVariant *variants = g_dbus_proxy_call_sync(
+    proxy,
+    "NameHasOwner",
+    parameters,
+    G_DBUS_CALL_FLAGS_NONE,
+    5000,
+    NULL,
+    &error);
+  if (!variants) {
     if (error) g_error_free(error);
-    if (!exists) return TRUE;
+    g_variant_unref(parameters);
+    return TRUE;
+  } else {
+    g_variant_unref(parameters);
+    g_variant_get(variants, "(b)", &exists);
+    if (!exists) {
+      g_variant_unref(variants);
+      return TRUE;
+    }
+    g_variant_unref(variants);
   }
-
-  if (!shell) {
-    shell = dbus_g_proxy_new_for_name(
-        conn,
-        "org.gnome.Rhythmbox",
-        "/org/gnome/Rhythmbox/Shell",
-        "org.gnome.Rhythmbox.Shell");
-  }
-
+  
   if (!player) {
-    player = dbus_g_proxy_new_for_name(
+    player = g_dbus_proxy_new_sync(
         conn,
-        "org.gnome.Rhythmbox",
-        "/org/gnome/Rhythmbox/Player",
-        "org.gnome.Rhythmbox.Player");
+        G_DBUS_PROXY_FLAGS_NONE,
+        NULL,
+        "org.gnome.Rhythmbox3",
+        "/org/mpris/MediaPlayer2",
+        "org.mpris.MediaPlayer2.Player",
+        NULL,
+        &error);
+    if (error) g_error_free(error);
+    if (!player) return FALSE;
   }
 
-  gboolean playing;
-  if (!dbus_g_proxy_call_with_timeout(
-        player,
-        "getPlaying",
-        5000,
-        &error,
-        G_TYPE_INVALID,
-        G_TYPE_BOOLEAN,
-        &playing,
-        G_TYPE_INVALID)) {
-    if (error) g_error_free(error);
-    if (!playing) return TRUE;
+  gboolean playing = FALSE;
+  variants = g_dbus_proxy_get_cached_property(
+    player,
+    "PlaybackStatus"
+    );
+  if (!variants) {
+    g_object_unref(player);
+    return FALSE;
+  } else {
+    gsize length = 0;
+    const gchar *playing = g_variant_get_string(variants, &length);
+    if (!playing || (playing && g_strcmp0(playing, "Playing"))) {
+      g_object_unref(player);
+      return TRUE;
+    }
   }
-
-  char *uri;
-  if (!dbus_g_proxy_call_with_timeout(
-        player,
-        "getPlayingUri",
-        5000,
-        &error,
-        G_TYPE_INVALID,
-        G_TYPE_STRING,
-        &uri,
-        G_TYPE_INVALID)) {
-    if (error) g_error_free(error);
-    return TRUE;
-  }
-
-  GHashTable *table;
-  if (!dbus_g_proxy_call_with_timeout(
-        shell,
-        "getSongProperties",
-        5000,
-        &error,
-        G_TYPE_STRING,
-        uri,
-        G_TYPE_INVALID,
-        dbus_g_type_get_map("GHashTable", G_TYPE_STRING, G_TYPE_VALUE),
-        &table,
-        G_TYPE_INVALID)) {
-    if (error) g_error_free(error);
-    return TRUE;
-  }
-  g_free(uri);
 
   gchar* title = NULL;
   gchar* artist = NULL;
   gchar* album = NULL;
 
-  GValue* value = (GValue*) g_hash_table_lookup(table, "rb:stream-song-title");
-  if (value != NULL && G_VALUE_HOLDS_STRING(value)) {
-    title = g_strdup(g_value_get_string(value));
+  variants = g_dbus_proxy_get_cached_property(
+    player,
+    "Metadata"
+    );
+  if (!variants) {
+    g_object_unref(player);
+    return FALSE;
   } else {
-    value = (GValue*) g_hash_table_lookup(table, "title");
-    if (value != NULL && G_VALUE_HOLDS_STRING(value)) {
-      title = g_strdup(g_value_get_string(value));
+    gsize length = 0;
+    GVariant *variant = g_variant_lookup_value(variants,
+                                               "xesam:title",
+                                               G_VARIANT_TYPE_STRING);
+    if (!variant) {
+      g_object_unref(player);
+      return FALSE;
+    } else {
+      title = g_strdup(g_variant_get_string(variant, &length));
+      g_variant_unref(variant);
     }
+    
+    variant = g_variant_lookup_value(variants,
+                                     "xesam:artist",
+                                     G_VARIANT_TYPE_STRING_ARRAY);
+    if (!variant) {
+      g_object_unref(player);
+      return FALSE;
+    } else {
+      const gchar **array = g_variant_get_strv(variant,
+                                         &length);
+      if (length > 0) {
+        artist = g_strjoinv(",", (gchar **)array);
+      } else {
+        artist = g_strdup("Unknown");
+      }
+      g_variant_unref(variant);
+    }
+    
+    variant = g_variant_lookup_value(variants,
+                                     "xesam:album",
+                                     G_VARIANT_TYPE_STRING);
+    if (!variant) {
+      g_object_unref(player);
+      return FALSE;
+    } else {
+      album = g_strdup(g_variant_get_string(variant, &length));
+      g_variant_unref(variant);
+    }
+    g_variant_unref(variants);
   }
-  value = (GValue*) g_hash_table_lookup(table, "artist");
-  if (value != NULL && G_VALUE_HOLDS_STRING(value)) {
-    artist = g_strdup(g_value_get_string(value));
-  }
-  value = (GValue*) g_hash_table_lookup(table, "album");
-  if (value != NULL && G_VALUE_HOLDS_STRING(value)) {
-    album = g_strdup(g_value_get_string(value));
-  }
-
-  g_hash_table_destroy(table);
 
   if (title && artist && album &&
-          (!last_title  || strcmp(last_title, title)) &&
-          (!last_artist || strcmp(last_artist, artist)) &&
-          (!last_album  || strcmp(last_album, album))) {
+          ((!last_title  || strcmp(last_title, title)) ||
+           (!last_artist || strcmp(last_artist, artist)) ||
+           (!last_album  || strcmp(last_album, album)))) {
     NOTIFICATION_INFO* ni = g_new0(NOTIFICATION_INFO, 1);
     ni->title = g_strdup(title);
     ni->text = g_strdup_printf("%s\n%s", album, artist);
